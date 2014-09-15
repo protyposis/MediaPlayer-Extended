@@ -1,0 +1,51 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.1.0'
+
+    defaultConfig {
+        applicationId packageBase + '.mediaplayerdemo'
+        minSdkVersion 16
+        targetSdkVersion 19
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        debug   // configured in signingconfig.gradle
+        release // configured in signingconfig.gradle
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+
+    applicationVariants.all { variant ->
+        if(variant.name == android.buildTypes.release.name) {
+            def file = variant.outputFile
+            def fileName = file.name.replace(".apk", "-" + defaultConfig.versionCode + "-" + defaultConfig.versionName + ".apk")
+            variant.outputFile = new File(file.parent, fileName)
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile project(':MediaPlayer')
+    compile project(':MediaPlayer-DASH')
+    compile project(':MediaPlayer-GLES')
+    compile project(':MediaPlayer-GLES-FlowAbs')
+    compile project(':MediaPlayer-GLES-QrMarker')
+}
+ext.isLibrary = false
+apply from: "../gitversioning.gradle"
+apply from: "signingconfig.gradle"

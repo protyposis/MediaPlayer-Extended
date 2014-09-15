@@ -1,0 +1,48 @@
+<!--
+  ~ Copyright (c) 2014 Mario Guggenberger <mario.guggenberger@aau.at>
+  ~
+  ~ This file is part of ITEC MediaPlayer.
+  ~
+  ~ ITEC MediaPlayer is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ ITEC MediaPlayer is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with ITEC MediaPlayer.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".GLVideoViewActivity" >
+
+    <item android:id="@+id/action_switch_camera"
+        android:title="@string/switch_camera"
+        android:icon="@drawable/ic_action_switch_camera"
+        android:showAsAction="ifRoom"
+        android:visible="false"/>
+
+    <item android:id="@+id/action_list_effects"
+        android:title="@string/effects"
+        android:icon="@drawable/ic_action_picture"
+        android:showAsAction="ifRoom|withText">
+        <menu></menu>
+    </item>
+
+    <item android:id="@+id/action_toggle_parameters"
+        android:title="@string/toggle_parameters"
+        android:icon="@drawable/ic_action_settings"
+        android:showAsAction="ifRoom|withText"
+        android:enabled="false"/>
+
+    <item android:id="@+id/action_save_frame"
+        android:title="@string/save_frame"
+        android:icon="@drawable/ic_action_save"
+        android:showAsAction="ifRoom|withText"/>
+
+</menu>

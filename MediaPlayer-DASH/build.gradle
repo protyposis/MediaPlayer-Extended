@@ -1,0 +1,68 @@
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion "19.1.0"
+
+    defaultConfig {
+        applicationId playerModuleBase + ".dash"
+        minSdkVersion 16
+        targetSdkVersion 19
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile project(':MediaPlayer')
+    compile 'com.squareup.okio:okio:1.0.1'
+    compile "com.squareup.okhttp:okhttp:2.0.0"
+    compile "com.googlecode.mp4parser:isoparser:1.0.3.11-DASHFIX"
+}
+
+/* this serves to publish a snapshot to the local maven repository, so the artifact can be used
+ * in other projects. */
+publishing {
+    publications {
+        debugSnapshot(MavenPublication) {
+            groupId = packageBase
+            artifactId = "mediaplayer-dash"
+            version = android.defaultConfig.versionName + "-SNAPSHOT"
+
+            artifact file('build/outputs/aar/MediaPlayer-DASH.aar')
+
+            /* The maven-publish plugin fails to automatically pick up (Android) dependencies,
+             * so they need to be added manually:
+             * http://forums.gradle.org/gradle/topics/using_the_maven_publish_plugin_no_dependencies_in_pom_xml
+             * http://stackoverflow.com/questions/24743562/gradle-not-including-dependencies-in-published-pom-xml
+             */
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+
+                //Iterate over the compile dependencies (we don't want the test ones), adding a <dependency> node for each
+                configurations.compile.allDependencies.each {
+                    // only add external dependencies
+                    if (it instanceof ExternalModuleDependency) {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+        }
+    }
+}
+afterEvaluate {
+    publishDebugSnapshotPublicationToMavenLocal.dependsOn assembleDebug
+}
+
+//apply from: "../gitversioning.gradle"

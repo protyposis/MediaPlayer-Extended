@@ -1,0 +1,44 @@
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion "19.1.0"
+
+    defaultConfig {
+        applicationId playerModuleBase
+        minSdkVersion 16
+        targetSdkVersion 19
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+/* this serves to publish a snapshot to the local maven repository, so the artifact can be used
+ * in other projects. */
+publishing {
+    publications {
+        debugSnapshot(MavenPublication) {
+            groupId = packageBase
+            artifactId = "mediaplayer"
+            version = android.defaultConfig.versionName + "-SNAPSHOT"
+
+            artifact file('build/outputs/aar/MediaPlayer.aar')
+        }
+    }
+}
+afterEvaluate {
+    publishDebugSnapshotPublicationToMavenLocal.dependsOn assembleDebug
+}
+
+//apply from: "../gitversioning.gradle"

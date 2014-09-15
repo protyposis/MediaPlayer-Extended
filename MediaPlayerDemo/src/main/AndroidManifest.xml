@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="at.aau.itec.android.mediaplayerdemo" >
+
+    <!-- needed for online streams (plain video files and DASH) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- needed to save frames -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- camera preview demo -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme" >
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rtsp" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mpd" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.mp4" />
+                <data android:scheme="http" android:host="*" android:pathPattern=".*\\.webm" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" android:mimeType="video/*" />
+                <data android:scheme="content" android:mimeType="video/*" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".SideBySideActivity"
+            android:label="@string/title_activity_side_by_side" >
+        </activity>
+        <activity
+            android:name=".SideBySideSeekTestActivity"
+            android:label="@string/title_activity_side_by_side_seektest" >
+        </activity>
+        <activity
+            android:name=".VideoViewActivity"
+            android:label="@string/title_activity_videoview" >
+        </activity>
+        <activity
+            android:name=".GLVideoViewActivity"
+            android:label="@string/title_activity_glvideoview" >
+        </activity>
+        <activity
+            android:name=".GLCameraViewActivity"
+            android:label="@string/title_activity_glcameraview" >
+        </activity>
+    </application>
+
+</manifest>

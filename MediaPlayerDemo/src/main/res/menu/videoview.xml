@@ -1,0 +1,50 @@
+<!--
+  ~ Copyright (c) 2014 Mario Guggenberger <mario.guggenberger@aau.at>
+  ~
+  ~ This file is part of ITEC MediaPlayer.
+  ~
+  ~ ITEC MediaPlayer is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ ITEC MediaPlayer is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with ITEC MediaPlayer.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".MainActivity" >
+
+    <item android:id="@+id/action_slowspeed"
+        android:title="@string/action_slowspeed" />
+
+    <item android:id="@+id/action_halfspeed"
+        android:title="@string/action_halfspeed" />
+
+    <item android:id="@+id/action_normalspeed"
+        android:title="@string/action_normalspeed" />
+
+    <item android:id="@+id/action_doublespeed"
+        android:title="@string/action_doublespeed" />
+
+    <item android:id="@+id/action_seekcurrentposition"
+        android:title="@string/action_seekcurrentposition" />
+
+    <item android:id="@+id/action_seekcurrentpositionplus1ms"
+        android:title="@string/action_seekcurrentpositionplus1ms" />
+
+    <item android:id="@+id/action_getcurrentposition"
+        android:title="@string/action_getcurrentposition" />
+
+    <item android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        android:orderInCategory="100"
+        android:showAsAction="never"
+        android:visible="false"/>
+</menu>

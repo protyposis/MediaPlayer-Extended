@@ -1,0 +1,64 @@
+/**
+ * Checks if git is available to the Gradle environment and stops the build if not.
+ */
+def checkForGit() {
+    try {
+        def dummyOutput = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git'
+            standardOutput = dummyOutput // prevent output being printed to stdout
+            ignoreExitValue = true // don't throw exception on exit code > 0
+        }
+    }
+    catch(ignored) {
+        throw new GradleException('git not found')
+    }
+}
+
+// Automatic git version numbering: http://stackoverflow.com/a/18021756
+def getVersionCode = { ->
+    try {
+        def code = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'tag', '--list'
+            standardOutput = code
+        }
+        return code.toString().split("\n").size()
+    }
+    catch (ignored) {
+        return -1;
+    }
+}
+
+def getVersionName = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--dirty', '--long', '--always'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }
+    catch (ignored) {
+        return null;
+    }
+}
+
+android {
+
+    defaultConfig {
+        versionCode getVersionCode()
+        versionName getVersionName()
+    }
+
+    /* On a release build, assert that Git exists - otherwise the version code and name cannot be
+     * automatically set. This is done so complicated here because the Android tasks are built
+      * dynamically at execution time and cannot be accessed at configuration time. */
+    (project.isLibrary ? libraryVariants : applicationVariants).all { variant ->
+        //if(variant.name.equalsIgnoreCase('release')) {
+        variant.processManifest.doFirst {
+            checkForGit()
+        }
+        //}
+    }
+}

@@ -1,0 +1,32 @@
+def readPasswordFromConsole(prompt) {
+    def c = System.console()
+    if(c != null) {
+        return new String(System.console().readPassword("\n\$ " + prompt + " "))
+    }
+    return ""
+}
+
+android {
+    signingConfigs {
+        def configPropsFile = file("signingconfig.properties")
+        if (configPropsFile.exists()) {
+            def props = new Properties()
+            props.load(new FileInputStream(configPropsFile))
+
+            debug {
+                if(props.debug_store?.trim()) {
+                    storeFile file(props.debug_store)
+                }
+            }
+
+            release {
+                storeFile file(props.release_store)
+                storePassword(props.release_storePass?.trim() ? props.release_storePass : readPasswordFromConsole("keystore pass:"))
+                keyAlias props.release_alias
+                keyPassword(props.release_pass?.trim() ? props.release_pass : readPasswordFromConsole("key pass:"))
+            }
+        } else {
+            println "signingconfig.properties file is missing (required for release builds)!"
+        }
+    }
+}

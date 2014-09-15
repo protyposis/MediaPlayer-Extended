@@ -1,0 +1,2 @@
+include ':MediaPlayer-GLES', ':MediaPlayer-GLES-FlowAbs', ':MediaPlayer-DASH', ':MediaPlayer-GLES-QrMarker'
+include 'MediaPlayer', 'MediaPlayerDemo'
