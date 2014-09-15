@@ -149,7 +149,7 @@ public class MainActivity extends Activity {
         // internet DASH streaming test files
         //uri = Uri.parse("http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny_1080p.mpd");
         //uri = Uri.parse("http://www-itec.uni-klu.ac.at/dash/js/content/bunny_ibmff_1080.mpd");
-        //uri = Uri.parse("http://dj9wk94416cg5.cloudfront.net/sintel2/sintel2.mpd");
+        //uri = Uri.parse("http://dj9wk94416cg5.cloudfront.net/sintel2/sintel.mpd");
 
         if(savedInstanceState != null) {
             uri = savedInstanceState.getParcelable("uri");

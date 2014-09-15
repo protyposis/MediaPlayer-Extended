@@ -91,35 +91,41 @@ class DashMediaExtractor extends MediaExtractor {
         mHttpClient = new OkHttpClient();
     }
 
-    public final void setDataSource(Context context, MPD mpd, AdaptationLogic adaptationLogic) {
-        mContext = context;
-        mMPD = mpd;
-        mAdaptationLogic = adaptationLogic;
-        mAdaptationSet = mMPD.getFirstVideoSet();
-        mRepresentation = adaptationLogic.initialize(mAdaptationSet);
-        mCurrentSegment = -1;
-        mSelectedTracks = new ArrayList<Integer>();
-        mInitSegments = new HashMap<Representation, ByteString>(mAdaptationSet.representations.size());
-        mFutureCache = new HashMap<Segment, CachedSegment>();
-        mFutureCacheRequests = new HashMap<Segment, Call>();
-        mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
-        mMp4Mode = mRepresentation.mimeType.equals("video/mp4");
-        if(mMp4Mode) {
-            mMp4Builder = new DefaultMp4Builder();
-        }
-        mSegmentPTSOffsetUs = 0;
+    public final void setDataSource(Context context, MPD mpd, AdaptationLogic adaptationLogic)
+            throws IOException {
+        try {
+            mContext = context;
+            mMPD = mpd;
+            mAdaptationLogic = adaptationLogic;
+            mAdaptationSet = mMPD.getFirstVideoSet();
+            mRepresentation = adaptationLogic.initialize(mAdaptationSet);
+            mCurrentSegment = -1;
+            mSelectedTracks = new ArrayList<Integer>();
+            mInitSegments = new HashMap<Representation, ByteString>(mAdaptationSet.representations.size());
+            mFutureCache = new HashMap<Segment, CachedSegment>();
+            mFutureCacheRequests = new HashMap<Segment, Call>();
+            mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
+            mMp4Mode = mRepresentation.mimeType.equals("video/mp4");
+            if (mMp4Mode) {
+                mMp4Builder = new DefaultMp4Builder();
+            }
+            mSegmentPTSOffsetUs = 0;
 
-        /* If the extractor previously crashed and could not gracefully finish, some old temp files
-         * that will never be used again might be around, so just delete all of them and avoid the
-         * memory fill up with trash.
-         * Only clean at startup of the first instance, else newer ones delete cache files of
-         * running ones.
-         */
-        if(sInstanceCount++ == 0) {
-            clearTempDir(mContext);
-        }
+            /* If the extractor previously crashed and could not gracefully finish, some old temp files
+             * that will never be used again might be around, so just delete all of them and avoid the
+             * memory fill up with trash.
+             * Only clean at startup of the first instance, else newer ones delete cache files of
+             * running ones.
+             */
+            if (sInstanceCount++ == 0) {
+                clearTempDir(mContext);
+            }
 
-        initOnWorkerThread(getNextSegment());
+            initOnWorkerThread(getNextSegment());
+        } catch (Exception e) {
+            Log.e(TAG, "failed to set data source");
+            throw new IOException("failed to set data source", e);
+        }
     }
 
     @Override

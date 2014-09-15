@@ -23,15 +23,16 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.util.Xml;
 
+import com.squareup.okhttp.Headers;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,21 +49,15 @@ public class DashParser {
     private static Pattern PATTERN_TIME = Pattern.compile("PT((\\d+)H)?((\\d+)M)?((\\d+(\\.\\d+)?)S)");
 
     public MPD parse(final UriSource source) {
-        // TODO clean up this mess
+        MPD mpd = null;
+
+        // Execute MPD download and parsing in an asnyc task to avoid NetworkOnMainThreadException
         try {
-            // blocking async download and parsing of MPD XML file to avoid NetworkOnMainThreadException
-            return new AsyncTask<Void, Void, MPD>() {
+            mpd = new AsyncTask<Void, Void, MPD>() {
+
                 @Override
                 protected MPD doInBackground(Void... params) {
-                    InputStream in = downloadMPD(source);
-                    try {
-                        return parse(in);
-                    } catch (XmlPullParserException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    return null;
+                    return parseInternal(source);
                 }
             }.execute().get();
         } catch (InterruptedException e) {
@@ -71,25 +66,37 @@ public class DashParser {
             e.printStackTrace();
         }
 
-        return null;
+        return mpd;
     }
 
-    private InputStream downloadMPD(UriSource source) {
-        try {
-            URL url = new URL(source.getUri().toString());
-            HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+    private MPD parseInternal(UriSource source) {
+        MPD mpd = null;
+        OkHttpClient httpClient = new OkHttpClient();
 
-            // TODO add headers
-            //urlConnection.addRequestProperty();
-
-            return new BufferedInputStream(urlConnection.getInputStream());
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        Headers.Builder headers = new Headers.Builder();
+        if(source.getHeaders() != null && !source.getHeaders().isEmpty()) {
+            for(String name : source.getHeaders().keySet()) {
+                headers.add(name, source.getHeaders().get(name));
+            }
         }
 
-        return null;
+        Request.Builder request = new Request.Builder()
+                .url(source.getUri().toString())
+                .headers(headers.build());
+
+        try {
+            Response response = httpClient.newCall(request.build()).execute();
+            if(!response.isSuccessful()) {
+                throw new IOException("error requesting the MPD");
+            }
+            mpd = parse(response.body().byteStream());
+        } catch (IOException e) {
+            Log.e(TAG, "error downloading the MPD", e);
+        } catch (XmlPullParserException e) {
+            Log.e(TAG, "error parsing the MPD", e);
+        }
+
+        return mpd;
     }
 
     private MPD parse(InputStream in) throws XmlPullParserException, IOException {

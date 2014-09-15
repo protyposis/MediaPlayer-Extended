@@ -128,7 +128,7 @@ These URLs have been tested and definitely work in the demo app:
         * WebM 5 rep 200 kbps to 2000 kbps: http://www-itec.uni-klu.ac.at/dash/js/content/sintel_multi_rep.mpd
         * WebM 7 rep 200 kbps to 4700 kbps: http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny.mpd
         * WebM 7 rep 1000 kbps to 8000 kbps: http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny_1080p.mpd
-    * MP4 8 rep 250 to 6000 kbps: http://dj9wk94416cg5.cloudfront.net/sintel2/sintel2.mpd
+    * MP4 8 rep 250 to 6000 kbps: http://dj9wk94416cg5.cloudfront.net/sintel2/sintel.mpd
 
 
 Usage
