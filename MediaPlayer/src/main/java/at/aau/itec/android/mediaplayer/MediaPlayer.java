@@ -462,6 +462,7 @@ public class MediaPlayer {
                                 // TODO improve fast forward mode
                                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                                         MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
+                                mTimeBase.startAt(mInfo.presentationTimeUs);
                             }
                         }
 
