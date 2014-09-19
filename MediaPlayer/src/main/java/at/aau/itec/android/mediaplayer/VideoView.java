@@ -121,7 +121,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         }
         try {
             mPlayer = new MediaPlayer();
-            mPlayer.setSurface(getHolder().getSurface());
+            mPlayer.setDisplay(mSurfaceHolder);
+            mPlayer.setScreenOnWhilePlaying(true);
             mPlayer.setOnPreparedListener(mPreparedListener);
             mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
             mPlayer.setOnCompletionListener(mCompletionListener);

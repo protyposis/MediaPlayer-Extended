@@ -25,6 +25,7 @@ import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -65,6 +66,7 @@ public class MediaPlayer {
 
     private SeekMode mSeekMode = SeekMode.EXACT;
     private Surface mSurface;
+    private SurfaceHolder mSurfaceHolder;
     private MediaExtractor mMediaExtractor;
 
     private int mVideoTrackIndex;
@@ -87,6 +89,10 @@ public class MediaPlayer {
     private OnInfoListener mOnInfoListener;
     private OnVideoSizeChangedListener mOnVideoSizeChangedListener;
     private OnBufferingUpdateListener mOnBufferingUpdateListener;
+
+    private PowerManager.WakeLock mWakeLock = null;
+    private boolean mScreenOnWhilePlaying;
+    private boolean mStayAwake;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -147,7 +153,13 @@ public class MediaPlayer {
      * @see android.media.MediaPlayer#setDisplay(android.view.SurfaceHolder)
      */
     public void setDisplay(SurfaceHolder sh) {
-        mSurface = sh.getSurface();
+        mSurfaceHolder = sh;
+        if (sh != null) {
+            mSurface = sh.getSurface();
+        } else {
+            mSurface = null;
+        }
+        updateSurfaceScreenOn();
     }
 
     /**
@@ -155,14 +167,21 @@ public class MediaPlayer {
      */
     public void setSurface(Surface surface) {
         mSurface = surface;
+        if (mScreenOnWhilePlaying && surface != null) {
+            Log.w(TAG, "setScreenOnWhilePlaying(true) is ineffective for Surface");
+        }
+        mSurfaceHolder = null;
+        updateSurfaceScreenOn();
     }
 
     public void start() {
         mPlaybackThread.play();
+        stayAwake(true);
     }
 
     public void pause() {
         mPlaybackThread.pause();
+        stayAwake(false);
     }
 
     public SeekMode getSeekMode() {
@@ -217,6 +236,59 @@ public class MediaPlayer {
         if(mPlaybackThread != null) {
             mPlaybackThread.interrupt();
             mPlaybackThread = null;
+        }
+        stayAwake(false);
+    }
+
+    /**
+     * @see android.media.MediaPlayer#setWakeMode(android.content.Context, int)
+     */
+    public void setWakeMode(Context context, int mode) {
+        boolean washeld = false;
+        if (mWakeLock != null) {
+            if (mWakeLock.isHeld()) {
+                washeld = true;
+                mWakeLock.release();
+            }
+            mWakeLock = null;
+        }
+
+        PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
+        mWakeLock = pm.newWakeLock(mode|PowerManager.ON_AFTER_RELEASE, MediaPlayer.class.getName());
+        mWakeLock.setReferenceCounted(false);
+        if (washeld) {
+            mWakeLock.acquire();
+        }
+    }
+
+    /**
+     * @see android.media.MediaPlayer#setScreenOnWhilePlaying(boolean)
+     */
+    public void setScreenOnWhilePlaying(boolean screenOn) {
+        if (mScreenOnWhilePlaying != screenOn) {
+            if (screenOn && mSurfaceHolder == null) {
+                Log.w(TAG, "setScreenOnWhilePlaying(true) is ineffective without a SurfaceHolder");
+            }
+            mScreenOnWhilePlaying = screenOn;
+            updateSurfaceScreenOn();
+        }
+    }
+
+    private void stayAwake(boolean awake) {
+        if (mWakeLock != null) {
+            if (awake && !mWakeLock.isHeld()) {
+                mWakeLock.acquire();
+            } else if (!awake && mWakeLock.isHeld()) {
+                mWakeLock.release();
+            }
+        }
+        mStayAwake = awake;
+        updateSurfaceScreenOn();
+    }
+
+    private void updateSurfaceScreenOn() {
+        if (mSurfaceHolder != null) {
+            mSurfaceHolder.setKeepScreenOn(mScreenOnWhilePlaying && mStayAwake);
         }
     }
 
@@ -823,6 +895,7 @@ public class MediaPlayer {
                     if(mOnCompletionListener != null) {
                         mOnCompletionListener.onCompletion(MediaPlayer.this);
                     }
+                    stayAwake(false);
                     return;
                 case MEDIA_SET_VIDEO_SIZE:
                     Log.d(TAG, "onVideoSizeChanged");

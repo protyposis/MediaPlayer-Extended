@@ -48,6 +48,14 @@ public class GLVideoView extends GLTextureView implements
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
 
+    /**
+     * Because this view supplies a surface to the MediaPlayer, not a SurfaceHolder (because it
+     * is rendering to a texture instead of the screen), the MediaPlayer cannot handle the screen
+     * wake state. To still keep the screen on while playing back the video, MediaPlayer's behavior
+     * is reproduced locally in this class.
+     */
+    private boolean mStayAwake;
+
     public GLVideoView(Context context) {
         super(context);
         init();
@@ -125,6 +133,7 @@ public class GLVideoView extends GLTextureView implements
             mPlayer.stop();
             mPlayer = null;
         }
+        stayAwake(false);
     }
 
     public void setOnPreparedListener(MediaPlayer.OnPreparedListener l) {
@@ -146,11 +155,13 @@ public class GLVideoView extends GLTextureView implements
     @Override
     public void start() {
         mPlayer.start();
+        stayAwake(true);
     }
 
     @Override
     public void pause() {
         mPlayer.pause();
+        stayAwake(false);
     }
 
     public void setPlaybackSpeed(float speed) {
@@ -218,6 +229,17 @@ public class GLVideoView extends GLTextureView implements
         return 0;
     }
 
+    private void stayAwake(boolean awake) {
+        mStayAwake = awake;
+        updateSurfaceScreenOn();
+    }
+
+    private void updateSurfaceScreenOn() {
+        if (getHolder() != null) {
+            getHolder().setKeepScreenOn(mStayAwake);
+        }
+    }
+
     private MediaPlayer.OnPreparedListener mPreparedListener =
             new MediaPlayer.OnPreparedListener() {
         @Override
@@ -255,6 +277,7 @@ public class GLVideoView extends GLTextureView implements
             if(mOnCompletionListener != null) {
                 mOnCompletionListener.onCompletion(vp);
             }
+            stayAwake(false);
         }
     };
 
