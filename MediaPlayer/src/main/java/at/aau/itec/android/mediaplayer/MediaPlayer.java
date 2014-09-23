@@ -20,9 +20,6 @@
 package at.aau.itec.android.mediaplayer;
 
 import android.content.Context;
-import android.media.AudioFormat;
-import android.media.AudioManager;
-import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.net.Uri;
@@ -730,10 +727,7 @@ public class MediaPlayer {
                             outputData.limit(mInfo.offset + mInfo.size);
                             //Log.d(TAG, "raw audio data bytes: " + mInfo.size);
                         }
-                        final byte[] samples = new byte[mInfo.size];
-                        outputData.get(samples);
-                        outputData.clear();
-                        mAudioPlayback.write(samples, 0, samples.length);
+                        mAudioPlayback.write(outputData);
                         mAudioCodec.releaseOutputBuffer(output, false);
                     } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
                         Log.d(TAG, "audio output buffers have changed.");

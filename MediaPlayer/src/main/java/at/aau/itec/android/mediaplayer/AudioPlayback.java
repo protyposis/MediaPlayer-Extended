@@ -24,6 +24,8 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.MediaFormat;
 
+import java.nio.ByteBuffer;
+
 /**
  * Wrapper of an AudioTrack for easier management in the playback thread.
  *
@@ -32,6 +34,7 @@ import android.media.MediaFormat;
 class AudioPlayback {
 
     private AudioTrack mAudioTrack;
+    private byte[] mTransferBuffer;
 
     /**
      * Initializes or reinitializes the audio track with the supplied format for playback
@@ -103,6 +106,15 @@ class AudioPlayback {
         } else {
             throw new RuntimeException("invalid state");
         }
+    }
+
+    public void write(ByteBuffer audioData) {
+        int size = audioData.remaining();
+        if(mTransferBuffer == null || mTransferBuffer.length < size) {
+            mTransferBuffer = new byte[size];
+        }
+        audioData.get(mTransferBuffer, 0, size);
+        write(mTransferBuffer, 0, size);
     }
 
     public void stopAndRelease() {
