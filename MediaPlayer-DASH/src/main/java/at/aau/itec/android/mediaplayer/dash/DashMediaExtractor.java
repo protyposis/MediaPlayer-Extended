@@ -154,23 +154,49 @@ class DashMediaExtractor extends MediaExtractor {
     }
 
     @Override
+    public int getSampleTrackIndex() {
+        int index = super.getSampleTrackIndex();
+        if(index == -1) {
+            /* EOS of current segment reached. Check for and read from successive segment if
+             * existing, else return the EOS flag. */
+            if(switchToNextSegment()) {
+                return super.getSampleTrackIndex();
+            }
+        }
+        return index;
+    }
+
+    @Override
     public int readSampleData(ByteBuffer byteBuf, int offset) {
         int size = super.readSampleData(byteBuf, offset);
         if(size == -1) {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
-            Segment next = getNextSegment();
-            if(next != null) {
-                /* Since it seems that an extractor cannot be reused by setting another data source,
-                 * a new instance needs to be created and used. */
-                renewExtractor();
-
-                /* Initialize the new extractor for the next segment */
-                initOnWorkerThread(next);
+            if(switchToNextSegment()) {
                 return super.readSampleData(byteBuf, offset);
             }
         }
         return size;
+    }
+
+    /**
+     * Tries to switch to the next segment and returns true if there is one, false if there is none
+     * and thus the current is the last one.
+     */
+    private boolean switchToNextSegment() {
+        Segment next = getNextSegment();
+        if(next != null) {
+            /* Since it seems that an extractor cannot be reused by setting another data source,
+             * a new instance needs to be created and used. */
+            renewExtractor();
+
+            /* Initialize the new extractor for the next segment */
+            initOnWorkerThread(next);
+
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -201,7 +227,7 @@ class DashMediaExtractor extends MediaExtractor {
 
     @Override
     public void seekTo(long timeUs, int mode) {
-        int targetSegmentIndex = Math.min((int)(timeUs / mRepresentation.segmentDurationUs), mRepresentation.segments.size() - 1);
+        int targetSegmentIndex = Math.min((int) (timeUs / mRepresentation.segmentDurationUs), mRepresentation.segments.size() - 1);
         Log.d(TAG, "seek to " + timeUs + " @ segment " + targetSegmentIndex);
         if(targetSegmentIndex == mCurrentSegment) {
             /* Because the DASH segments do not contain seeking cues, the position in the current
