@@ -47,19 +47,27 @@ public class MPD {
         return adaptationSets;
     }
 
-    public AdaptationSet getFirstVideoSet() {
+    public AdaptationSet getFirstSetOfType(String mime) {
         for(AdaptationSet as : adaptationSets) {
-            if(as.mimeType != null && as.mimeType.startsWith("video/")) {
+            if(as.mimeType != null && as.mimeType.startsWith(mime)) {
                 return as;
             } else {
                 for(Representation r : as.representations) {
-                    if(r.mimeType.startsWith("video/")) {
+                    if(r.mimeType.startsWith(mime)) {
                         return as;
                     }
                 }
             }
         }
         return null;
+    }
+
+    public AdaptationSet getFirstVideoSet() {
+        return getFirstSetOfType("video/");
+    }
+
+    public AdaptationSet getFirstAudioSet() {
+        return getFirstSetOfType("audio/");
     }
 
     @Override

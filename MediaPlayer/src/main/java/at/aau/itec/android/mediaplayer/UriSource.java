@@ -58,9 +58,14 @@ public class UriSource implements MediaSource {
     }
 
     @Override
-    public MediaExtractor getMediaExtractor() throws IOException {
+    public MediaExtractor getVideoExtractor() throws IOException {
         MediaExtractor mediaExtractor = new MediaExtractor();
         mediaExtractor.setDataSource(mContext, mUri, mHeaders);
         return mediaExtractor;
+    }
+
+    @Override
+    public MediaExtractor getAudioExtractor() throws IOException {
+        return null; // UriSource does only handle single (multiplexed) files
     }
 }

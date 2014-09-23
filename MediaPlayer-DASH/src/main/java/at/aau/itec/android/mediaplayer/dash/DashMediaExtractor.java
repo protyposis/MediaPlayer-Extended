@@ -91,13 +91,14 @@ class DashMediaExtractor extends MediaExtractor {
         mHttpClient = new OkHttpClient();
     }
 
-    public final void setDataSource(Context context, MPD mpd, AdaptationLogic adaptationLogic)
+    public final void setDataSource(Context context, MPD mpd, AdaptationSet adaptationSet,
+                                    AdaptationLogic adaptationLogic)
             throws IOException {
         try {
             mContext = context;
             mMPD = mpd;
+            mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
-            mAdaptationSet = mMPD.getFirstVideoSet();
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
             mCurrentSegment = -1;
             mSelectedTracks = new ArrayList<Integer>();
@@ -105,7 +106,7 @@ class DashMediaExtractor extends MediaExtractor {
             mFutureCache = new HashMap<Segment, CachedSegment>();
             mFutureCacheRequests = new HashMap<Segment, Call>();
             mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
-            mMp4Mode = mRepresentation.mimeType.equals("video/mp4");
+            mMp4Mode = mRepresentation.mimeType.equals("video/mp4") || mRepresentation.initSegment.media.endsWith(".mp4");
             if (mMp4Mode) {
                 mMp4Builder = new DefaultMp4Builder();
             }
