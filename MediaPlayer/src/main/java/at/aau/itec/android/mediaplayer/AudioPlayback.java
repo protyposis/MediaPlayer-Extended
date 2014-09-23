@@ -48,7 +48,7 @@ class AudioPlayback {
                 format.getInteger(MediaFormat.KEY_SAMPLE_RATE),
                 format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
-                8192 * 16,
+                8192 * 2,
                 AudioTrack.MODE_STREAM);
         if(playing) {
             play();
@@ -67,12 +67,19 @@ class AudioPlayback {
         }
     }
 
-    public void pause() {
+    public void pause(boolean flush) {
         if(isInitialized()) {
             mAudioTrack.pause();
+            if(flush) {
+                mAudioTrack.flush();
+            }
         } else {
             throw new RuntimeException("invalid state");
         }
+    }
+
+    public void pause() {
+        pause(true);
     }
 
     public void flush() {

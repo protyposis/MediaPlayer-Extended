@@ -417,12 +417,14 @@ public class MediaPlayer {
                     }
 
                     if (mPaused && !mSeekPrepare && !mSeeking && !preparing) {
+                        mAudioPlayback.pause();
                         synchronized (this) {
                             while (mPaused && !mSeekPrepare && !mSeeking) {
                                 this.wait();
                             }
                         }
 
+                        mAudioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
                         mTimeBase.startAt(mInfo.presentationTimeUs);
                     }
@@ -460,7 +462,7 @@ public class MediaPlayer {
                     }
 
                     if (!mEosInput) {
-                        queueMediaSampleToCodec(false);
+                        queueMediaSampleToCodec(mSeeking);
                     }
                     lastPTS = mInfo.presentationTimeUs;
                     int res = mVideoCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
@@ -600,9 +602,11 @@ public class MediaPlayer {
                              */
                             mPaused = true;
                             synchronized (this) {
+                                mAudioPlayback.pause();
                                 while (mPaused && !mSeeking && !mSeekPrepare) {
                                     this.wait();
                                 }
+                                mAudioPlayback.play();
 
                                 // reset these two flags so playback can continue
                                 mEosInput = false;
@@ -630,6 +634,7 @@ public class MediaPlayer {
                 Log.e(TAG, "decoder error, too many instances?", e);
             }
 
+            mAudioPlayback.stopAndRelease();
             mVideoCodec.stop();
             mVideoCodec.release();
             mAudioCodec.stop();
@@ -709,13 +714,13 @@ public class MediaPlayer {
 
         private boolean queueMediaSampleToCodec(boolean videoOnly) {
             if(videoOnly) {
-                while (mMediaExtractor.getSampleTrackIndex() != mVideoTrackIndex) {
+                /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
+                while (mMediaExtractor.getSampleTrackIndex() != mVideoTrackIndex && !mEosInput) {
                     mMediaExtractor.advance();
                 }
             } else {
                 while (mMediaExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
                     queueAudioSampleToCodec();
-                    // TODO audio playback
                     int output = mAudioCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
                     if (output >= 0) {
                         // http://bigflake.com/mediacodec/#q11
@@ -725,7 +730,6 @@ public class MediaPlayer {
                             outputData.limit(mInfo.offset + mInfo.size);
                             //Log.d(TAG, "raw audio data bytes: " + mInfo.size);
                         }
-                        // TODO queue to AudioTrack
                         final byte[] samples = new byte[mInfo.size];
                         outputData.get(samples);
                         outputData.clear();
@@ -733,14 +737,13 @@ public class MediaPlayer {
                         mAudioCodec.releaseOutputBuffer(output, false);
                     } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
                         Log.d(TAG, "audio output buffers have changed.");
+                        mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
                     } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         MediaFormat format = mAudioCodec.getOutputFormat();
                         Log.d(TAG, "audio output format has changed to " + format);
                         mAudioPlayback.init(format);
                     }
-                    mMediaExtractor.advance();
                 }
-
             }
             return queueVideoSampleToCodec();
         }
