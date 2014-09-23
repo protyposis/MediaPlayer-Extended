@@ -648,6 +648,13 @@ public class MediaPlayer {
         }
 
         private boolean queueVideoSampleToCodec() {
+            int trackIndex = mMediaExtractor.getSampleTrackIndex();
+            if(trackIndex == -1) {
+                throw new IllegalStateException("EOS");
+            }
+            if(trackIndex != mVideoTrackIndex) {
+                throw new IllegalStateException("wrong track index: " + trackIndex);
+            }
             boolean sampleQueued = false;
             int inputBufIndex = mVideoCodec.dequeueInputBuffer(mTimeOutUs);
             if (inputBufIndex >= 0) {
@@ -683,7 +690,14 @@ public class MediaPlayer {
 
         private boolean queueAudioSampleToCodec() {
             if(mAudioCodec == null) {
-                throw new RuntimeException("invalid call - no audio track configured");
+                throw new IllegalStateException("no audio track configured");
+            }
+            int trackIndex = mMediaExtractor.getSampleTrackIndex();
+            if(trackIndex == -1) {
+                throw new IllegalStateException("EOS");
+            }
+            if(trackIndex != mAudioTrackIndex) {
+                throw new IllegalStateException("wrong track index: " + trackIndex);
             }
             boolean sampleQueued = false;
             int inputBufIndex = mAudioCodec.dequeueInputBuffer(mTimeOutUs);
@@ -719,6 +733,7 @@ public class MediaPlayer {
         }
 
         private boolean queueMediaSampleToCodec(boolean videoOnly) {
+            boolean result = false;
             if(mAudioCodec != null) {
                 if (videoOnly) {
                 /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
@@ -727,7 +742,7 @@ public class MediaPlayer {
                     }
                 } else {
                     while (mMediaExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
-                        queueAudioSampleToCodec();
+                        result = queueAudioSampleToCodec();
                         int output = mAudioCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
                         if (output >= 0) {
                             // http://bigflake.com/mediacodec/#q11
@@ -750,7 +765,10 @@ public class MediaPlayer {
                     }
                 }
             }
-            return queueVideoSampleToCodec();
+            if(!mEosInput) {
+                result = queueVideoSampleToCodec();
+            }
+            return result;
         }
 
         private long fastSeek(long targetTime) {

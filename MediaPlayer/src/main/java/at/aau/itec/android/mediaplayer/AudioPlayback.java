@@ -66,7 +66,7 @@ class AudioPlayback {
         if(isInitialized()) {
             mAudioTrack.play();
         } else {
-            throw new RuntimeException("invalid state");
+            throw new IllegalStateException();
         }
     }
 
@@ -77,7 +77,7 @@ class AudioPlayback {
                 mAudioTrack.flush();
             }
         } else {
-            throw new RuntimeException("invalid state");
+            throw new IllegalStateException();
         }
     }
 
@@ -96,7 +96,7 @@ class AudioPlayback {
                 mAudioTrack.play();
             }
         } else {
-            throw new RuntimeException("invalid state");
+            throw new IllegalStateException();
         }
     }
 
@@ -104,7 +104,7 @@ class AudioPlayback {
         if(isInitialized()) {
             mAudioTrack.write(audioData, offsetInBytes, sizeInBytes);
         } else {
-            throw new RuntimeException("invalid state");
+            throw new IllegalStateException();
         }
     }
 
