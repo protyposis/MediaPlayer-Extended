@@ -74,6 +74,11 @@ public class MediaPlayer {
     private long mVideoMinPTS;
     private MediaCodec mVideoCodec;
 
+    private int mAudioTrackIndex;
+    private MediaFormat mAudioFormat;
+    private long mAudioMinPTS;
+    private MediaCodec mAudioCodec;
+
     private PlaybackThread mPlaybackThread;
     private long mCurrentPosition;
     private boolean mSeeking;
@@ -104,16 +109,22 @@ public class MediaPlayer {
         mMediaExtractor = source.getMediaExtractor();
 
         int numTracks = mMediaExtractor.getTrackCount();
+        mVideoTrackIndex = -1;
+        mAudioTrackIndex = -1;
         for (int i = 0; i < numTracks; ++i) {
             MediaFormat format = mMediaExtractor.getTrackFormat(i);
             Log.d(TAG, format.toString());
             String mime = format.getString(MediaFormat.KEY_MIME);
-            if (mime.startsWith("video/")) {
+            if (mVideoTrackIndex < 0 && mime.startsWith("video/")) {
                 mMediaExtractor.selectTrack(i);
                 mVideoTrackIndex = i;
                 mVideoFormat = format;
                 mVideoMinPTS = mMediaExtractor.getSampleTime();
-                break;
+            } else if (mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
+                mMediaExtractor.selectTrack(i);
+                mAudioTrackIndex = i;
+                mAudioFormat = format;
+                mAudioMinPTS = mMediaExtractor.getSampleTime();
             }
         }
 
@@ -319,8 +330,10 @@ public class MediaPlayer {
 
         private final long mTimeOutUs = 5000;
 
-        private ByteBuffer[] mCodecInputBuffers;
-        private ByteBuffer[] mCodecOutputBuffers;
+        private ByteBuffer[] mVideoCodecInputBuffers;
+        private ByteBuffer[] mVideoCodecOutputBuffers;
+        private ByteBuffer[] mAudioCodecInputBuffers;
+        private ByteBuffer[] mAudioCodecOutputBuffers;
         private MediaCodec.BufferInfo mInfo;
         private boolean mPaused;
         private boolean mEosInput;
@@ -354,11 +367,17 @@ public class MediaPlayer {
                 mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
                 mVideoCodec.start();
 
+                mAudioCodec = MediaCodec.createDecoderByType(mAudioFormat.getString(MediaFormat.KEY_MIME));
+                mAudioCodec.configure(mAudioFormat, null, null, 0);
+                mAudioCodec.start();
+
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
                         getVideoWidth(), getVideoHeight()));
 
-                mCodecInputBuffers = mVideoCodec.getInputBuffers();
-                mCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+                mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
+                mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+                mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
+                mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
                 mInfo = new MediaCodec.BufferInfo();
                 mEosInput = false;
                 mEosOutput = false;
@@ -376,8 +395,14 @@ public class MediaPlayer {
                         mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
                         mVideoCodec.start();
 
-                        mCodecInputBuffers = mVideoCodec.getInputBuffers();
-                        mCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+                        mAudioCodec.stop();
+                        mAudioCodec.configure(mAudioFormat, null, null, 0);
+                        mAudioCodec.start();
+
+                        mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
+                        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+                        mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
+                        mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
 
                         mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
                                 getVideoWidth(), getVideoHeight()));
@@ -406,6 +431,7 @@ public class MediaPlayer {
                         Log.d(TAG, "extractor new position:     " + mMediaExtractor.getSampleTime());
 
                         mVideoCodec.flush();
+                        mAudioCodec.flush();
                         mSeekPrepare = false;
                         mSeeking = true;
 
@@ -426,7 +452,7 @@ public class MediaPlayer {
                     }
 
                     if (!mEosInput) {
-                        queueMediaSampleToCodec();
+                        queueMediaSampleToCodec(true);
                     }
                     lastPTS = mInfo.presentationTimeUs;
                     int res = mVideoCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
@@ -581,7 +607,7 @@ public class MediaPlayer {
                             }
                         }
                     } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                        mCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+                        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
                         Log.d(TAG, "output buffers have changed.");
                     } else if (res == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         // NOTE: this is the format of the raw video output, not the video format as specified by the container
@@ -598,16 +624,18 @@ public class MediaPlayer {
 
             mVideoCodec.stop();
             mVideoCodec.release();
+            mAudioCodec.stop();
+            mAudioCodec.release();
             mMediaExtractor.release();
 
             Log.d(TAG, "decoder released");
         }
 
-        private boolean queueMediaSampleToCodec() {
+        private boolean queueVideoSampleToCodec() {
             boolean sampleQueued = false;
             int inputBufIndex = mVideoCodec.dequeueInputBuffer(mTimeOutUs);
             if (inputBufIndex >= 0) {
-                ByteBuffer inputBuffer = mCodecInputBuffers[inputBufIndex];
+                ByteBuffer inputBuffer = mVideoCodecInputBuffers[inputBufIndex];
                 int sampleSize = mMediaExtractor.readSampleData(inputBuffer, 0);
                 long presentationTimeUs = 0;
                 if (sampleSize < 0) {
@@ -637,8 +665,56 @@ public class MediaPlayer {
             return sampleQueued;
         }
 
+        private boolean queueAudioSampleToCodec() {
+            boolean sampleQueued = false;
+            int inputBufIndex = mAudioCodec.dequeueInputBuffer(mTimeOutUs);
+            if (inputBufIndex >= 0) {
+                ByteBuffer inputBuffer = mAudioCodecInputBuffers[inputBufIndex];
+                int sampleSize = mMediaExtractor.readSampleData(inputBuffer, 0);
+                long presentationTimeUs = 0;
+                if (sampleSize < 0) {
+                    Log.d(TAG, "EOS input");
+                    mEosInput = true;
+                    sampleSize = 0;
+                } else if(sampleSize == 0) {
+                    if(mMediaExtractor.getCachedDuration() == 0) {
+                        mBuffering = true;
+                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                                MEDIA_INFO_BUFFERING_START, 0));
+                    }
+                } else {
+                    presentationTimeUs = mMediaExtractor.getSampleTime();
+                    sampleQueued = true;
+                }
+                mAudioCodec.queueInputBuffer(
+                        inputBufIndex,
+                        0,
+                        sampleSize,
+                        presentationTimeUs,
+                        mEosInput ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
+                if (!mEosInput) {
+                    mMediaExtractor.advance();
+                }
+            }
+            return sampleQueued;
+        }
+
+        private boolean queueMediaSampleToCodec(boolean videoOnly) {
+            boolean sampleQueued = false;
+            if(videoOnly) {
+                while (mMediaExtractor.getSampleTrackIndex() != mVideoTrackIndex) {
+                    mMediaExtractor.advance();
+                }
+            } else {
+                queueAudioSampleToCodec();
+                // TODO audio playback
+            }
+            return queueVideoSampleToCodec();
+        }
+
         private long fastSeek(long targetTime) {
             mVideoCodec.flush();
+            mAudioCodec.flush();
             mMediaExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
 
             if(mMediaExtractor.getSampleTime() == targetTime) {
@@ -647,7 +723,7 @@ public class MediaPlayer {
             }
 
             // 1. Queue first sample which should be the sync/I frame
-            queueMediaSampleToCodec();
+            queueMediaSampleToCodec(true);
 
             // 2. Then, fast forward to target frame
                             /* 2.1 Search for the best candidate frame, which is the one whose
