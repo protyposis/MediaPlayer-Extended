@@ -131,6 +131,9 @@ public class MediaPlayer {
         if(mVideoFormat == null) {
             throw new IOException("no video track found");
         } else {
+            if(mAudioFormat == null) {
+                Log.i(TAG, "no audio track found");
+            }
             if(mPlaybackThread == null) {
                 if (mSurface == null) {
                     Log.i(TAG, "no video output surface specified");
@@ -367,22 +370,24 @@ public class MediaPlayer {
                 mVideoCodec = MediaCodec.createDecoderByType(mVideoFormat.getString(MediaFormat.KEY_MIME));
                 mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
                 mVideoCodec.start();
+                mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
+                mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
 
-                mAudioCodec = MediaCodec.createDecoderByType(mAudioFormat.getString(MediaFormat.KEY_MIME));
-                mAudioCodec.configure(mAudioFormat, null, null, 0);
-                mAudioCodec.start();
+                if(mAudioFormat != null) {
+                    mAudioCodec = MediaCodec.createDecoderByType(mAudioFormat.getString(MediaFormat.KEY_MIME));
+                    mAudioCodec.configure(mAudioFormat, null, null, 0);
+                    mAudioCodec.start();
+                    mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
+                    mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
 
-                mAudioPlayback = new AudioPlayback();
-                mAudioPlayback.init(mAudioFormat);
-                mAudioPlayback.play();
+                    mAudioPlayback = new AudioPlayback();
+                    mAudioPlayback.init(mAudioFormat);
+                    mAudioPlayback.play();
+                }
 
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
                         getVideoWidth(), getVideoHeight()));
 
-                mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
-                mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-                mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
-                mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
                 mInfo = new MediaCodec.BufferInfo();
                 mEosInput = false;
                 mEosOutput = false;
@@ -399,13 +404,12 @@ public class MediaPlayer {
                         mVideoCodec.stop();
                         mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
                         mVideoCodec.start();
+                        mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
+                        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
 
                         mAudioCodec.stop();
                         mAudioCodec.configure(mAudioFormat, null, null, 0);
                         mAudioCodec.start();
-
-                        mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
-                        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
                         mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
                         mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
 
@@ -414,14 +418,14 @@ public class MediaPlayer {
                     }
 
                     if (mPaused && !mSeekPrepare && !mSeeking && !preparing) {
-                        mAudioPlayback.pause();
+                        if(mAudioPlayback != null) mAudioPlayback.pause();
                         synchronized (this) {
                             while (mPaused && !mSeekPrepare && !mSeeking) {
                                 this.wait();
                             }
                         }
 
-                        mAudioPlayback.play();
+                        if(mAudioPlayback != null) mAudioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
                         mTimeBase.startAt(mInfo.presentationTimeUs);
                     }
@@ -438,7 +442,7 @@ public class MediaPlayer {
                         Log.d(TAG, "extractor new position:     " + mMediaExtractor.getSampleTime());
 
                         mVideoCodec.flush();
-                        mAudioCodec.flush();
+                        if(mAudioFormat != null) mAudioCodec.flush();
                         mSeekPrepare = false;
                         mSeeking = true;
 
@@ -631,11 +635,13 @@ public class MediaPlayer {
                 Log.e(TAG, "decoder error, too many instances?", e);
             }
 
-            mAudioPlayback.stopAndRelease();
+            if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
             mVideoCodec.stop();
             mVideoCodec.release();
-            mAudioCodec.stop();
-            mAudioCodec.release();
+            if(mAudioFormat != null) {
+                mAudioCodec.stop();
+                mAudioCodec.release();
+            }
             mMediaExtractor.release();
 
             Log.d(TAG, "decoder released");
@@ -676,6 +682,9 @@ public class MediaPlayer {
         }
 
         private boolean queueAudioSampleToCodec() {
+            if(mAudioCodec == null) {
+                throw new RuntimeException("invalid call - no audio track configured");
+            }
             boolean sampleQueued = false;
             int inputBufIndex = mAudioCodec.dequeueInputBuffer(mTimeOutUs);
             if (inputBufIndex >= 0) {
@@ -710,32 +719,34 @@ public class MediaPlayer {
         }
 
         private boolean queueMediaSampleToCodec(boolean videoOnly) {
-            if(videoOnly) {
+            if(mAudioCodec != null) {
+                if (videoOnly) {
                 /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
-                while (mMediaExtractor.getSampleTrackIndex() != mVideoTrackIndex && !mEosInput) {
-                    mMediaExtractor.advance();
-                }
-            } else {
-                while (mMediaExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
-                    queueAudioSampleToCodec();
-                    int output = mAudioCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
-                    if (output >= 0) {
-                        // http://bigflake.com/mediacodec/#q11
-                        ByteBuffer outputData = mAudioCodecOutputBuffers[output];
-                        if (mInfo.size != 0) {
-                            outputData.position(mInfo.offset);
-                            outputData.limit(mInfo.offset + mInfo.size);
-                            //Log.d(TAG, "raw audio data bytes: " + mInfo.size);
+                    while (mMediaExtractor.getSampleTrackIndex() != mVideoTrackIndex && !mEosInput) {
+                        mMediaExtractor.advance();
+                    }
+                } else {
+                    while (mMediaExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
+                        queueAudioSampleToCodec();
+                        int output = mAudioCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
+                        if (output >= 0) {
+                            // http://bigflake.com/mediacodec/#q11
+                            ByteBuffer outputData = mAudioCodecOutputBuffers[output];
+                            if (mInfo.size != 0) {
+                                outputData.position(mInfo.offset);
+                                outputData.limit(mInfo.offset + mInfo.size);
+                                //Log.d(TAG, "raw audio data bytes: " + mInfo.size);
+                            }
+                            mAudioPlayback.write(outputData);
+                            mAudioCodec.releaseOutputBuffer(output, false);
+                        } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                            Log.d(TAG, "audio output buffers have changed.");
+                            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+                        } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                            MediaFormat format = mAudioCodec.getOutputFormat();
+                            Log.d(TAG, "audio output format has changed to " + format);
+                            mAudioPlayback.init(format);
                         }
-                        mAudioPlayback.write(outputData);
-                        mAudioCodec.releaseOutputBuffer(output, false);
-                    } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                        Log.d(TAG, "audio output buffers have changed.");
-                        mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-                    } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        MediaFormat format = mAudioCodec.getOutputFormat();
-                        Log.d(TAG, "audio output format has changed to " + format);
-                        mAudioPlayback.init(format);
                     }
                 }
             }
@@ -744,7 +755,7 @@ public class MediaPlayer {
 
         private long fastSeek(long targetTime) {
             mVideoCodec.flush();
-            mAudioCodec.flush();
+            if(mAudioFormat != null) mAudioCodec.flush();
             mMediaExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
 
             if(mMediaExtractor.getSampleTime() == targetTime) {
