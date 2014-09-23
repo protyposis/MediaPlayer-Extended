@@ -20,6 +20,9 @@
 package at.aau.itec.android.mediaplayer;
 
 import android.content.Context;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.net.Uri;
@@ -339,6 +342,7 @@ public class MediaPlayer {
         private boolean mEosInput;
         private boolean mEosOutput;
         private boolean mBuffering;
+        private AudioTrack mAudioTrack;
 
         private PlaybackThread() {
             super(TAG);
@@ -370,6 +374,15 @@ public class MediaPlayer {
                 mAudioCodec = MediaCodec.createDecoderByType(mAudioFormat.getString(MediaFormat.KEY_MIME));
                 mAudioCodec.configure(mAudioFormat, null, null, 0);
                 mAudioCodec.start();
+
+                mAudioTrack = new AudioTrack(
+                        AudioManager.STREAM_MUSIC,
+                        mAudioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE),
+                        mAudioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT) == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        8192 * 16,
+                        AudioTrack.MODE_STREAM);
+                mAudioTrack.play();
 
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
                         getVideoWidth(), getVideoHeight()));
@@ -718,12 +731,19 @@ public class MediaPlayer {
                             outputData.limit(mInfo.offset + mInfo.size);
                             Log.d(TAG, "raw audio data bytes: " + mInfo.size);
                         }
+                        // TODO queue to AudioTrack
+                        final byte[] samples = new byte[mInfo.size];
+                        outputData.get(samples);
+                        outputData.clear();
+                        mAudioTrack.write(samples, 0, samples.length);
                         mAudioCodec.releaseOutputBuffer(output, false);
                     } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
                         Log.d(TAG, "audio output buffers have changed.");
                     } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         MediaFormat format = mAudioCodec.getOutputFormat();
                         Log.d(TAG, "audio output format has changed to " + format);
+                        //mAudioTrack.setPlaybackRate(format.getInteger(MediaFormat.KEY_SAMPLE_RATE));
+                        // TODO recreate AudioTrack to set channels too
                     }
                     mMediaExtractor.advance();
                 }
