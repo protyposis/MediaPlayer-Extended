@@ -407,11 +407,13 @@ public class MediaPlayer {
                         mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
                         mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
 
-                        mAudioCodec.stop();
-                        mAudioCodec.configure(mAudioFormat, null, null, 0);
-                        mAudioCodec.start();
-                        mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
-                        mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+                        if(mAudioFormat != null) {
+                            mAudioCodec.stop();
+                            mAudioCodec.configure(mAudioFormat, null, null, 0);
+                            mAudioCodec.start();
+                            mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
+                            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+                        }
 
                         mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
                                 getVideoWidth(), getVideoHeight()));
