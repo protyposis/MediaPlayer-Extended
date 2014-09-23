@@ -452,7 +452,7 @@ public class MediaPlayer {
                     }
 
                     if (!mEosInput) {
-                        queueMediaSampleToCodec(true);
+                        queueMediaSampleToCodec(false);
                     }
                     lastPTS = mInfo.presentationTimeUs;
                     int res = mVideoCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
@@ -706,8 +706,28 @@ public class MediaPlayer {
                     mMediaExtractor.advance();
                 }
             } else {
-                queueAudioSampleToCodec();
-                // TODO audio playback
+                while (mMediaExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
+                    queueAudioSampleToCodec();
+                    // TODO audio playback
+                    int output = mAudioCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
+                    if (output >= 0) {
+                        // http://bigflake.com/mediacodec/#q11
+                        ByteBuffer outputData = mAudioCodecOutputBuffers[output];
+                        if (mInfo.size != 0) {
+                            outputData.position(mInfo.offset);
+                            outputData.limit(mInfo.offset + mInfo.size);
+                            Log.d(TAG, "raw audio data bytes: " + mInfo.size);
+                        }
+                        mAudioCodec.releaseOutputBuffer(output, false);
+                    } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                        Log.d(TAG, "audio output buffers have changed.");
+                    } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        MediaFormat format = mAudioCodec.getOutputFormat();
+                        Log.d(TAG, "audio output format has changed to " + format);
+                    }
+                    mMediaExtractor.advance();
+                }
+
             }
             return queueVideoSampleToCodec();
         }
