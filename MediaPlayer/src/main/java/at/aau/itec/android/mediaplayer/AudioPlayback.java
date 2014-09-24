@@ -23,6 +23,7 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.MediaFormat;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 
@@ -33,15 +34,26 @@ import java.nio.ByteBuffer;
  */
 class AudioPlayback {
 
+    private static final String TAG = AudioPlayback.class.getSimpleName();
+
+    private MediaFormat mAudioFormat;
     private AudioTrack mAudioTrack;
     private byte[] mTransferBuffer;
+    private int mFrameChunkSize;
+
+    public AudioPlayback() {
+        mFrameChunkSize = 8192; // arbitrary default chunk size
+    }
 
     /**
      * Initializes or reinitializes the audio track with the supplied format for playback
      * while keeping the playstate.
      */
     public void init(MediaFormat format) {
+        mAudioFormat = format;
+
         boolean playing = false;
+
         if(isInitialized()) {
             playing = isPlaying();
             stopAndRelease();
@@ -51,8 +63,9 @@ class AudioPlayback {
                 format.getInteger(MediaFormat.KEY_SAMPLE_RATE),
                 format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
-                8192 * 2,
+                mFrameChunkSize * 2, // twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM);
+
         if(playing) {
             play();
         }
@@ -101,6 +114,14 @@ class AudioPlayback {
     }
 
     public int write(byte[] audioData, int offsetInBytes, int sizeInBytes) {
+        // TODO find a way to determine the audio decoder output frame size at configuration time
+        if(mFrameChunkSize != sizeInBytes) {
+            Log.d(TAG, "incoming frame chunk size changed to " + sizeInBytes);
+            mFrameChunkSize = sizeInBytes;
+            // re-init the audio track to accommodate buffer to new chunk size
+            init(mAudioFormat);
+        }
+
         if(isInitialized()) {
             return mAudioTrack.write(audioData, offsetInBytes, sizeInBytes);
         } else {
