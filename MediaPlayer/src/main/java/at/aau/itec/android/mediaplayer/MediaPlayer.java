@@ -575,6 +575,20 @@ public class MediaPlayer {
                             mCurrentPosition = mVideoInfo.presentationTimeUs;
 
                             long waitingTime = mTimeBase.getOffsetFrom(mVideoInfo.presentationTimeUs);
+
+                            if(mAudioFormat != null) {
+                                long audioDelta = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
+//                                Log.d(TAG, "VideoPTS=" + mCurrentPosition
+//                                        + " AudioPTS=" + mAudioPlayback.getLastPresentationTimeUs()
+//                                        + " delta=" + audioDelta);
+                                /* adjust video frame waiting time by audio delta to sync the video
+                                 * frames to the audio playback. This results in juddering video
+                                 * playback.
+                                 * TODO fix syncing to remove judder (sync vice versa -> audio to video?)
+                                 */
+                                waitingTime -= audioDelta;
+                            }
+
                             Log.d(TAG, "waiting time = " + waitingTime);
 
                             /* If this is an online stream, notify the client of the buffer fill level.
@@ -611,18 +625,18 @@ public class MediaPlayer {
 
                         mVideoCodec.releaseOutputBuffer(outputBufIndex, render); // render picture
 
-                        long start = SystemClock.elapsedRealtime();
-                        if(mAudioExtractor != null && !mSeeking && !mPaused) {
+                        if (mAudioExtractor != null && !mSeeking && !mPaused) {
                             // TODO rewrite; this is just a quick and dirty hack
-                            while(mAudioPlayback.bufferTimeUs() < 100000) {
-                                if(queueAudioSampleToCodec(mAudioExtractor)) {
+                            long start = SystemClock.elapsedRealtime();
+                            while (mAudioPlayback.getBufferTimeUs() < 100000) {
+                                if (queueAudioSampleToCodec(mAudioExtractor)) {
                                     decodeAudioSample();
                                 } else {
                                     break;
                                 }
                             }
+                            Log.d(TAG, "audio stream decode time " + (SystemClock.elapsedRealtime() - start));
                         }
-                        Log.d(TAG, "audio time " + (SystemClock.elapsedRealtime() - start));
 
                         if (preparing) {
                             mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
@@ -789,7 +803,7 @@ public class MediaPlayer {
                     outputData.limit(mAudioInfo.offset + mAudioInfo.size);
                     //Log.d(TAG, "raw audio data bytes: " + mVideoInfo.size);
                 }
-                mAudioPlayback.write(outputData);
+                mAudioPlayback.write(outputData, mAudioInfo.presentationTimeUs);
                 mAudioCodec.releaseOutputBuffer(output, false);
 
                 if ((mAudioInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {

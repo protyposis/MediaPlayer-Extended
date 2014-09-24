@@ -49,6 +49,7 @@ class AudioPlayback {
     private BufferQueue mBufferQueue;
     private int mPlaybackBufferSizeFactor;
     private AudioThread mAudioThread;
+    private long mLastPresentationTimeUs;
 
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
@@ -140,7 +141,7 @@ class AudioPlayback {
         }
     }
 
-    public void write(ByteBuffer audioData) {
+    public void write(ByteBuffer audioData, long presentationTimeUs) {
         int sizeInBytes = audioData.remaining();
 
         // TODO find a way to determine the audio decoder max output frame size at configuration time
@@ -151,10 +152,10 @@ class AudioPlayback {
             init(mAudioFormat);
         }
 
-        mBufferQueue.put(audioData);
+        mBufferQueue.put(audioData, presentationTimeUs);
 //        Log.d(TAG, "buffer queue size " + mBufferQueue.bufferQueue.size()
 //                + " data " + mBufferQueue.mQueuedDataSize
-//                + " time " + bufferTimeUs());
+//                + " time " + getBufferTimeUs());
         mAudioThread.notifyOfNewBufferInQueue();
     }
 
@@ -171,16 +172,20 @@ class AudioPlayback {
         stopAndRelease(true);
     }
 
-    public long bufferTimeUs() {
+    public long getBufferTimeUs() {
         return (long)((double)(mBufferQueue.mQueuedDataSize / mFrameSize)
                 / mSampleRate * 1000000d);
+    }
+
+    public long getLastPresentationTimeUs() {
+        return mLastPresentationTimeUs;
     }
 
     private boolean isPlaying() {
         return mAudioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING;
     }
 
-    private void writeToPlaybackBuffer(ByteBuffer audioData) {
+    private void writeToPlaybackBuffer(ByteBuffer audioData, long presentationTimeUs) {
         int size = audioData.remaining();
         if(mTransferBuffer == null || mTransferBuffer.length < size) {
             mTransferBuffer = new byte[size];
@@ -188,6 +193,7 @@ class AudioPlayback {
         audioData.get(mTransferBuffer, 0, size);
 
         //Log.d(TAG, "audio write / chunk count " + mPlaybackBufferChunkCount);
+        mLastPresentationTimeUs = presentationTimeUs;
         mAudioTrack.write(mTransferBuffer, 0, size);
     }
 
@@ -246,7 +252,7 @@ class AudioPlayback {
                         }
                     }
 
-                    writeToPlaybackBuffer(bufferItem.buffer);
+                    writeToPlaybackBuffer(bufferItem.buffer, bufferItem.presentationTimeUs);
                     mBufferQueue.put(bufferItem);
                 } catch (InterruptedException e) {
                     interrupt();
@@ -266,6 +272,7 @@ class AudioPlayback {
 
         private static class Item {
             ByteBuffer buffer;
+            long presentationTimeUs;
 
             Item(int size) {
                 buffer = ByteBuffer.allocate(size);
@@ -282,7 +289,7 @@ class AudioPlayback {
             emptyBuffers = new ArrayList<Item>();
         }
 
-        synchronized void put(ByteBuffer data) {
+        synchronized void put(ByteBuffer data, long presentationTimeUs) {
             //Log.d(TAG, "put");
             if(data.remaining() > bufferSize) {
                 /* Buffer size has increased, invalidate all empty buffers since they can not be
@@ -302,6 +309,7 @@ class AudioPlayback {
             item.buffer.mark();
             item.buffer.put(data);
             item.buffer.reset();
+            item.presentationTimeUs = presentationTimeUs;
 
             bufferQueue.add(item);
             mQueuedDataSize += item.buffer.remaining();
