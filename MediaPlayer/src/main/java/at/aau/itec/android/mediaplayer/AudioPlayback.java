@@ -36,7 +36,7 @@ import java.util.Queue;
  *
  * Created by maguggen on 23.09.2014.
  */
-class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
+class AudioPlayback {
 
     private static final String TAG = AudioPlayback.class.getSimpleName();
 
@@ -48,12 +48,15 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
     private int mSampleRate;
     private BufferQueue mBufferQueue;
     private int mPlaybackBufferSizeFactor;
-    private int mPlaybackBufferChunkCount;
+    private AudioThread mAudioThread;
 
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
-        mFrameChunkSize = 8192; // arbitrary default chunk size
+        mFrameChunkSize = 4096; // arbitrary default chunk size
         mBufferQueue = new BufferQueue();
+        mAudioThread = new AudioThread();
+        mAudioThread.setPaused(true);
+        mAudioThread.start();
     }
 
     /**
@@ -61,14 +64,15 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
      * while keeping the playstate.
      */
     public void init(MediaFormat format) {
-        Log.w(TAG, "init");
+        Log.d(TAG, "init");
         mAudioFormat = format;
 
         boolean playing = false;
 
         if(isInitialized()) {
             playing = isPlaying();
-            stopAndRelease();
+            pause();
+            stopAndRelease(false);
         }
 
         int channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
@@ -84,10 +88,6 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
                 mFrameChunkSize * mPlaybackBufferSizeFactor, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM);
 
-        mAudioTrack.setPlaybackPositionUpdateListener(this);
-        mAudioTrack.setPositionNotificationPeriod(mFrameChunkSize / mFrameSize);
-        mPlaybackBufferChunkCount = 0;
-
         if(playing) {
             play();
         }
@@ -99,9 +99,8 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
 
     public void play() {
         if(isInitialized()) {
-            mAudioTrack.setPlaybackPositionUpdateListener(this);
-            mAudioTrack.setPositionNotificationPeriod(mFrameChunkSize / mFrameSize);
             mAudioTrack.play();
+            mAudioThread.setPaused(false);
         } else {
             throw new IllegalStateException();
         }
@@ -109,11 +108,10 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
 
     public void pause(boolean flush) {
         if(isInitialized()) {
+            mAudioThread.setPaused(true);
             mAudioTrack.pause();
             if(flush) {
-                mAudioTrack.flush();
-                mBufferQueue.flush();
-                mPlaybackBufferChunkCount = 0;
+                flush();
             }
         } else {
             throw new IllegalStateException();
@@ -131,6 +129,7 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
                 mAudioTrack.pause();
             }
             mAudioTrack.flush();
+            mBufferQueue.flush();
             if(playing) {
                 mAudioTrack.play();
             }
@@ -142,30 +141,32 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
     public void write(ByteBuffer audioData) {
         int sizeInBytes = audioData.remaining();
 
-        // TODO find a way to determine the audio decoder output frame size at configuration time
-        if(mFrameChunkSize != sizeInBytes) {
-            Log.d(TAG, "incoming frame chunk size changed to " + sizeInBytes);
+        // TODO find a way to determine the audio decoder max output frame size at configuration time
+        if(mFrameChunkSize < sizeInBytes) {
+            Log.d(TAG, "incoming frame chunk size increased to " + sizeInBytes);
             mFrameChunkSize = sizeInBytes;
             // re-init the audio track to accommodate buffer to new chunk size
             init(mAudioFormat);
         }
 
-        if(mPlaybackBufferChunkCount < mPlaybackBufferSizeFactor) {
-            writeToPlaybackBuffer(audioData);
-        } else {
-            mBufferQueue.put(audioData);
-//            Log.d(TAG, "buffer queue size " + mBufferQueue.bufferQueue.size()
-//                    + " data " + mBufferQueue.mQueuedDataSize
-//                    + " time " + bufferTimeUs());
-        }
+        mBufferQueue.put(audioData);
+//        Log.d(TAG, "buffer queue size " + mBufferQueue.bufferQueue.size()
+//                + " data " + mBufferQueue.mQueuedDataSize
+//                + " time " + bufferTimeUs());
+        mAudioThread.notifyOfNewBufferInQueue();
     }
 
-    public void stopAndRelease() {
+    private void stopAndRelease(boolean killThread) {
         if(isInitialized()) {
+            if(killThread) mAudioThread.interrupt();
             mAudioTrack.stop();
             mAudioTrack.release();
         }
         mAudioTrack = null;
+    }
+
+    public void stopAndRelease() {
+        stopAndRelease(true);
     }
 
     public long bufferTimeUs() {
@@ -186,33 +187,71 @@ class AudioPlayback implements AudioTrack.OnPlaybackPositionUpdateListener {
 
         //Log.d(TAG, "audio write / chunk count " + mPlaybackBufferChunkCount);
         mAudioTrack.write(mTransferBuffer, 0, size);
-        mPlaybackBufferChunkCount++;
     }
 
-    @Override
-    public void onMarkerReached(AudioTrack track) {
-        // nop
-    }
+    /*
+     * This thread reads buffers from the queue and supplies them to the playback buffer. If the
+     * queue is empty, it waits until a buffer item becomes available. If the playback buffer is
+     * full, it blocks until it empties because of the AudioTrack#write blocking behaviour, and
+     * since this is a separate audio thread, it does not block the video playback thread.
+     * The thread is necessary because the AudioTrack#setPositionNotificationPeriod + listener
+     * combination does only seem top work reliably if the written frame chunk sizes are constant
+     * and the notification period is set to exactly this chunk size, which is impossible when
+     * dealing with variable chunk sizes. Workarounds would be to set the notification period to the
+     * least common multiple and split the written chunk also in pieces of this size (not sure if
+     * very small notifications work though), or to add a transformation layer in the queue that
+     * redistributes the incoming chunks of variable size into chunks of constant size; both
+     * solutions would be more complex than this thread and also add noticeable overhead (many
+     * method calls in the first workaround, many data copy operations in the second).
+     */
+    private class AudioThread extends Thread {
 
-    @Override
-    public void onPeriodicNotification(AudioTrack track) {
-        //Log.d(TAG, "onPeriodicNotification");
-        mPlaybackBufferChunkCount--;
+        private final Object SYNC = new Object();
+        private boolean mPaused;
 
-        if(!isInitialized()) {
-            return; // avoid NPE on shutdown
+        AudioThread() {
+            super(TAG);
+            mPaused = true;
         }
 
-        // queue next frame chunk to the audio output buffer if available
-        BufferQueue.Item bufferItem = mBufferQueue.take();
-
-        if(bufferItem == null) {
-            Log.w(TAG, " audio stream drained");
-            return;
+        void setPaused(boolean paused) {
+            mPaused = paused;
+            synchronized (this) {
+                this.notifyAll();
+            }
         }
 
-        writeToPlaybackBuffer(bufferItem.buffer);
-        mBufferQueue.put(bufferItem);
+        public void notifyOfNewBufferInQueue() {
+            synchronized (SYNC) {
+                SYNC.notifyAll();
+            }
+        }
+
+        @Override
+        public void run() {
+            while(!isInterrupted()) {
+                try {
+                    synchronized(this) {
+                        while(mPaused) {
+                            wait();
+                        }
+                    }
+
+                    BufferQueue.Item bufferItem = null;
+                    synchronized (SYNC) {
+                        while ((bufferItem = mBufferQueue.take()) == null) {
+                            SYNC.wait();
+                        }
+                    }
+
+                    writeToPlaybackBuffer(bufferItem.buffer);
+                    mBufferQueue.put(bufferItem);
+                } catch (InterruptedException e) {
+                    interrupt();
+                }
+            }
+        }
+
     }
 
     /**

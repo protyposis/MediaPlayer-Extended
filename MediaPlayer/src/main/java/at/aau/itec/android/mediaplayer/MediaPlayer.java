@@ -609,7 +609,7 @@ public class MediaPlayer {
                         long start = SystemClock.elapsedRealtime();
                         if(mAudioExtractor != null && !mSeeking && !mPaused) {
                             // TODO rewrite; this is just a quick and dirty hack
-                            while(mAudioPlayback.bufferTimeUs() < 50000) {
+                            while(mAudioPlayback.bufferTimeUs() < 100000) {
                                 if(queueAudioSampleToCodec(mAudioExtractor)) {
                                     decodeAudioSample();
                                 } else {
