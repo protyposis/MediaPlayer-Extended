@@ -399,7 +399,6 @@ public class MediaPlayer {
 
                     mAudioPlayback = new AudioPlayback();
                     mAudioPlayback.init(mAudioFormat);
-                    mAudioPlayback.play();
                 }
 
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
@@ -639,11 +638,11 @@ public class MediaPlayer {
                              */
                             mPaused = true;
                             synchronized (this) {
-                                mAudioPlayback.pause();
+                                if(mAudioPlayback != null) mAudioPlayback.pause();
                                 while (mPaused && !mSeeking && !mSeekPrepare) {
                                     this.wait();
                                 }
-                                mAudioPlayback.play();
+                                if(mAudioPlayback != null) mAudioPlayback.play();
 
                                 // reset these two flags so playback can continue
                                 mEosInput = false;
