@@ -98,6 +98,7 @@ class AudioPlayback {
     }
 
     public void play() {
+        //Log.d(TAG, "play");
         if(isInitialized()) {
             mAudioTrack.play();
             mAudioThread.setPaused(false);
@@ -107,6 +108,7 @@ class AudioPlayback {
     }
 
     public void pause(boolean flush) {
+        //Log.d(TAG, "pause(" + flush + ")");
         if(isInitialized()) {
             mAudioThread.setPaused(true);
             mAudioTrack.pause();
@@ -217,13 +219,13 @@ class AudioPlayback {
         void setPaused(boolean paused) {
             mPaused = paused;
             synchronized (this) {
-                this.notifyAll();
+                this.notify();
             }
         }
 
         public void notifyOfNewBufferInQueue() {
             synchronized (SYNC) {
-                SYNC.notifyAll();
+                SYNC.notify();
             }
         }
 
@@ -281,8 +283,9 @@ class AudioPlayback {
         }
 
         synchronized void put(ByteBuffer data) {
-            if(data.remaining() != bufferSize) {
-                /* Buffer size has changed, invalidate all empty buffers since they can not be
+            //Log.d(TAG, "put");
+            if(data.remaining() > bufferSize) {
+                /* Buffer size has increased, invalidate all empty buffers since they can not be
                  * reused any more. */
                 emptyBuffers.clear();
                 bufferSize = data.remaining();
@@ -295,6 +298,7 @@ class AudioPlayback {
                 item = new Item(data.remaining());
             }
 
+            item.buffer.limit(data.remaining());
             item.buffer.mark();
             item.buffer.put(data);
             item.buffer.reset();
@@ -308,6 +312,7 @@ class AudioPlayback {
          * buffer ready.
          */
         synchronized Item take() {
+            //Log.d(TAG, "take");
             Item item = bufferQueue.poll();
             if(item != null) {
                 mQueuedDataSize -= item.buffer.remaining();
