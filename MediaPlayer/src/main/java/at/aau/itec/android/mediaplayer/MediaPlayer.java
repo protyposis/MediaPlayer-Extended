@@ -592,6 +592,8 @@ public class MediaPlayer {
                                 } else if(audioOffsetUs < -audioOffsetCorrectionUs) {
                                     waitingTime += audioOffsetCorrectionUs;
                                 }
+
+                                mAudioPlayback.setPlaybackSpeed((float)mTimeBase.getSpeed());
                             }
 
                             Log.d(TAG, "waiting time = " + waitingTime);

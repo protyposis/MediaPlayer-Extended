@@ -181,6 +181,14 @@ class AudioPlayback {
         return mLastPresentationTimeUs;
     }
 
+    public void setPlaybackSpeed(float speed) {
+        if(isInitialized()) {
+           mAudioTrack.setPlaybackRate((int)(mSampleRate * speed));
+        } else {
+            throw new IllegalStateException();
+        }
+    }
+
     private boolean isPlaying() {
         return mAudioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING;
     }
