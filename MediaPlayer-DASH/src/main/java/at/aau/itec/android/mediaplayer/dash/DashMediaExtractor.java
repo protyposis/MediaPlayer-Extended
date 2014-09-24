@@ -75,6 +75,7 @@ class DashMediaExtractor extends MediaExtractor {
     private AdaptationLogic mAdaptationLogic;
     private AdaptationSet mAdaptationSet;
     private Representation mRepresentation;
+    private long mMinBufferTimeUs;
     private boolean mRepresentationSwitched;
     private int mCurrentSegment;
     private List<Integer> mSelectedTracks;
@@ -100,6 +101,7 @@ class DashMediaExtractor extends MediaExtractor {
             mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
+            mMinBufferTimeUs = Math.max(mMPD.minBufferTimeUs, 20 * 1000000L); // allow 20 secs min buffer time
             mCurrentSegment = -1;
             mSelectedTracks = new ArrayList<Integer>();
             mInitSegments = new HashMap<Representation, ByteString>(mAdaptationSet.representations.size());
@@ -381,7 +383,7 @@ class DashMediaExtractor extends MediaExtractor {
      * Makes async segment requests to fill the cache up to a certain level.
      */
     private void fillFutureCache() {
-        int segmentsToBuffer = (int)Math.ceil((double)mMPD.minBufferTimeUs / mRepresentation.segmentDurationUs);
+        int segmentsToBuffer = (int)Math.ceil((double)mMinBufferTimeUs / mRepresentation.segmentDurationUs);
         for(int i = mCurrentSegment + 1; i < Math.min(mCurrentSegment + 1 + segmentsToBuffer, mRepresentation.segments.size()); i++) {
             Segment segment = mRepresentation.segments.get(i);
             if(!mFutureCache.containsKey(segment) && !mFutureCacheRequests.containsKey(segment)) {
