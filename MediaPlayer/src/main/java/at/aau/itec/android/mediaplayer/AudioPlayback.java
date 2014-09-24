@@ -100,21 +100,21 @@ class AudioPlayback {
         }
     }
 
-    public void write(byte[] audioData, int offsetInBytes, int sizeInBytes) {
+    public int write(byte[] audioData, int offsetInBytes, int sizeInBytes) {
         if(isInitialized()) {
-            mAudioTrack.write(audioData, offsetInBytes, sizeInBytes);
+            return mAudioTrack.write(audioData, offsetInBytes, sizeInBytes);
         } else {
             throw new IllegalStateException();
         }
     }
 
-    public void write(ByteBuffer audioData) {
+    public int write(ByteBuffer audioData) {
         int size = audioData.remaining();
         if(mTransferBuffer == null || mTransferBuffer.length < size) {
             mTransferBuffer = new byte[size];
         }
         audioData.get(mTransferBuffer, 0, size);
-        write(mTransferBuffer, 0, size);
+        return write(mTransferBuffer, 0, size);
     }
 
     public void stopAndRelease() {

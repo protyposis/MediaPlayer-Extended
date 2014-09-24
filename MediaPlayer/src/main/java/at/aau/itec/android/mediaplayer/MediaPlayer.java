@@ -26,6 +26,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -568,15 +569,6 @@ public class MediaPlayer {
                         } else {
                             mCurrentPosition = mInfo.presentationTimeUs;
 
-                            if(mAudioExtractor != null) {
-                                // TODO rewrite; this is just a quick and dirty hack
-                                for(int i = 0; i < 5; i++) {
-                                    if(queueAudioSampleToCodec(mAudioExtractor)) {
-                                        decodeAudioSample();
-                                    }
-                                }
-                            }
-
                             long waitingTime = mTimeBase.getOffsetFrom(mInfo.presentationTimeUs);
                             Log.d(TAG, "waiting time = " + waitingTime);
 
@@ -613,6 +605,20 @@ public class MediaPlayer {
                         }
 
                         mVideoCodec.releaseOutputBuffer(outputBufIndex, render); // render picture
+
+                        // TODO this is way too slow
+                        long start = SystemClock.elapsedRealtime();
+                        if(!mSeeking && mAudioExtractor != null) {
+                            // TODO rewrite; this is just a quick and dirty hack
+                            for(int i = 0; i < 5; i++) {
+                                if(queueAudioSampleToCodec(mAudioExtractor)) {
+                                    decodeAudioSample();
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                        Log.d(TAG, "audio time " + (SystemClock.elapsedRealtime() - start));
 
                         if (preparing) {
                             mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
@@ -731,7 +737,7 @@ public class MediaPlayer {
                 throw new IllegalStateException("wrong track index: " + trackIndex);
             }
             boolean sampleQueued = false;
-            int inputBufIndex = mAudioCodec.dequeueInputBuffer(mTimeOutUs);
+            int inputBufIndex = mAudioCodec.dequeueInputBuffer(0);
             if (inputBufIndex >= 0) {
                 ByteBuffer inputBuffer = mAudioCodecInputBuffers[inputBufIndex];
                 int sampleSize = extractor.readSampleData(inputBuffer, 0);
@@ -773,7 +779,9 @@ public class MediaPlayer {
                     outputData.limit(mInfo.offset + mInfo.size);
                     //Log.d(TAG, "raw audio data bytes: " + mInfo.size);
                 }
-                mAudioPlayback.write(outputData);
+                if(mAudioPlayback.write(outputData) < mInfo.size) {
+                    throw new RuntimeException("frames got lost");
+                }
                 mAudioCodec.releaseOutputBuffer(output, false);
             } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
                 Log.d(TAG, "audio output buffers have changed.");
