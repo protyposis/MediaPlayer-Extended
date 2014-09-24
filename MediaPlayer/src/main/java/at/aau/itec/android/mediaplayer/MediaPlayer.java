@@ -354,10 +354,13 @@ public class MediaPlayer {
         private ByteBuffer[] mVideoCodecOutputBuffers;
         private ByteBuffer[] mAudioCodecInputBuffers;
         private ByteBuffer[] mAudioCodecOutputBuffers;
-        private MediaCodec.BufferInfo mInfo;
+        private MediaCodec.BufferInfo mVideoInfo;
+        private MediaCodec.BufferInfo mAudioInfo;
         private boolean mPaused;
-        private boolean mEosInput;
-        private boolean mEosOutput;
+        private boolean mVideoInputEos;
+        private boolean mVideoOutputEos;
+        private boolean mAudioInputEos;
+        private boolean mAudioOutputEos;
         private boolean mBuffering;
         private AudioPlayback mAudioPlayback;
 
@@ -389,6 +392,9 @@ public class MediaPlayer {
                 mVideoCodec.start();
                 mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
                 mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+                mVideoInfo = new MediaCodec.BufferInfo();
+                mVideoInputEos = false;
+                mVideoOutputEos = false;
 
                 if(mAudioFormat != null) {
                     mAudioCodec = MediaCodec.createDecoderByType(mAudioFormat.getString(MediaFormat.KEY_MIME));
@@ -396,6 +402,9 @@ public class MediaPlayer {
                     mAudioCodec.start();
                     mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
                     mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+                    mAudioInfo = new MediaCodec.BufferInfo();
+                    mAudioInputEos = false;
+                    mAudioOutputEos = false;
 
                     mAudioPlayback = new AudioPlayback();
                     mAudioPlayback.init(mAudioFormat);
@@ -404,15 +413,12 @@ public class MediaPlayer {
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
                         getVideoWidth(), getVideoHeight()));
 
-                mInfo = new MediaCodec.BufferInfo();
-                mEosInput = false;
-                mEosOutput = false;
                 mBuffering = false;
                 boolean preparing = true; // used on startup to process stream until the first frame
                 int frameSkipCount = 0;
                 long lastPTS = 0;
 
-                while (!mEosOutput) {
+                while (!mVideoOutputEos) {
                     if(mVideoExtractor.hasTrackFormatChanged()) {
                         // Get new video format and restart video codec with this format
                         mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
@@ -445,7 +451,7 @@ public class MediaPlayer {
 
                         if(mAudioPlayback != null) mAudioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
-                        mTimeBase.startAt(mInfo.presentationTimeUs);
+                        mTimeBase.startAt(mVideoInfo.presentationTimeUs);
                     }
 
                     // For a seek, first prepare by seeking the media extractor and flushing the codec.
@@ -480,11 +486,11 @@ public class MediaPlayer {
                         }
                     }
 
-                    if (!mEosInput) {
+                    if (!mVideoInputEos) {
                         queueMediaSampleToCodec(mSeeking);
                     }
-                    lastPTS = mInfo.presentationTimeUs;
-                    int res = mVideoCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
+                    lastPTS = mVideoInfo.presentationTimeUs;
+                    int res = mVideoCodec.dequeueOutputBuffer(mVideoInfo, mTimeOutUs);
                     if (res >= 0) {
                         int outputBufIndex = res;
                         boolean render = true;
@@ -517,7 +523,7 @@ public class MediaPlayer {
                              * Use millisecond precision to stay compatible with VideoView API that works
                              * in millisecond precision only. Else, exact seek matches are missed if frames
                              * are positioned at fractions of a millisecond. */
-                            long presentationTimeMs = mInfo.presentationTimeUs / 1000;
+                            long presentationTimeMs = mVideoInfo.presentationTimeUs / 1000;
                             long seekTargetTimeMs = mSeekTargetTime / 1000;
                             if ((mSeekMode == SeekMode.PRECISE || mSeekMode == SeekMode.EXACT) && presentationTimeMs < seekTargetTimeMs) {
                                 // this is not yet the aimed time so we skip rendering of this frame
@@ -527,7 +533,7 @@ public class MediaPlayer {
                                 }
                                 frameSkipCount++;
                             } else {
-                                Log.d(TAG, "frame new position:         " + mInfo.presentationTimeUs);
+                                Log.d(TAG, "frame new position:         " + mVideoInfo.presentationTimeUs);
                                 Log.d(TAG, "seeking finished, skipped " + frameSkipCount + " frames");
                                 frameSkipCount = 0;
 
@@ -549,16 +555,16 @@ public class MediaPlayer {
                                         Log.d(TAG, "exact seek match!");
                                     }
 
-                                    if(mSeekMode == SeekMode.FAST_EXACT && mInfo.presentationTimeUs < mSeekTargetTime) {
+                                    if(mSeekMode == SeekMode.FAST_EXACT && mVideoInfo.presentationTimeUs < mSeekTargetTime) {
                                         // this should only ever happen in fastseek mode, else it FFWs in fast mode
                                         Log.d(TAG, "presentation is behind, another try...");
                                     } else {
                                         // reset time to keep frame rate constant (otherwise it's too fast on back seeks and waits for the PTS time on fw seeks)
-                                        mTimeBase.startAt(mInfo.presentationTimeUs);
-                                        mCurrentPosition = mInfo.presentationTimeUs;
+                                        mTimeBase.startAt(mVideoInfo.presentationTimeUs);
+                                        mCurrentPosition = mVideoInfo.presentationTimeUs;
                                         mSeeking = false;
                                         if(mAudioExtractor != null) {
-                                            mAudioExtractor.seekTo(mInfo.presentationTimeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+                                            mAudioExtractor.seekTo(mVideoInfo.presentationTimeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
                                             mAudioPlayback.flush();
                                         }
                                         mEventHandler.sendEmptyMessage(MEDIA_SEEK_COMPLETE);
@@ -566,9 +572,9 @@ public class MediaPlayer {
                                 }
                             }
                         } else {
-                            mCurrentPosition = mInfo.presentationTimeUs;
+                            mCurrentPosition = mVideoInfo.presentationTimeUs;
 
-                            long waitingTime = mTimeBase.getOffsetFrom(mInfo.presentationTimeUs);
+                            long waitingTime = mTimeBase.getOffsetFrom(mVideoInfo.presentationTimeUs);
                             Log.d(TAG, "waiting time = " + waitingTime);
 
                             /* If this is an online stream, notify the client of the buffer fill level.
@@ -593,7 +599,7 @@ public class MediaPlayer {
                                 // TODO improve fast forward mode
                                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                                         MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
-                                mTimeBase.startAt(mInfo.presentationTimeUs);
+                                mTimeBase.startAt(mVideoInfo.presentationTimeUs);
                             }
                         }
 
@@ -625,9 +631,9 @@ public class MediaPlayer {
                                     MEDIA_INFO_VIDEO_RENDERING_START, 0));
                         }
 
-                        if ((mInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            Log.d(TAG, "EOS output");
-                            mEosOutput = true;
+                        if ((mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                            Log.d(TAG, "EOS video output");
+                            mVideoOutputEos = true;
                             mEventHandler.sendEmptyMessage(MEDIA_PLAYBACK_COMPLETE);
 
                             /* When playback reached the end of the stream and the last frame is
@@ -644,9 +650,11 @@ public class MediaPlayer {
                                 }
                                 if(mAudioPlayback != null) mAudioPlayback.play();
 
-                                // reset these two flags so playback can continue
-                                mEosInput = false;
-                                mEosOutput = false;
+                                // reset these flags so playback can continue
+                                mVideoInputEos = false;
+                                mVideoOutputEos = false;
+                                mAudioInputEos = false;
+                                mAudioOutputEos = false;
 
                                 // if no seek command but a start command arrived, seek to the start
                                 if(!mSeeking && !mSeekPrepare) {
@@ -683,13 +691,15 @@ public class MediaPlayer {
         }
 
         private boolean queueVideoSampleToCodec() {
-            int trackIndex = mVideoExtractor.getSampleTrackIndex();
-            if(trackIndex == -1) {
-                throw new IllegalStateException("EOS");
-            }
-            if(trackIndex != mVideoTrackIndex) {
-                throw new IllegalStateException("wrong track index: " + trackIndex);
-            }
+            /* NOTE the track index checks only for debugging
+             * when enabled, they prevent the EOS detection and handling below */
+//            int trackIndex = mVideoExtractor.getSampleTrackIndex();
+//            if(trackIndex == -1) {
+//                throw new IllegalStateException("EOS");
+//            }
+//            if(trackIndex != mVideoTrackIndex) {
+//                throw new IllegalStateException("wrong track index: " + trackIndex);
+//            }
             boolean sampleQueued = false;
             int inputBufIndex = mVideoCodec.dequeueInputBuffer(mTimeOutUs);
             if (inputBufIndex >= 0) {
@@ -697,8 +707,8 @@ public class MediaPlayer {
                 int sampleSize = mVideoExtractor.readSampleData(inputBuffer, 0);
                 long presentationTimeUs = 0;
                 if (sampleSize < 0) {
-                    Log.d(TAG, "EOS input");
-                    mEosInput = true;
+                    Log.d(TAG, "EOS video input");
+                    mVideoInputEos = true;
                     sampleSize = 0;
                 } else if(sampleSize == 0) {
                     if(mVideoExtractor.getCachedDuration() == 0) {
@@ -715,8 +725,8 @@ public class MediaPlayer {
                         0,
                         sampleSize,
                         presentationTimeUs,
-                        mEosInput ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
-                if (!mEosInput) {
+                        mVideoInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
+                if (!mVideoInputEos) {
                     mVideoExtractor.advance();
                 }
             }
@@ -727,13 +737,15 @@ public class MediaPlayer {
             if(mAudioCodec == null) {
                 throw new IllegalStateException("no audio track configured");
             }
-            int trackIndex = extractor.getSampleTrackIndex();
-            if(trackIndex == -1) {
-                throw new IllegalStateException("EOS");
-            }
-            if(trackIndex != mAudioTrackIndex) {
-                throw new IllegalStateException("wrong track index: " + trackIndex);
-            }
+            /* NOTE the track index checks only for debugging
+             * when enabled, they prevent the EOS detection and handling below */
+//            int trackIndex = extractor.getSampleTrackIndex();
+//            if(trackIndex == -1) {
+//                throw new IllegalStateException("EOS");
+//            }
+//            if(trackIndex != mAudioTrackIndex) {
+//                throw new IllegalStateException("wrong track index: " + trackIndex);
+//            }
             boolean sampleQueued = false;
             int inputBufIndex = mAudioCodec.dequeueInputBuffer(mTimeOutUs);
             if (inputBufIndex >= 0) {
@@ -741,8 +753,8 @@ public class MediaPlayer {
                 int sampleSize = extractor.readSampleData(inputBuffer, 0);
                 long presentationTimeUs = 0;
                 if (sampleSize < 0) {
-                    Log.d(TAG, "EOS input");
-                    mEosInput = true;
+                    Log.d(TAG, "EOS audio input");
+                    mAudioInputEos = true;
                     sampleSize = 0;
                 } else if(sampleSize == 0) {
                     if(extractor.getCachedDuration() == 0) {
@@ -759,8 +771,8 @@ public class MediaPlayer {
                         0,
                         sampleSize,
                         presentationTimeUs,
-                        mEosInput ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
-                if (!mEosInput) {
+                        mAudioInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
+                if (!mAudioInputEos) {
                     extractor.advance();
                 }
             }
@@ -768,17 +780,22 @@ public class MediaPlayer {
         }
 
         private void decodeAudioSample() {
-            int output = mAudioCodec.dequeueOutputBuffer(mInfo, mTimeOutUs);
+            int output = mAudioCodec.dequeueOutputBuffer(mAudioInfo, mTimeOutUs);
             if (output >= 0) {
                 // http://bigflake.com/mediacodec/#q11
                 ByteBuffer outputData = mAudioCodecOutputBuffers[output];
-                if (mInfo.size != 0) {
-                    outputData.position(mInfo.offset);
-                    outputData.limit(mInfo.offset + mInfo.size);
-                    //Log.d(TAG, "raw audio data bytes: " + mInfo.size);
+                if (mAudioInfo.size != 0) {
+                    outputData.position(mAudioInfo.offset);
+                    outputData.limit(mAudioInfo.offset + mAudioInfo.size);
+                    //Log.d(TAG, "raw audio data bytes: " + mVideoInfo.size);
                 }
                 mAudioPlayback.write(outputData);
                 mAudioCodec.releaseOutputBuffer(output, false);
+
+                if ((mAudioInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    mAudioOutputEos = true;
+                    Log.d(TAG, "EOS audio output");
+                }
             } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
                 Log.d(TAG, "audio output buffers have changed.");
                 mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
@@ -794,7 +811,7 @@ public class MediaPlayer {
             if(mAudioCodec != null) {
                 if (videoOnly) {
                 /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
-                    while (mVideoExtractor.getSampleTrackIndex() != mVideoTrackIndex && !mEosInput) {
+                    while (mVideoExtractor.getSampleTrackIndex() != mVideoTrackIndex && !mVideoInputEos) {
                         mVideoExtractor.advance();
                     }
                 } else {
@@ -804,7 +821,7 @@ public class MediaPlayer {
                     }
                 }
             }
-            if(!mEosInput) {
+            if(!mVideoInputEos) {
                 result = queueVideoSampleToCodec();
             }
             return result;
