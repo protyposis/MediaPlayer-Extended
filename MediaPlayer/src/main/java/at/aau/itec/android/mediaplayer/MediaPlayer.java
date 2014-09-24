@@ -577,16 +577,21 @@ public class MediaPlayer {
                             long waitingTime = mTimeBase.getOffsetFrom(mVideoInfo.presentationTimeUs);
 
                             if(mAudioFormat != null) {
-                                long audioDelta = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
+                                long audioOffsetUs = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
 //                                Log.d(TAG, "VideoPTS=" + mCurrentPosition
 //                                        + " AudioPTS=" + mAudioPlayback.getLastPresentationTimeUs()
-//                                        + " delta=" + audioDelta);
-                                /* adjust video frame waiting time by audio delta to sync the video
-                                 * frames to the audio playback. This results in juddering video
-                                 * playback.
-                                 * TODO fix syncing to remove judder (sync vice versa -> audio to video?)
+//                                        + " offset=" + audioOffsetUs);
+                                /* Synchronize the video frame PTS to the audio PTS by slowly adjusting
+                                 * the video frame waiting time towards a better synchronization.
+                                 * Directly correcting the video waiting time by the audio offset
+                                 * introduces too much jitter and leads to juddering video playback.
                                  */
-                                waitingTime -= audioDelta;
+                                long audioOffsetCorrectionUs = 10000;
+                                if (audioOffsetUs > audioOffsetCorrectionUs) {
+                                    waitingTime -= audioOffsetCorrectionUs;
+                                } else if(audioOffsetUs < -audioOffsetCorrectionUs) {
+                                    waitingTime += audioOffsetCorrectionUs;
+                                }
                             }
 
                             Log.d(TAG, "waiting time = " + waitingTime);
