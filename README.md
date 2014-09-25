@@ -31,6 +31,7 @@ Features
 Changelog
 ---------
 
+* v1.2.1: video decoder crash fixed
 * v1.2: audio playback support, improved DASH rate based adaption, support for DASH non-square pixel aspect ratios, keep screen on during playback
 * v1.0.1: do not catch up lost time after a lag, error handling for invalid URLs improved
 * v1.0: initial release
