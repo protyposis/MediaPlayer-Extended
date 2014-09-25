@@ -75,6 +75,7 @@ class DashMediaExtractor extends MediaExtractor {
     private AdaptationLogic mAdaptationLogic;
     private AdaptationSet mAdaptationSet;
     private Representation mRepresentation;
+    private long mMinBufferTimeUs;
     private boolean mRepresentationSwitched;
     private int mCurrentSegment;
     private List<Integer> mSelectedTracks;
@@ -91,21 +92,23 @@ class DashMediaExtractor extends MediaExtractor {
         mHttpClient = new OkHttpClient();
     }
 
-    public final void setDataSource(Context context, MPD mpd, AdaptationLogic adaptationLogic)
+    public final void setDataSource(Context context, MPD mpd, AdaptationSet adaptationSet,
+                                    AdaptationLogic adaptationLogic)
             throws IOException {
         try {
             mContext = context;
             mMPD = mpd;
+            mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
-            mAdaptationSet = mMPD.getFirstVideoSet();
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
+            mMinBufferTimeUs = Math.max(mMPD.minBufferTimeUs, 10 * 1000000L); // 10 secs min buffer time
             mCurrentSegment = -1;
             mSelectedTracks = new ArrayList<Integer>();
             mInitSegments = new HashMap<Representation, ByteString>(mAdaptationSet.representations.size());
             mFutureCache = new HashMap<Segment, CachedSegment>();
             mFutureCacheRequests = new HashMap<Segment, Call>();
             mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
-            mMp4Mode = mRepresentation.mimeType.equals("video/mp4");
+            mMp4Mode = mRepresentation.mimeType.equals("video/mp4") || mRepresentation.initSegment.media.endsWith(".mp4");
             if (mMp4Mode) {
                 mMp4Builder = new DefaultMp4Builder();
             }
@@ -154,23 +157,49 @@ class DashMediaExtractor extends MediaExtractor {
     }
 
     @Override
+    public int getSampleTrackIndex() {
+        int index = super.getSampleTrackIndex();
+        if(index == -1) {
+            /* EOS of current segment reached. Check for and read from successive segment if
+             * existing, else return the EOS flag. */
+            if(switchToNextSegment()) {
+                return super.getSampleTrackIndex();
+            }
+        }
+        return index;
+    }
+
+    @Override
     public int readSampleData(ByteBuffer byteBuf, int offset) {
         int size = super.readSampleData(byteBuf, offset);
         if(size == -1) {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
-            Segment next = getNextSegment();
-            if(next != null) {
-                /* Since it seems that an extractor cannot be reused by setting another data source,
-                 * a new instance needs to be created and used. */
-                renewExtractor();
-
-                /* Initialize the new extractor for the next segment */
-                initOnWorkerThread(next);
+            if(switchToNextSegment()) {
                 return super.readSampleData(byteBuf, offset);
             }
         }
         return size;
+    }
+
+    /**
+     * Tries to switch to the next segment and returns true if there is one, false if there is none
+     * and thus the current is the last one.
+     */
+    private boolean switchToNextSegment() {
+        Segment next = getNextSegment();
+        if(next != null) {
+            /* Since it seems that an extractor cannot be reused by setting another data source,
+             * a new instance needs to be created and used. */
+            renewExtractor();
+
+            /* Initialize the new extractor for the next segment */
+            initOnWorkerThread(next);
+
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -201,7 +230,7 @@ class DashMediaExtractor extends MediaExtractor {
 
     @Override
     public void seekTo(long timeUs, int mode) {
-        int targetSegmentIndex = Math.min((int)(timeUs / mRepresentation.segmentDurationUs), mRepresentation.segments.size() - 1);
+        int targetSegmentIndex = Math.min((int) (timeUs / mRepresentation.segmentDurationUs), mRepresentation.segments.size() - 1);
         Log.d(TAG, "seek to " + timeUs + " @ segment " + targetSegmentIndex);
         if(targetSegmentIndex == mCurrentSegment) {
             /* Because the DASH segments do not contain seeking cues, the position in the current
@@ -354,7 +383,7 @@ class DashMediaExtractor extends MediaExtractor {
      * Makes async segment requests to fill the cache up to a certain level.
      */
     private void fillFutureCache() {
-        int segmentsToBuffer = (int)Math.ceil((double)mMPD.minBufferTimeUs / mRepresentation.segmentDurationUs);
+        int segmentsToBuffer = (int)Math.ceil((double)mMinBufferTimeUs / mRepresentation.segmentDurationUs);
         for(int i = mCurrentSegment + 1; i < Math.min(mCurrentSegment + 1 + segmentsToBuffer, mRepresentation.segments.size()); i++) {
             Segment segment = mRepresentation.segments.get(i);
             if(!mFutureCache.containsKey(segment) && !mFutureCacheRequests.containsKey(segment)) {

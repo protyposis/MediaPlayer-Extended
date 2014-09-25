@@ -25,5 +25,16 @@ import java.io.IOException;
  * Created by maguggen on 27.08.2014.
  */
 public interface MediaSource {
-    MediaExtractor getMediaExtractor() throws IOException;
+
+    /**
+     * Returns a media extractor for video data and possibly multiplexed audio data.
+     */
+    MediaExtractor getVideoExtractor() throws IOException;
+
+    /**
+     * Returns a media extractor for audio data from a separate audio stream, or NULL if the source
+     * does not have a separate audio source or the audio is multiplexed with the video in a single
+     * stream.
+     */
+    MediaExtractor getAudioExtractor() throws IOException;
 }

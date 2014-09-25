@@ -190,15 +190,17 @@ public class DashParser {
                             getAttributeValue(parser, "range"));
                     Log.d(TAG, "Initialization: " + representation.initSegment.toString());
                 } else if(tagName.equals("SegmentList")) {
-                    representation.segmentDurationUs = getAttributeValueInt(parser, "duration") * 1000000L;
+                    long timescale = getAttributeValueLong(parser, "timescale", 1);
+                    long duration = getAttributeValueLong(parser, "duration");
+                    representation.segmentDurationUs = (long)(((double)duration / timescale) * 1000000d);
                 } else if(tagName.equals("SegmentURL")) {
                     representation.segments.add(new Segment(
                             baseUrl + getAttributeValue(parser, "media"),
                             getAttributeValue(parser, "mediaRange")));
                 } else if(tagName.equals("SegmentTemplate")) {
-                    long timescale = getAttributeValueLong(parser, "timescale");
+                    long timescale = getAttributeValueLong(parser, "timescale", 1);
                     long duration = getAttributeValueLong(parser, "duration");
-                    representation.segmentDurationUs = (duration / timescale) * 1000000L;
+                    representation.segmentDurationUs = (long)(((double)duration / timescale) * 1000000d);
                     int startNumber = getAttributeValueInt(parser, "startNumber");
                     int numSegments = (int)Math.ceil((double)mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
 
@@ -274,9 +276,9 @@ public class DashParser {
         return -1;
     }
 
-    private static String getAttributeValue(XmlPullParser parser, String name, String def) {
+    private static String getAttributeValue(XmlPullParser parser, String name, String defValue) {
         String value = parser.getAttributeValue(null, name);
-        return value != null ? value : def;
+        return value != null ? value : defValue;
     }
 
     private static String getAttributeValue(XmlPullParser parser, String name) {
@@ -289,6 +291,10 @@ public class DashParser {
 
     private static long getAttributeValueLong(XmlPullParser parser, String name) {
         return Long.parseLong(getAttributeValue(parser, name, "0"));
+    }
+
+    private static long getAttributeValueLong(XmlPullParser parser, String name, long defValue) {
+        return Long.parseLong(getAttributeValue(parser, name, defValue+""));
     }
 
     private static long getAttributeValueTime(XmlPullParser parser, String name) {

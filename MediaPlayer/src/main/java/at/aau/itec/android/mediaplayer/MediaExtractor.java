@@ -60,7 +60,7 @@ import java.util.UUID;
  * </pre>
  *
  * This class wraps Android API's extractor because it is final and cannot be extended. The ability
- * for extension is needed to keep the MediaPlayer code clean and encaplsulate more sophisticated
+ * for extension is needed to keep the MediaPlayer code clean and encapsulate more sophisticated
  * processing of data sources.
  *
  * Created by maguggen on 27.08.2014.
