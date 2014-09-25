@@ -50,14 +50,12 @@ class AudioPlayback {
     private int mPlaybackBufferSizeFactor;
     private AudioThread mAudioThread;
     private long mLastPresentationTimeUs;
+    private int mAudioSessionId;
 
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
         mFrameChunkSize = 4096; // arbitrary default chunk size
         mBufferQueue = new BufferQueue();
-        mAudioThread = new AudioThread();
-        mAudioThread.setPaused(true);
-        mAudioThread.start();
     }
 
     /**
@@ -74,6 +72,11 @@ class AudioPlayback {
             playing = isPlaying();
             pause();
             stopAndRelease(false);
+        } else {
+            // deferred creation of the audio thread until its first use
+            mAudioThread = new AudioThread();
+            mAudioThread.setPaused(true);
+            mAudioThread.start();
         }
 
         int channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
@@ -87,11 +90,26 @@ class AudioPlayback {
                 channelCount == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
                 mFrameChunkSize * mPlaybackBufferSizeFactor, // at least twice the size to enable double buffering (according to docs)
-                AudioTrack.MODE_STREAM);
+                AudioTrack.MODE_STREAM, mAudioSessionId);
+        mAudioSessionId = mAudioTrack.getAudioSessionId();
 
         if(playing) {
             play();
         }
+    }
+
+    /**
+     * Can be used to set an audio session ID before calling {@link #init(android.media.MediaFormat)}.
+     */
+    public void setAudioSessionId(int sessionId) {
+        if(isInitialized()) {
+            throw new IllegalStateException("cannot set session id on an initialized audio track");
+        }
+        mAudioSessionId = sessionId;
+    }
+
+    public int getAudioSessionId() {
+        return mAudioSessionId;
     }
 
     public boolean isInitialized() {

@@ -80,6 +80,7 @@ public class MediaPlayer {
     private MediaFormat mAudioFormat;
     private long mAudioMinPTS;
     private MediaCodec mAudioCodec;
+    private int mAudioSessionId;
 
     private PlaybackThread mPlaybackThread;
     private long mCurrentPosition;
@@ -346,6 +347,20 @@ public class MediaPlayer {
         return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) : 0;
     }
 
+    /**
+     * @see android.media.MediaPlayer#setAudioSessionId(int)
+     */
+    public void setAudioSessionId(int sessionId) {
+        mAudioSessionId = sessionId;
+    }
+
+    /**
+     * @see android.media.MediaPlayer#getAudioSessionId()
+     */
+    public int getAudioSessionId() {
+        return mAudioSessionId;
+    }
+
     private class PlaybackThread extends Thread {
 
         private final long mTimeOutUs = 5000;
@@ -407,7 +422,9 @@ public class MediaPlayer {
                     mAudioOutputEos = false;
 
                     mAudioPlayback = new AudioPlayback();
+                    mAudioPlayback.setAudioSessionId(mAudioSessionId);
                     mAudioPlayback.init(mAudioFormat);
+                    mAudioSessionId = mAudioPlayback.getAudioSessionId();
                 }
 
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,

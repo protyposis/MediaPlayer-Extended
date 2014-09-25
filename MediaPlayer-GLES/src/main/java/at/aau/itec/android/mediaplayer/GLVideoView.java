@@ -226,7 +226,7 @@ public class GLVideoView extends GLTextureView implements
 
     @Override
     public int getAudioSessionId() {
-        return 0;
+        return mPlayer != null ? mPlayer.getAudioSessionId() : 0;
     }
 
     private void stayAwake(boolean awake) {

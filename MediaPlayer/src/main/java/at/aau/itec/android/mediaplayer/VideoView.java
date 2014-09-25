@@ -308,7 +308,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     @Override
     public int getAudioSessionId() {
-        return 0;
+        return mPlayer != null ? mPlayer.getAudioSessionId() : 0;
     }
 
     private MediaPlayer.OnPreparedListener mPreparedListener =
