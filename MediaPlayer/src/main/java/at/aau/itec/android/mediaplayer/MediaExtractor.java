@@ -69,6 +69,8 @@ import java.util.UUID;
  */
 public class MediaExtractor {
 
+    public static final String MEDIA_FORMAT_EXTENSION_KEY_DAR = "itecmp-dar";
+
     private android.media.MediaExtractor mApiExtractor;
 
     public MediaExtractor() {
@@ -178,7 +180,12 @@ public class MediaExtractor {
      * More detail on the representation can be found at {@link android.media.MediaCodec}
      */
     public MediaFormat getTrackFormat(int index) {
-        return mApiExtractor.getTrackFormat(index);
+        MediaFormat mediaFormat = mApiExtractor.getTrackFormat(index);
+        // set the default DAR
+        if(mediaFormat.getString(MediaFormat.KEY_MIME).startsWith("video/")) {
+            mediaFormat.setFloat(MEDIA_FORMAT_EXTENSION_KEY_DAR, 1.0f);
+        }
+        return mediaFormat;
     }
 
     /**

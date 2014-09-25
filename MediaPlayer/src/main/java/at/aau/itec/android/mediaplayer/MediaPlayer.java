@@ -340,7 +340,8 @@ public class MediaPlayer {
     }
 
     public int getVideoWidth() {
-        return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_WIDTH) : 0;
+        return mVideoFormat != null ? (int)(mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT)
+                * mVideoFormat.getFloat(MediaExtractor.MEDIA_FORMAT_EXTENSION_KEY_DAR)) : 0;
     }
 
     public int getVideoHeight() {

@@ -142,9 +142,9 @@ class DashMediaExtractor extends MediaExtractor {
             mediaFormat.setLong(MediaFormat.KEY_DURATION, mMPD.mediaPresentationDurationUs);
         }
         if(mediaFormat.getString(MediaFormat.KEY_MIME).startsWith("video/")) {
-            // Return the display aspect size as defined in the MPD instead of the storage aspect size
-            mediaFormat.setInteger(MediaFormat.KEY_WIDTH, mRepresentation.width);
-            mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, mRepresentation.height);
+            // Return the display aspect ratio as defined in the MPD (can be different from the encoded video size)
+            mediaFormat.setFloat(MEDIA_FORMAT_EXTENSION_KEY_DAR,
+                    (float)mRepresentation.width / mRepresentation.height);
         }
         return mediaFormat;
     }
