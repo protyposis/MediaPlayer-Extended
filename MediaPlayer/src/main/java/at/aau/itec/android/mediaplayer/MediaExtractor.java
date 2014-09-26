@@ -183,7 +183,9 @@ public class MediaExtractor {
         MediaFormat mediaFormat = mApiExtractor.getTrackFormat(index);
         // set the default DAR
         if(mediaFormat.getString(MediaFormat.KEY_MIME).startsWith("video/")) {
-            mediaFormat.setFloat(MEDIA_FORMAT_EXTENSION_KEY_DAR, 1.0f);
+            mediaFormat.setFloat(MEDIA_FORMAT_EXTENSION_KEY_DAR,
+                    (float)mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
+                            / mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
         }
         return mediaFormat;
     }
