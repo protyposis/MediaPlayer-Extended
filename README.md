@@ -144,15 +144,22 @@ Known Issues
 
 * MediaPlayer: audio can get out of sync on slow devices
 * MediaPlayer-DASH: MPD parser is basic and only tested with the test MPDs listed below
-* MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off
-* MediaPlayer-GLES*: components work correctly on Adreno 320 (Nexus 7 2013) and Adreno 330 (Nexus 5), 
-  but not on Tegra 3 (Nexus 7 2012) and Tegra 4 (Transformer TF701T)
-    * NVidia Tegra does not seem to support framebuffers with 16bit color channel texture attachments 
-      (as required by some flowabs effects) and crashes on the bilateral filtering shader for unknown reasons
 * MediaPlayer-GLES-FlowAbs: The OrientationAlignedBilateralFilterShaderProgram / FlowAbsBilateralFilterEffect does 
   not work correctly for some unknown reason and is deactivated in the FlowAbs effect, making it 
   slightly less fancy
 * Exception handling needs to be improved
+
+Device specific:
+
+* MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off on the Nexus 7 2013 back camera (seems to be a system bug)
+* MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because it requires floating point framebuffer texture attachments
+
+Tested and confirmed working on
+LG Nexus 4 (Adreno 320),
+GL Nexus 5 (Adreno 330),
+ASUS Nexus 7 2012 (Tegra 3, w/o FlowAbs),
+ASUS Nexus 7 2013 (Adreno 320),
+ASUS Transformer TF701T (Tegra 4, w/o FlowAbs).
 
 
 Online Streaming Test URLs
