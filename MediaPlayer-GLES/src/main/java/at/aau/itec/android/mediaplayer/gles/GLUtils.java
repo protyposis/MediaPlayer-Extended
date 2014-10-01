@@ -45,6 +45,7 @@ public class GLUtils {
     public static boolean HAS_GLES30;
     public static boolean HAS_GL_OES_texture_half_float;
     public static boolean HAS_GL_OES_texture_float;
+    public static boolean HAS_FLOAT_FRAMEBUFFER_SUPPORT;
 
     /**
      * Sets the static feature flags. Needs to be called from a GLES context.
@@ -53,6 +54,20 @@ public class GLUtils {
         HAS_GLES30 = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2;
         HAS_GL_OES_texture_half_float = checkExtension("GL_OES_texture_half_float");
         HAS_GL_OES_texture_float = checkExtension("GL_OES_texture_float");
+
+        /* Try to create a framebuffer with an attached floating point texture. If this fails,
+         * the device does not support floating point FB attachments and needs to fall back to
+         * byte textures ... and possibly deactivate features that demand FP textures.
+         */
+        try {
+            // must be set to true before the check, otherwise the fallback kicks in
+            HAS_FLOAT_FRAMEBUFFER_SUPPORT = true;
+            new Framebuffer(8, 8);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "float framebuffer test failed");
+            HAS_FLOAT_FRAMEBUFFER_SUPPORT = false;
+            GLUtils.clearError();
+        }
     }
 
     /**
@@ -64,7 +79,7 @@ public class GLUtils {
         return configurationInfo != null && configurationInfo.reqGlEsVersion >= 0x20000;
     }
 
-    public static void checkError(String operation) {
+    private static void checkError(String operation, boolean throwException) {
         int errorCount = 0;
         int error;
         String msg = null;
@@ -75,9 +90,17 @@ public class GLUtils {
             errorCount++;
         }
 
-        if(errorCount > 0) {
+        if(throwException && errorCount > 0) {
             throw new RuntimeException(msg);
         }
+    }
+
+    public static void checkError(String operation) {
+        checkError(operation, true);
+    }
+
+    public static void clearError() {
+        checkError("error clearance", false);
     }
 
     public static String[] getExtensions() {

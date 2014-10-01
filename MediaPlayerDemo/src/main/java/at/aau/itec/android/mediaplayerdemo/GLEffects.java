@@ -25,11 +25,13 @@ import android.view.MenuItem;
 import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import at.aau.itec.android.mediaplayer.GLTextureView;
+import at.aau.itec.android.mediaplayer.effects.FlowAbsSubEffect;
 import at.aau.itec.android.mediaplayer.effects.QrMarkerEffect;
 import at.aau.itec.android.mediaplayer.effects.Effect;
 import at.aau.itec.android.mediaplayer.effects.FlipEffect;
@@ -42,6 +44,7 @@ import at.aau.itec.android.mediaplayer.effects.KernelSharpenEffect;
 import at.aau.itec.android.mediaplayer.effects.NoEffect;
 import at.aau.itec.android.mediaplayer.effects.SimpleToonEffect;
 import at.aau.itec.android.mediaplayer.effects.SobelEffect;
+import at.aau.itec.android.mediaplayer.gles.GLUtils;
 import at.aau.itec.android.mediaplayerdemo.testeffect.ColorFilterEffect;
 
 /**
@@ -111,8 +114,13 @@ public class GLEffects implements GLTextureView.OnEffectInitializedListener {
     }
 
     public void selectEffect(int index) {
-        mSelectedEffect = mEffects.get(index);
-        mGLView.selectEffect(index);
+        Effect effect = mEffects.get(index);
+        if(!GLUtils.HAS_FLOAT_FRAMEBUFFER_SUPPORT && (effect instanceof FlowAbsEffect || effect instanceof FlowAbsSubEffect)) {
+            Toast.makeText(mActivity, "FlowAbs deactivated (GPU does not support fp framebuffer attachments)", Toast.LENGTH_SHORT).show();
+        } else {
+            mSelectedEffect = effect;
+            mGLView.selectEffect(index);
+        }
     }
 
     public Effect getSelectedEffect() {

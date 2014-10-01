@@ -25,9 +25,16 @@ package at.aau.itec.android.mediaplayer.effects;
  * Used to share a common FlowAbs instance across all FlowAbs subeffects. Initializing one FlowAbs
  * instance per effect takes too much time and memory.
  */
-abstract class FlowAbsSubEffect extends BaseEffect {
+public abstract class FlowAbsSubEffect extends BaseEffect {
 
     protected FlowAbsEffect mFlowAbsEffect;
+
+    FlowAbsSubEffect(String name) {
+        super(name);
+    }
+
+    FlowAbsSubEffect() {
+    }
 
     @Override
     public void init(int width, int height) {

@@ -82,7 +82,7 @@ public class Texture2D extends Texture {
     }
 
     public static Texture2D generateFloatTexture(int width, int height) {
-        if(GLUtils.HAS_GLES30 && GLUtils.HAS_GL_OES_texture_half_float) {
+        if(GLUtils.HAS_GLES30 && GLUtils.HAS_GL_OES_texture_half_float && GLUtils.HAS_FLOAT_FRAMEBUFFER_SUPPORT) {
             return new Texture2D(GLES30.GL_RGBA16F, GLES20.GL_RGBA, width, height, GLES20.GL_FLOAT, null);
         } else {
             Log.i(TAG, "Texture fallback mode to GLES20 8 bit");
