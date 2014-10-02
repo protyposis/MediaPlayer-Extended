@@ -25,7 +25,6 @@ import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.util.Log;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
