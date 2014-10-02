@@ -111,7 +111,7 @@ public class RandomLuminanceNoiseTexture extends Texture2D {
             ByteBuffer pixels = ByteBuffer.allocateDirect(byteNoise.length).put(byteNoise);
             pixels.rewind();
 
-            return new RandomLuminanceNoiseTexture(GLES20.GL_RGBA, GLES20.GL_LUMINANCE, width, height, GLES20.GL_UNSIGNED_BYTE, pixels);
+            return new RandomLuminanceNoiseTexture(GLES20.GL_LUMINANCE, GLES20.GL_LUMINANCE, width, height, GLES20.GL_UNSIGNED_BYTE, pixels);
         }
     }
 }
