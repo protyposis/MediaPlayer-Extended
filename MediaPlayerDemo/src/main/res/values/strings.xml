@@ -59,5 +59,6 @@
     <string name="feature_sidebyside_seektest">VideoView SeekMode comparison</string>
     <string name="feature_sidebyside_seektest_description">A side by side comparison of the available seek modes.</string>
     <string name="title_activity_side_by_side_seektest">VideoView SeekMode Comparison</string>
+    <string name="zoom_pan_info">Zoom and pan the picture with touch gestures, double tap to reset the viewport.</string>
 
 </resources>
