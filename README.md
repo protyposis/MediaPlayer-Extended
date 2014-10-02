@@ -152,14 +152,15 @@ Known Issues
 Device specific:
 
 * MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off on the Nexus 7 2013 back camera (seems to be a system bug)
-* MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because it requires floating point framebuffer texture attachments
+* MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because shaders contain dynamic loops
 
 Tested and confirmed working on
-LG Nexus 4 (Adreno 320),
-GL Nexus 5 (Adreno 330),
-ASUS Nexus 7 2012 (Tegra 3, w/o FlowAbs),
-ASUS Nexus 7 2013 (Adreno 320),
-ASUS Transformer TF701T (Tegra 4, w/o FlowAbs).
+LG Nexus 4 (Android 4.4.4. Adreno 320),
+LG Nexus 5 (Android 4.4.4, Adreno 330),
+ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs),
+ASUS Nexus 7 2013 (Android 4.4.4, Adreno 320),
+ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs),
+Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP).
 
 
 Online Streaming Test URLs

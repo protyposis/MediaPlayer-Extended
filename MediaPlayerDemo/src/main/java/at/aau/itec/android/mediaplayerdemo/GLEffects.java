@@ -115,14 +115,18 @@ public class GLEffects implements GLTextureView.OnEffectInitializedListener {
 
     public boolean selectEffect(int index) {
         Effect effect = mEffects.get(index);
-        if(!GLUtils.HAS_FLOAT_FRAMEBUFFER_SUPPORT && (effect instanceof FlowAbsEffect || effect instanceof FlowAbsSubEffect)) {
-            Toast.makeText(mActivity, "FlowAbs deactivated (GPU does not support fp framebuffer attachments)", Toast.LENGTH_SHORT).show();
-            return false;
-        } else {
-            mSelectedEffect = effect;
-            mGLView.selectEffect(index);
-            return true;
+        if(effect instanceof FlowAbsEffect || effect instanceof FlowAbsSubEffect) {
+            if(GLUtils.HAS_GPU_TEGRA) {
+                Toast.makeText(mActivity, "FlowAbs deactivated (the Tegra GPU of this device does not support the required dynamic loops in shaders)", Toast.LENGTH_SHORT).show();
+                return false;
+            } else if(!GLUtils.HAS_FLOAT_FRAMEBUFFER_SUPPORT) {
+                Toast.makeText(mActivity, "FlowAbs effects do not render correctly on this device (GPU does not support fp framebuffer attachments)", Toast.LENGTH_SHORT).show();
+            }
         }
+
+        mSelectedEffect = effect;
+        mGLView.selectEffect(index);
+        return true;
     }
 
     public Effect getSelectedEffect() {
