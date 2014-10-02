@@ -113,13 +113,15 @@ public class GLEffects implements GLTextureView.OnEffectInitializedListener {
         return effectNames;
     }
 
-    public void selectEffect(int index) {
+    public boolean selectEffect(int index) {
         Effect effect = mEffects.get(index);
         if(!GLUtils.HAS_FLOAT_FRAMEBUFFER_SUPPORT && (effect instanceof FlowAbsEffect || effect instanceof FlowAbsSubEffect)) {
             Toast.makeText(mActivity, "FlowAbs deactivated (GPU does not support fp framebuffer attachments)", Toast.LENGTH_SHORT).show();
+            return false;
         } else {
             mSelectedEffect = effect;
             mGLView.selectEffect(index);
+            return true;
         }
     }
 
@@ -138,8 +140,7 @@ public class GLEffects implements GLTextureView.OnEffectInitializedListener {
 
     private boolean doMenuActionEffect(MenuItem item) {
         if(item.getGroupId() == R.id.action_list_effects) {
-            selectEffect(item.getItemId());
-            return true;
+            return selectEffect(item.getItemId());
         }
         return false;
     }
