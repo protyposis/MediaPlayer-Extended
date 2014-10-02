@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import at.aau.itec.android.mediaplayer.GLTextureView;
+import at.aau.itec.android.mediaplayer.effects.ContrastBrightnessAdjustmentEffect;
 import at.aau.itec.android.mediaplayer.effects.FlowAbsSubEffect;
 import at.aau.itec.android.mediaplayer.effects.QrMarkerEffect;
 import at.aau.itec.android.mediaplayer.effects.Effect;
@@ -79,6 +80,7 @@ public class GLEffects implements GLTextureView.OnEffectInitializedListener {
         mEffects.add(new KernelEdgeDetectEffect());
         mEffects.add(new KernelEmbossEffect());
         mEffects.add(new KernelSharpenEffect());
+        mEffects.add(new ContrastBrightnessAdjustmentEffect());
 
         // custom filters
         mEffects.add(new ColorFilterEffect());
