@@ -97,7 +97,7 @@ public class GLEffects implements GLTextureView.OnEffectInitializedListener {
 
         // MediaPlayer-GLES-QrMarker filters
         QrMarkerEffect qrMarkerEffect = new QrMarkerEffect();
-        mEffects.add(qrMarkerEffect);
+        //mEffects.add(qrMarkerEffect);
         mEffects.add(qrMarkerEffect.getCannyEdgeEffect());
     }
 
