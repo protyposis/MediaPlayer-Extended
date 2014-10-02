@@ -7,8 +7,7 @@ uniform float thresholdL;
 uniform float thresholdH;
 uniform vec3 color;
 
-#define AVG(__rgb) \
-    (__rgb.r + __rgb.g + __rgb.b)/3.0
+#define AVG(__rgb) (__rgb.r + __rgb.g + __rgb.b)/3.0
 
 void main() {
     //vec2 uv = gl_FragCoord.xy / u_TextureSize;

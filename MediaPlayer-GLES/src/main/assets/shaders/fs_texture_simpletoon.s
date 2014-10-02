@@ -5,8 +5,7 @@ uniform sampler2D s_Texture;
 uniform vec2 u_TextureSize;
 const float colors = 4.0;
 
-#define AVG(__rgb) \
-    (__rgb.r + __rgb.g + __rgb.b)/3.0
+#define AVG(__rgb) (__rgb.r + __rgb.g + __rgb.b)/3.0
 
 void main() {
 	vec2 uv = v_TextureCoord;

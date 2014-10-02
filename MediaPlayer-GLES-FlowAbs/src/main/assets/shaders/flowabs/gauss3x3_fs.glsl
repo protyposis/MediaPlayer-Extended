@@ -2,8 +2,7 @@
 uniform sampler2D img;
 uniform vec2 img_size;
 
-#define SRC(__x, __y) \
-    texture2D(img, uv + vec2(__x, __y) / img_size).rgb
+#define SRC(__x, __y) texture2D(img, uv + vec2(__x, __y) / img_size).rgb
 
 void main (void) {
     vec2 uv = gl_FragCoord.xy / img_size;
