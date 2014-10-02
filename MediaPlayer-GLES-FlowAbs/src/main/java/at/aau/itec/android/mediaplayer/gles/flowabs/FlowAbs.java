@@ -60,17 +60,6 @@ public class FlowAbs {
     private OverlayShaderProgram mOverlayShader;
 
     public FlowAbs(int width, int height) {
-        mFramebuffer1 = new Framebuffer(width, height);
-        mFramebuffer2 = new Framebuffer(width, height);
-        mFramebuffer3 = new Framebuffer(width, height);
-        mFramebuffer4 = new Framebuffer(width, height);
-        mFramebuffer5 = new Framebuffer(width, height);
-        mFramebuffer6 = new Framebuffer(width, height);
-        mFramebuffer7 = new Framebuffer(width, height);
-        mFramebuffer8 = new Framebuffer(width, height);
-
-        mNoiseTexture = RandomLuminanceNoiseTexture.generate(width, height);
-
         mTexturedRectangle = new TexturedRectangle();
         mTexturedRectangle.reset();
 
@@ -121,6 +110,17 @@ public class FlowAbs {
 
         mOverlayShader = new OverlayShaderProgram();
         mOverlayShader.setTextureSize(width, height);
+
+        mFramebuffer1 = new Framebuffer(width, height);
+        mFramebuffer2 = new Framebuffer(width, height);
+        mFramebuffer3 = new Framebuffer(width, height);
+        mFramebuffer4 = new Framebuffer(width, height);
+        mFramebuffer5 = new Framebuffer(width, height);
+        mFramebuffer6 = new Framebuffer(width, height);
+        mFramebuffer7 = new Framebuffer(width, height);
+        mFramebuffer8 = new Framebuffer(width, height);
+
+        mNoiseTexture = RandomLuminanceNoiseTexture.generate(width, height);
     }
 
     private void copy(Texture2D source, Framebuffer target) {
