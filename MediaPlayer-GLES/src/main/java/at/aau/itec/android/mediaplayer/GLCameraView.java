@@ -145,7 +145,6 @@ public class GLCameraView extends GLTextureView {
                     mVideoWidth = mCamera.getParameters().getPreviewSize().height;
                 }
 
-                // TODO find out why the preview aspect is still distorted
                 getHolder().setFixedSize(mVideoWidth, mVideoHeight);
             }
         } catch (IOException e) {
