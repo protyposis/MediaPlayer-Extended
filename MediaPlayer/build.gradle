@@ -29,7 +29,7 @@ dependencies {
 publishing {
     publications {
         debugSnapshot(MavenPublication) {
-            groupId = packageBase
+            groupId = playerModuleBase
             artifactId = "mediaplayer"
             version = android.defaultConfig.versionName + "-SNAPSHOT"
 

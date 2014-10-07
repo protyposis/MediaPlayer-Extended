@@ -30,7 +30,7 @@ dependencies {
 publishing {
     publications {
         debugSnapshot(MavenPublication) {
-            groupId = packageBase
+            groupId = playerModuleBase
             artifactId = "mediaplayer-gles-qrmarker"
             version = android.defaultConfig.versionName + "-SNAPSHOT"
 

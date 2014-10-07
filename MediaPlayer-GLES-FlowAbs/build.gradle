@@ -30,7 +30,7 @@ dependencies {
 publishing {
     publications {
         debugSnapshot(MavenPublication) {
-            groupId = packageBase
+            groupId = playerModuleBase
             artifactId = "mediaplayer-gles-flowabs"
             version = android.defaultConfig.versionName + "-SNAPSHOT"
 
