@@ -31,6 +31,7 @@ Features
 Changelog
 ---------
 
+* v1.2.3: device compatibility improved, contrast/brightness adjustment filter added
 * v1.2.2: hotfix for display aspect ratio
 * v1.2.1: hotfix for video decoder crash
 * v1.2: audio playback support, improved DASH rate based adaption, support for DASH non-square pixel aspect ratios, keep screen on during playback
