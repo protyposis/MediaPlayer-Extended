@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  ~ Copyright (c) 2014 Mario Guggenberger <mario.guggenberger@aau.at>
+  ~ Copyright (c) 2014 Mario Guggenberger <mg@itec.aau.at>
   ~
   ~ This file is part of ITEC MediaPlayer.
   ~
@@ -16,7 +16,7 @@
   ~
   ~ You should have received a copy of the GNU General Public License
   ~ along with ITEC MediaPlayer.  If not, see <http://www.gnu.org/licenses/>.
--->
+  -->
 <resources>
 
     <string name="app_name">ITEC MediaPlayer Demo</string>
