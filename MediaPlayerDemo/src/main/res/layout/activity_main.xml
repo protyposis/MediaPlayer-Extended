@@ -61,10 +61,19 @@
 
         <View style="@style/Divider"/>
 
+        <TextView
+            style="@style/Feature.Description"
+            android:text="@string/openvideo_description"/>
+
         <Button
             android:id="@+id/videoselect"
             style="@style/Feature.Button"
-            android:text="@string/openvideo"/>
+            android:text="@string/openvideo_pick"/>
+
+        <Button
+            android:id="@+id/videoselect2"
+            style="@style/Feature.Button"
+            android:text="@string/openvideo_type"/>
 
         <TextView
             android:id="@+id/videouri"

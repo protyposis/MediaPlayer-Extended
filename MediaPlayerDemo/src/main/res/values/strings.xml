@@ -16,8 +16,7 @@
   ~
   ~ You should have received a copy of the GNU General Public License
   ~ along with ITEC MediaPlayer.  If not, see <http://www.gnu.org/licenses/>.
-  -->
-
+-->
 <resources>
 
     <string name="app_name">ITEC MediaPlayer Demo</string>
@@ -40,7 +39,6 @@
     <string name="description_headline">Welcome to the ITEC MediaPlayer Library Showcase!</string>
     <string name="description_text">This technical demo shows the key features of the library in a very simple app and serves as a reference on how to use the components in Java code. This app is not intended to be used as a video player application by end users. The library sources and a detailed description are available at the following link:</string>
     <string name="library_url">http://github.com/protyposis/ITEC-MediaPlayer</string>
-    <string name="openvideo">Press here to select a video from the Android file picker or open a video file or DASH MPD from any other app (e.g. the web browser).</string>
     <string name="uri_missing">no URI selected</string>
     <string name="feature_videoview">VideoView</string>
     <string name="feautre_videoview_description">VideoView replaces the VideoView of the Android API.</string>
@@ -60,5 +58,9 @@
     <string name="feature_sidebyside_seektest_description">A side by side comparison of the available seek modes.</string>
     <string name="title_activity_side_by_side_seektest">VideoView SeekMode Comparison</string>
     <string name="zoom_pan_info">Zoom and pan the picture with touch gestures, double tap to reset the viewport.</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="openvideo_description">Open a video file or DASH MPD from any app (e.g. the web browser), or select one of these options:</string>
+    <string name="openvideo_pick">Pick a file</string>
+    <string name="openvideo_type">Paste or type URL</string>
 
 </resources>

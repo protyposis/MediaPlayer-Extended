@@ -41,13 +41,14 @@ import java.util.Map;
 import at.aau.itec.android.mediaplayer.MediaSource;
 import at.aau.itec.android.mediaplayer.dash.DashSource;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements VideoURIInputDialogFragment.OnVideoURISelectedListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private static final int REQUEST_LOAD_VIDEO = 1;
 
     private Button mVideoSelectButton;
+    private Button mVideoSelect2Button;
     private Button mVideoViewButton;
     private Button mGLVideoViewButton;
     private Button mGLCameraViewButton;
@@ -70,6 +71,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         mVideoSelectButton = (Button) findViewById(R.id.videoselect);
+        mVideoSelect2Button = (Button) findViewById(R.id.videoselect2);
         mVideoViewButton = (Button) findViewById(R.id.videoview);
         mGLVideoViewButton = (Button) findViewById(R.id.glvideoview);
         mGLCameraViewButton = (Button) findViewById(R.id.glcameraview);
@@ -92,6 +94,13 @@ public class MainActivity extends Activity {
                 intent.setType("video/*");
                 startActivityForResult(intent, REQUEST_LOAD_VIDEO);
             }
+        });
+        mVideoSelect2Button.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    VideoURIInputDialogFragment dialog = new VideoURIInputDialogFragment();
+                    dialog.show(getFragmentManager(), null);
+                }
         });
 
         mVideoViewButton.setOnClickListener(new View.OnClickListener() {
@@ -181,6 +190,11 @@ public class MainActivity extends Activity {
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    @Override
+    public void onVideoURISelected(Uri uri) {
+        updateUri(uri);
     }
 
     @Override
