@@ -1,4 +1,18 @@
+buildscript {
+    repositories {
+        maven { url 'https://maven.fabric.io/repo' }
+    }
+
+    dependencies {
+        classpath 'io.fabric.tools:gradle:1.+'
+    }
+}
+
 apply plugin: 'com.android.application'
+
+repositories {
+    maven { url 'https://maven.fabric.io/repo' }
+}
 
 android {
     compileSdkVersion 19
@@ -10,6 +24,7 @@ android {
         targetSdkVersion 19
         versionCode 1
         versionName '1.0'
+        buildConfigField "boolean", "CRASHLYTICS_CONFIGURED", "${isChrashlyticsConfigured()}"
     }
 
     signingConfigs {
@@ -45,7 +60,19 @@ dependencies {
     compile project(':MediaPlayer-GLES')
     compile project(':MediaPlayer-GLES-FlowAbs')
     compile project(':MediaPlayer-GLES-QrMarker')
+    compile('com.crashlytics.sdk.android:crashlytics:2.0.1@aar') {
+        transitive = true;
+    }
 }
+
 ext.isLibrary = false
 apply from: "../gitversioning.gradle"
 apply from: "signingconfig.gradle"
+
+if(isChrashlyticsConfigured()) {
+    apply plugin: 'io.fabric'
+}
+
+def isChrashlyticsConfigured() {
+    return file("crashlytics.properties").exists()
+}

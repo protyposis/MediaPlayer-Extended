@@ -1,0 +1,4 @@
+#This is an example crashlytics.properties file. Rename this file to crashlytics.properties and fill in the API secret and key.
+#Contains API Secret used to validate your application. Commit to internal source control; avoid making secret public.
+apiSecret=your_api_secret
+apiKey=your_api_key
