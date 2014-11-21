@@ -31,6 +31,7 @@ Features
 Changelog
 ---------
 
+* v1.2.4: demo app enhanced with option to type/paste url and Crashlytics exception reporting
 * v1.2.3: device compatibility improved, contrast/brightness adjustment filter added
 * v1.2.2: hotfix for display aspect ratio
 * v1.2.1: hotfix for video decoder crash
@@ -156,10 +157,10 @@ Device specific:
 * MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because shaders contain dynamic loops
 
 Tested and confirmed working on
-LG Nexus 4 (Android 4.4.4. Adreno 320),
-LG Nexus 5 (Android 4.4.4, Adreno 330),
+LG Nexus 4 (Android 4.4.4, Adreno 320),
+LG Nexus 5 (Android 4.4.4/5.0, Adreno 330),
 ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs),
-ASUS Nexus 7 2013 (Android 4.4.4, Adreno 320),
+ASUS Nexus 7 2013 (Android 4.4.4/5.0, Adreno 320),
 ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs),
 Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP).
 
@@ -187,5 +188,5 @@ These URLs have been tested and definitely work in the demo app:
 License
 -------
 
-Copyright (C) 2014 Mario Guggenberger, Institute of Information Technology, Alpen-Adria-Universität Klagenfurt <mario.guggenberger@aau.at>. 
+Copyright (C) 2014 Mario Guggenberger, Institute of Information Technology, Alpen-Adria-Universität Klagenfurt <mg@itec.aau.at>.
 This project is released under the terms of the GNU General Public License. See `LICENSE` for details.
