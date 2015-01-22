@@ -38,17 +38,19 @@ android {
             versionNameSuffix "-debug"
         }
         release {
-            runProguard false
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }
 
     applicationVariants.all { variant ->
-        if(variant.name == android.buildTypes.release.name) {
-            def file = variant.outputFile
-            def fileName = file.name.replace(".apk", "-" + defaultConfig.versionCode + "-" + defaultConfig.versionName + ".apk")
-            variant.outputFile = new File(file.parent, fileName)
+        variant.outputs.each { output ->
+            if (variant.name == android.buildTypes.release.name) {
+                def file = output.outputFile
+                def fileName = file.name.replace(".apk", "-" + defaultConfig.versionCode + "-" + defaultConfig.versionName + ".apk")
+                output.outputFile = new File(file.parent, fileName)
+            }
         }
     }
 }

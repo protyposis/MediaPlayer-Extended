@@ -56,8 +56,10 @@ android {
       * dynamically at execution time and cannot be accessed at configuration time. */
     (project.isLibrary ? libraryVariants : applicationVariants).all { variant ->
         //if(variant.name.equalsIgnoreCase('release')) {
-        variant.processManifest.doFirst {
-            checkForGit()
+        variant.outputs.each { output ->
+            output.processManifest.doFirst {
+                checkForGit()
+            }
         }
         //}
     }
