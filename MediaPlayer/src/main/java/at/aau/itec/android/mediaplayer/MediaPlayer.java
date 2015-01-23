@@ -509,6 +509,7 @@ public class MediaPlayer {
                     }
                     lastPTS = mVideoInfo.presentationTimeUs;
                     int res = mVideoCodec.dequeueOutputBuffer(mVideoInfo, mTimeOutUs);
+                    mVideoOutputEos = res >= 0 && (mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
                     if (res >= 0) {
                         int outputBufIndex = res;
                         boolean render = true;
@@ -517,6 +518,13 @@ public class MediaPlayer {
                         //Log.d(TAG, "pts=" + info.presentationTimeUs);
 
                         if (mSeeking) {
+                            if(mVideoOutputEos) {
+                                /* When the end of stream is reached while seeking, the seek target
+                                 * time is set to the last frame's PTS, else the seek skips the last
+                                 * frame which then does not get rendered, and it might end up in a
+                                 * loop trying to reach the unreachable target time. */
+                                mSeekTargetTime = mVideoInfo.presentationTimeUs;
+                            }
                             /* NOTE
                              * This code seeks one frame too far, except if the seek time equals the
                              * frame PTS:
@@ -558,10 +566,10 @@ public class MediaPlayer {
                                 if(mSeekMode == SeekMode.EXACT && presentationTimeMs > seekTargetTimeMs) {
                                     /* If the current frame's PTS it after the seek target time, we're
                                      * one frame too far into the stream. This is because we do not know
-                                     * the frame rate of the video and therefore can't device for a frame
+                                     * the frame rate of the video and therefore can't decide for a frame
                                      * if its interval covers the seek target time of if there's already
                                      * another frame coming. We know after the next frame has been
-                                     * decoded though if we're too fat into the stream, and if so, and if
+                                     * decoded though if we're too far into the stream, and if so, and if
                                      * EXACT mode is desired, we need to take the previous frame's PTS
                                      * and repeat the seek with that PTS to arrive at the desired frame.
                                      */
@@ -670,9 +678,8 @@ public class MediaPlayer {
                                     MEDIA_INFO_VIDEO_RENDERING_START, 0));
                         }
 
-                        if ((mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        if (mVideoOutputEos) {
                             Log.d(TAG, "EOS video output");
-                            mVideoOutputEos = true;
                             mEventHandler.sendEmptyMessage(MEDIA_PLAYBACK_COMPLETE);
 
                             /* When playback reached the end of the stream and the last frame is
@@ -849,8 +856,9 @@ public class MediaPlayer {
             boolean result = false;
             if(mAudioCodec != null) {
                 if (videoOnly) {
-                /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
-                    while (mVideoExtractor.getSampleTrackIndex() != mVideoTrackIndex && !mVideoInputEos) {
+                    /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
+                    int trackIndex;
+                    while ((trackIndex = mVideoExtractor.getSampleTrackIndex()) != -1 && trackIndex != mVideoTrackIndex && !mVideoInputEos) {
                         mVideoExtractor.advance();
                     }
                 } else {
