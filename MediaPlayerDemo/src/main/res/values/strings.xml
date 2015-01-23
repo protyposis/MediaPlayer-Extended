@@ -23,6 +23,7 @@
     <string name="action_settings">Settings</string>
     <string name="action_seekcurrentposition">Seek offset test: to current position</string>
     <string name="action_seekcurrentpositionplus1ms">Seek offset test: to current position + 1ms</string>
+    <string name="action_seektoend">Seek to end test</string>
     <string name="action_getcurrentposition">Toast current position</string>
     <string name="title_activity_side_by_side">Android VideoView vs. ITEC VideoView</string>
     <string name="title_activity_videoview">VideoView Demo</string>

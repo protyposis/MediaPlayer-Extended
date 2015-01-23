@@ -39,6 +39,9 @@
     <item android:id="@+id/action_seekcurrentpositionplus1ms"
         android:title="@string/action_seekcurrentpositionplus1ms" />
 
+    <item android:id="@+id/action_seektoend"
+        android:title="@string/action_seektoend" />
+
     <item android:id="@+id/action_getcurrentposition"
         android:title="@string/action_getcurrentposition" />
 

@@ -149,6 +149,10 @@ public class VideoViewActivity extends Activity {
             mVideoView.pause();
             mVideoView.seekTo(mVideoView.getCurrentPosition()+1);
             return true;
+        } else if(id == R.id.action_seektoend) {
+            mVideoView.pause();
+            mVideoView.seekTo(mVideoView.getDuration());
+            return true;
         } else if(id == R.id.action_getcurrentposition) {
             Toast.makeText(this, "current position: " + mVideoView.getCurrentPosition(), Toast.LENGTH_SHORT).show();
             return true;

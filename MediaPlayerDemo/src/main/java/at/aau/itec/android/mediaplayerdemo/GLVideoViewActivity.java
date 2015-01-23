@@ -123,6 +123,10 @@ public class GLVideoViewActivity extends Activity {
             mGLVideoView.pause();
             mGLVideoView.seekTo(mGLVideoView.getCurrentPosition()+1);
             return true;
+        } else if(id == R.id.action_seektoend) {
+            mGLVideoView.pause();
+            mGLVideoView.seekTo(mGLVideoView.getDuration());
+            return true;
         } else if(id == R.id.action_getcurrentposition) {
             Toast.makeText(this, "current position: " + mGLVideoView.getCurrentPosition(), Toast.LENGTH_SHORT).show();
             return true;
