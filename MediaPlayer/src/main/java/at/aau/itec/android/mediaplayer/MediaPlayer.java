@@ -752,28 +752,33 @@ public class MediaPlayer {
                 ByteBuffer inputBuffer = mVideoCodecInputBuffers[inputBufIndex];
                 int sampleSize = mVideoExtractor.readSampleData(inputBuffer, 0);
                 long presentationTimeUs = 0;
-                if (sampleSize < 0) {
-                    Log.d(TAG, "EOS video input");
-                    mVideoInputEos = true;
-                    sampleSize = 0;
-                } else if(sampleSize == 0) {
+
+                if(sampleSize == 0) {
                     if(mVideoExtractor.getCachedDuration() == 0) {
                         mBuffering = true;
                         mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                                 MEDIA_INFO_BUFFERING_START, 0));
                     }
                 } else {
-                    presentationTimeUs = mVideoExtractor.getSampleTime();
-                    sampleQueued = true;
-                }
-                mVideoCodec.queueInputBuffer(
-                        inputBufIndex,
-                        0,
-                        sampleSize,
-                        presentationTimeUs,
-                        mVideoInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
-                if (!mVideoInputEos) {
-                    mVideoExtractor.advance();
+                    if (sampleSize < 0) {
+                        Log.d(TAG, "EOS video input");
+                        mVideoInputEos = true;
+                        sampleSize = 0;
+                    } else {
+                        presentationTimeUs = mVideoExtractor.getSampleTime();
+                        sampleQueued = true;
+                    }
+
+                    mVideoCodec.queueInputBuffer(
+                            inputBufIndex,
+                            0,
+                            sampleSize,
+                            presentationTimeUs,
+                            mVideoInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
+
+                    if (!mVideoInputEos) {
+                        mVideoExtractor.advance();
+                    }
                 }
             }
             return sampleQueued;
@@ -1148,7 +1153,7 @@ public class MediaPlayer {
                     }
                     return;
                 case MEDIA_BUFFERING_UPDATE:
-                    Log.d(TAG, "onBufferingUpdate");
+                    //Log.d(TAG, "onBufferingUpdate");
                     if (mOnBufferingUpdateListener != null)
                         mOnBufferingUpdateListener.onBufferingUpdate(MediaPlayer.this, msg.arg1);
                     mBufferPercentage = msg.arg1;

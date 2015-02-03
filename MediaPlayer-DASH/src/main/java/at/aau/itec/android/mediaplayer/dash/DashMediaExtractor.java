@@ -182,7 +182,17 @@ class DashMediaExtractor extends MediaExtractor {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
             if(switchToNextSegment()) {
-                return super.readSampleData(byteBuf, offset);
+                /* If the representation switches during this read call, we cannot continue reading
+                 * data from the next segment, because the video codec needs to reinitialize before.
+                 * Else, some data is first fed into the decoder and then it is reinitialized, which
+                 * results in skipped (sync) frames and artefacts.
+                 * By returning 0, the decoder has time to check if the representation has changed,
+                 * reconfigure itself and then issue another read. */
+                if(mRepresentationSwitched) {
+                    return 0;
+                } else {
+                    return super.readSampleData(byteBuf, offset);
+                }
             }
         }
         return size;
@@ -259,6 +269,11 @@ class DashMediaExtractor extends MediaExtractor {
         mUsedCache.evictAll();
     }
 
+    /**
+     * Informs the caller if the representation has changed, and resets the flag. This means, it
+     * returns true only once (the first time) after the representation has changed.
+     * @return true if the representation has changed between the previous and current call, else false
+     */
     @Override
     public boolean hasTrackFormatChanged() {
         if(mRepresentationSwitched) {
