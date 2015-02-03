@@ -22,8 +22,8 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile project(':MediaPlayer')
-    compile 'com.squareup.okio:okio:1.0.1'
-    compile "com.squareup.okhttp:okhttp:2.0.0"
+    compile 'com.squareup.okio:okio:1.2.0'
+    compile "com.squareup.okhttp:okhttp:2.2.0"
     compile "com.googlecode.mp4parser:isoparser:1.0.3.11-DASHFIX"
 }
 
