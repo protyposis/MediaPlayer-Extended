@@ -38,6 +38,7 @@ import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
+import com.squareup.okhttp.internal.http.OkHeaders;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -511,7 +512,17 @@ class DashMediaExtractor extends MediaExtractor {
                 try {
                     long startTime = SystemClock.elapsedRealtime();
                     byte[] segmentData = response.body().bytes();
-                    mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, mSegment, segmentData.length, SystemClock.elapsedRealtime() - startTime);
+
+                    /* The time it takes to send the request header to the server until the response
+                     * headers arrive. Can be custom implemented through an Interceptor too, in case
+                     * this should ever fail in the future. */
+                    long headerTime = Long.parseLong(response.header(OkHeaders.RECEIVED_MILLIS)) - Long.parseLong(response.header(OkHeaders.SENT_MILLIS));
+
+                    /* The time it takes to read the result body, which is the actual segment data.
+                     * The sum of this time together with the header time is the total segment download time. */
+                    long payloadTime = SystemClock.elapsedRealtime() - startTime;
+
+                    mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, mSegment, segmentData.length, headerTime + payloadTime);
                     CachedSegment cachedSegment = handleSegment(segmentData, mSegment);
                     mFutureCacheRequests.remove(mSegment);
                     mFutureCache.put(mSegment, cachedSegment);
