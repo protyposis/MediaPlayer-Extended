@@ -112,6 +112,7 @@ public class GLVideoView extends GLTextureView implements
             mPlayer = new MediaPlayer();
             mPlayer.setSurface(mVideoSurface);
             mPlayer.setOnPreparedListener(mPreparedListener);
+            mPlayer.setOnVideoSizeChangedListener(mVideoSizeChangedListener);
             mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
             mPlayer.setOnCompletionListener(mCompletionListener);
             mPlayer.setOnInfoListener(mInfoListener);
@@ -238,19 +239,25 @@ public class GLVideoView extends GLTextureView implements
             new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mp) {
-            mVideoWidth = mp.getVideoWidth();
-            mVideoHeight = mp.getVideoHeight();
+            mVideoSizeChangedListener.onVideoSizeChanged(mp, mp.getVideoWidth(), mp.getVideoHeight());
+
+            if(mOnPreparedListener != null) {
+                mOnPreparedListener.onPrepared(mp);
+            }
+        }
+    };
+
+    private MediaPlayer.OnVideoSizeChangedListener mVideoSizeChangedListener =
+            new MediaPlayer.OnVideoSizeChangedListener() {
+        @Override
+        public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
+            mVideoWidth = width;
+            mVideoHeight = height;
 
             if (mVideoWidth != 0 && mVideoHeight != 0) {
                 // this is necessary, else onMeasure doesn't have an effect
                 getHolder().setFixedSize(mVideoWidth, mVideoHeight);
             }
-
-            if(mOnPreparedListener != null) {
-                mOnPreparedListener.onPrepared(mp);
-            }
-
-            //setTextureResolution(mVideoWidth, mVideoHeight);
         }
     };
 
