@@ -58,16 +58,10 @@ public class GLVideoView extends GLTextureView implements
 
     public GLVideoView(Context context) {
         super(context);
-        init();
     }
 
     public GLVideoView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init();
-    }
-
-    private void init() {
-        //setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY); // TODO enable for video playback to avoid unnecessary rendering of frames, and call requestRender() when a new frame is available
     }
 
     public void setVideoSource(MediaSource source) {
