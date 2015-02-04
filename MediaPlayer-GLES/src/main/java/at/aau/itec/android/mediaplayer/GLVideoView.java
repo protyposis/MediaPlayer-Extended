@@ -237,9 +237,9 @@ public class GLVideoView extends GLTextureView implements
     private MediaPlayer.OnPreparedListener mPreparedListener =
             new MediaPlayer.OnPreparedListener() {
         @Override
-        public void onPrepared(MediaPlayer vp) {
-            mVideoWidth = vp.getVideoWidth();
-            mVideoHeight = vp.getVideoHeight();
+        public void onPrepared(MediaPlayer mp) {
+            mVideoWidth = mp.getVideoWidth();
+            mVideoHeight = mp.getVideoHeight();
 
             if (mVideoWidth != 0 && mVideoHeight != 0) {
                 // this is necessary, else onMeasure doesn't have an effect
@@ -247,7 +247,7 @@ public class GLVideoView extends GLTextureView implements
             }
 
             if(mOnPreparedListener != null) {
-                mOnPreparedListener.onPrepared(vp);
+                mOnPreparedListener.onPrepared(mp);
             }
 
             //setTextureResolution(mVideoWidth, mVideoHeight);
@@ -257,9 +257,9 @@ public class GLVideoView extends GLTextureView implements
     private MediaPlayer.OnSeekCompleteListener mSeekCompleteListener =
             new MediaPlayer.OnSeekCompleteListener() {
         @Override
-        public void onSeekComplete(MediaPlayer vp) {
+        public void onSeekComplete(MediaPlayer mp) {
             if(mOnSeekCompleteListener != null) {
-                mOnSeekCompleteListener.onSeekComplete(vp);
+                mOnSeekCompleteListener.onSeekComplete(mp);
             }
         }
     };
@@ -267,9 +267,9 @@ public class GLVideoView extends GLTextureView implements
     private MediaPlayer.OnCompletionListener mCompletionListener =
             new MediaPlayer.OnCompletionListener() {
         @Override
-        public void onCompletion(MediaPlayer vp) {
+        public void onCompletion(MediaPlayer mp) {
             if(mOnCompletionListener != null) {
-                mOnCompletionListener.onCompletion(vp);
+                mOnCompletionListener.onCompletion(mp);
             }
             stayAwake(false);
         }
