@@ -82,8 +82,8 @@ class DashMediaExtractor extends MediaExtractor {
     private List<Integer> mSelectedTracks;
     private OkHttpClient mHttpClient;
     private Map<Representation, ByteString> mInitSegments;
-    private Map<Segment, CachedSegment> mFutureCache; // the cache for upcoming segments
-    private Map<Segment, Call> mFutureCacheRequests; // requests for upcoming segments
+    private Map<Integer, CachedSegment> mFutureCache; // the cache for upcoming segments
+    private Map<Integer, Call> mFutureCacheRequests; // requests for upcoming segments
     private SegmentLruCache mUsedCache; // cache for used or in use segments
     private boolean mMp4Mode;
     private DefaultMp4Builder mMp4Builder;
@@ -106,8 +106,8 @@ class DashMediaExtractor extends MediaExtractor {
             mCurrentSegment = -1;
             mSelectedTracks = new ArrayList<Integer>();
             mInitSegments = new HashMap<Representation, ByteString>(mAdaptationSet.representations.size());
-            mFutureCache = new HashMap<Segment, CachedSegment>();
-            mFutureCacheRequests = new HashMap<Segment, Call>();
+            mFutureCache = new HashMap<Integer, CachedSegment>();
+            mFutureCacheRequests = new HashMap<Integer, Call>();
             mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
             mMp4Mode = mRepresentation.mimeType.equals("video/mp4") || mRepresentation.initSegment.media.endsWith(".mp4");
             if (mMp4Mode) {
@@ -203,7 +203,7 @@ class DashMediaExtractor extends MediaExtractor {
      * and thus the current is the last one.
      */
     private boolean switchToNextSegment() {
-        Segment next = getNextSegment();
+        Integer next = getNextSegment();
         if(next != null) {
             /* Since it seems that an extractor cannot be reused by setting another data source,
              * a new instance needs to be created and used. */
@@ -257,7 +257,7 @@ class DashMediaExtractor extends MediaExtractor {
             invalidateFutureCache();
             renewExtractor();
             mCurrentSegment = targetSegmentIndex;
-            initOnWorkerThread(mRepresentation.segments.get(targetSegmentIndex));
+            initOnWorkerThread(targetSegmentIndex);
             super.seekTo(timeUs - mSegmentPTSOffsetUs, mode);
         }
     }
@@ -283,7 +283,7 @@ class DashMediaExtractor extends MediaExtractor {
         return false;
     }
 
-    private void initOnWorkerThread(final Segment segment) {
+    private void initOnWorkerThread(final Integer segmentNr) {
         /* Avoid NetworkOnMainThreadException by running network request in worker thread
          * but blocking until finished to avoid complicated and in this case unnecessary
          * async handling.
@@ -292,7 +292,7 @@ class DashMediaExtractor extends MediaExtractor {
             new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(Void... params) {
-                    init(segment);
+                    init(segmentNr);
                     return null;
                 }
             }.execute().get();
@@ -303,17 +303,17 @@ class DashMediaExtractor extends MediaExtractor {
         }
     }
 
-    private void init(Segment segment) {
+    private void init(Integer segmentNr) {
         try {
             // Check for segment in caches, and execute blocking download if missing
             // First, check the future cache, without a seek the chance is much higher of finding it there
-            CachedSegment cachedSegment = mFutureCache.remove(segment);
+            CachedSegment cachedSegment = mFutureCache.remove(segmentNr);
             if(cachedSegment == null) {
                 // Second, check the already used cache, maybe we had a seek and the segment is already there
-                cachedSegment = mUsedCache.get(segment);
+                cachedSegment = mUsedCache.get(segmentNr);
                 if(cachedSegment == null) {
                     // Third, check if a request is already active
-                    Call call = mFutureCacheRequests.get(segment);
+                    Call call = mFutureCacheRequests.get(segmentNr);
                     /* TODO add synchronization to the whole caching code
                      * E.g., a request could have finished between this mFutureCacheRequests call and
                      * the previous mUsedCache call, whose result is missed.
@@ -321,8 +321,8 @@ class DashMediaExtractor extends MediaExtractor {
                     if(call != null) {
                         synchronized (mFutureCache) {
                             try {
-                                while((cachedSegment = mFutureCache.remove(segment)) == null) {
-                                    Log.d(TAG, "waiting for request to finish " + segment);
+                                while((cachedSegment = mFutureCache.remove(segmentNr)) == null) {
+                                    Log.d(TAG, "waiting for request to finish " + segmentNr);
                                     mFutureCache.wait();
                                 }
                             } catch (InterruptedException e) {
@@ -331,12 +331,12 @@ class DashMediaExtractor extends MediaExtractor {
                         }
                     } else {
                         // Fourth, least and worst alternative: blocking download of segment
-                        cachedSegment = downloadFile(segment);
+                        cachedSegment = downloadFile(segmentNr);
                     }
                 }
             }
 
-            mUsedCache.put(segment, cachedSegment);
+            mUsedCache.put(segmentNr, cachedSegment);
             mSegmentPTSOffsetUs = cachedSegment.ptsOffsetUs;
             setDataSource(cachedSegment.file.getPath());
 
@@ -347,35 +347,36 @@ class DashMediaExtractor extends MediaExtractor {
                 }
             }
 
-            fillFutureCache();
+            // Switch representation
+            if(cachedSegment.representation != mRepresentation) {
+                //invalidateFutureCache();
+                Log.d(TAG, "representation switch: " + mRepresentation + " -> " + cachedSegment.representation);
+                mRepresentationSwitched = true;
+                mRepresentation = cachedSegment.representation;
+            }
+
+            // Switch future caching to the currently best representation
+            Representation recommendedRepresentation = mAdaptationLogic.getRecommendedRepresentation(mAdaptationSet);
+            fillFutureCache(recommendedRepresentation);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private Segment getNextSegment() {
+    private Integer getNextSegment() {
         mCurrentSegment++;
 
         if(mRepresentation.segments.size() <= mCurrentSegment) {
             return null; // EOS, no more segment
         }
 
-        // Switch to the currently best representation
-        Representation recommendedRepresentation = mAdaptationLogic.getRecommendedRepresentation(mAdaptationSet);
-        if(recommendedRepresentation != mRepresentation) {
-            invalidateFutureCache();
-            Log.d(TAG, "representation switch: " + mRepresentation + " -> " + recommendedRepresentation);
-            mRepresentationSwitched = true;
-            mRepresentation = recommendedRepresentation;
-        }
-
-        return mRepresentation.segments.get(mCurrentSegment);
+        return mCurrentSegment;
     }
 
     /**
      * Blocking download of a segment.
      */
-    private CachedSegment downloadFile(Segment segment) throws IOException {
+    private CachedSegment downloadFile(Integer segmentNr) throws IOException {
         // At the first call, download the initialization segments, and reuse them later.
         if(mInitSegments.isEmpty()) {
             for(Representation representation : mAdaptationSet.representations) {
@@ -384,18 +385,20 @@ class DashMediaExtractor extends MediaExtractor {
                 Response response = mHttpClient.newCall(request).execute();
                 ByteString segmentData = response.body().source().readByteString();
                 mInitSegments.put(representation, segmentData);
-                mAdaptationLogic.reportSegmentDownload(mAdaptationSet, representation, segment, segmentData.size(), SystemClock.elapsedRealtime() - startTime);
+                mAdaptationLogic.reportSegmentDownload(mAdaptationSet, representation, representation.segments.get(segmentNr), segmentData.size(), SystemClock.elapsedRealtime() - startTime);
                 Log.d(TAG, "init " + representation.initSegment.toString());
             }
         }
 
+        Segment segment = mRepresentation.segments.get(segmentNr);
         Request request = buildSegmentRequest(segment);
         long startTime = SystemClock.elapsedRealtime();
         Response response = mHttpClient.newCall(request).execute();
         byte[] segmentData = response.body().bytes();
         mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, segment, segmentData.length, SystemClock.elapsedRealtime() - startTime);
-        CachedSegment cachedSegment = handleSegment(segmentData, segment);
-        Log.d(TAG, "sync dl " + segment.toString() + " -> " + cachedSegment.file.getPath());
+        CachedSegment cachedSegment = new CachedSegment(segmentNr, segment, mRepresentation);
+        handleSegment(segmentData, cachedSegment);
+        Log.d(TAG, "sync dl " + segmentNr + " " + segment.toString() + " -> " + cachedSegment.file.getPath());
 
         return cachedSegment;
     }
@@ -403,15 +406,16 @@ class DashMediaExtractor extends MediaExtractor {
     /**
      * Makes async segment requests to fill the cache up to a certain level.
      */
-    private void fillFutureCache() {
+    private void fillFutureCache(Representation representation) {
         int segmentsToBuffer = (int)Math.ceil((double)mMinBufferTimeUs / mRepresentation.segmentDurationUs);
         for(int i = mCurrentSegment + 1; i < Math.min(mCurrentSegment + 1 + segmentsToBuffer, mRepresentation.segments.size()); i++) {
-            Segment segment = mRepresentation.segments.get(i);
-            if(!mFutureCache.containsKey(segment) && !mFutureCacheRequests.containsKey(segment)) {
+            if(!mFutureCache.containsKey(i) && !mFutureCacheRequests.containsKey(i)) {
+                Segment segment = representation.segments.get(i);
                 Request request = buildSegmentRequest(segment);
                 Call call = mHttpClient.newCall(request);
-                call.enqueue(new SegmentDownloadCallback(segment));
-                mFutureCacheRequests.put(segment, call);
+                CachedSegment cachedSegment = new CachedSegment(i, segment, representation); // segment could be accessed through representation by i
+                call.enqueue(new SegmentDownloadCallback(cachedSegment));
+                mFutureCacheRequests.put(i, call);
             }
         }
     }
@@ -421,14 +425,14 @@ class DashMediaExtractor extends MediaExtractor {
      */
     private void invalidateFutureCache() {
         // cancel and remove requests
-        for(Segment segment : mFutureCacheRequests.keySet()) {
-            mFutureCacheRequests.get(segment).cancel();
+        for(Integer segmentNumber : mFutureCacheRequests.keySet()) {
+            mFutureCacheRequests.get(segmentNumber).cancel();
         }
         mFutureCacheRequests.clear();
 
         // delete and remove files
-        for(Segment segment : mFutureCache.keySet()) {
-            mFutureCache.get(segment).file.delete();
+        for(Integer segmentNumber : mFutureCache.keySet()) {
+            mFutureCache.get(segmentNumber).file.delete();
         }
         mFutureCache.clear();
     }
@@ -469,8 +473,8 @@ class DashMediaExtractor extends MediaExtractor {
     /**
      * Handles a segment by merging it with the init segment into a temporary file.
      */
-    private CachedSegment handleSegment(byte[] mediaSegment, Segment segment) throws IOException {
-        File segmentFile = getTempFile(mContext, "seg" + mRepresentation.id + "-" + segment.range + "");
+    private void handleSegment(byte[] mediaSegment, CachedSegment cachedSegment) throws IOException {
+        File segmentFile = getTempFile(mContext, "seg" + cachedSegment.representation.id + "-" + cachedSegment.segment.range + "");
         long segmentPTSOffsetUs = 0;
 
         if(mMp4Mode) {
@@ -478,7 +482,7 @@ class DashMediaExtractor extends MediaExtractor {
              * does not support the fragmented MP4 container format. Each segment therefore needs
              * to be joined with the init fragment and converted to a "conventional" unfragmented MP4
              * container file. */
-            IsoFile baseIsoFile = new IsoFile(new MemoryDataSourceImpl(mInitSegments.get(mRepresentation).toByteArray())); // TODO do not go ByteString -> byte[] -> ByteBuffer, find more efficient way (custom mp4parser DataSource maybe?)
+            IsoFile baseIsoFile = new IsoFile(new MemoryDataSourceImpl(mInitSegments.get(cachedSegment.representation).toByteArray())); // TODO do not go ByteString -> byte[] -> ByteBuffer, find more efficient way (custom mp4parser DataSource maybe?)
             IsoFile fragment = new IsoFile(new MemoryDataSourceImpl(mediaSegment));
 
             /* The PTS in a converted MP4 always start at 0, so we read the offset from the segment
@@ -496,25 +500,26 @@ class DashMediaExtractor extends MediaExtractor {
         } else {
             // merge init and media segments into file
             BufferedSink segmentFileSink = Okio.buffer(Okio.sink(segmentFile));
-            segmentFileSink.write(mInitSegments.get(mRepresentation));
+            segmentFileSink.write(mInitSegments.get(cachedSegment.representation));
             segmentFileSink.write(mediaSegment);
             segmentFileSink.close();
         }
 
-        return new CachedSegment(segmentFile, segmentPTSOffsetUs);
+        cachedSegment.file = segmentFile;
+        cachedSegment.ptsOffsetUs = segmentPTSOffsetUs;
     }
 
     private class SegmentDownloadCallback implements Callback {
 
-        private Segment mSegment;
+        private CachedSegment mCachedSegment;
 
-        private SegmentDownloadCallback(Segment segment) {
-            mSegment = segment;
+        private SegmentDownloadCallback(CachedSegment cachedSegment) {
+            mCachedSegment = cachedSegment;
         }
 
         @Override
         public void onFailure(Request request, IOException e) {
-            if(mFutureCacheRequests.remove(mSegment) != null) {
+            if(mFutureCacheRequests.remove(mCachedSegment) != null) {
                 Log.e(TAG, "onFailure", e);
             } else {
                 // If a call is not in the requests map anymore, it has been cancelled and didn't really fail
@@ -537,11 +542,11 @@ class DashMediaExtractor extends MediaExtractor {
                      * The sum of this time together with the header time is the total segment download time. */
                     long payloadTime = SystemClock.elapsedRealtime() - startTime;
 
-                    mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, mSegment, segmentData.length, headerTime + payloadTime);
-                    CachedSegment cachedSegment = handleSegment(segmentData, mSegment);
-                    mFutureCacheRequests.remove(mSegment);
-                    mFutureCache.put(mSegment, cachedSegment);
-                    Log.d(TAG, "async cached " + mSegment.toString() + " -> " + cachedSegment.file.getPath());
+                    mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mCachedSegment.representation, mCachedSegment.segment, segmentData.length, headerTime + payloadTime);
+                    handleSegment(segmentData, mCachedSegment);
+                    mFutureCacheRequests.remove(mCachedSegment.number);
+                    mFutureCache.put(mCachedSegment.number, mCachedSegment);
+                    Log.d(TAG, "async cached " + mCachedSegment.number + " " + mCachedSegment.segment.toString() + " -> " + mCachedSegment.file.getPath());
                     synchronized (mFutureCache) {
                         mFutureCache.notify();
                     }

@@ -24,14 +24,14 @@ import android.util.LruCache;
 /**
  * Created by maguggen on 28.08.2014.
  */
-class SegmentLruCache extends LruCache<Segment, CachedSegment> {
+class SegmentLruCache extends LruCache<Integer, CachedSegment> {
 
     public SegmentLruCache(int maxBytes) {
         super(maxBytes);
     }
 
     @Override
-    protected void entryRemoved(boolean evicted, Segment key, CachedSegment oldValue, CachedSegment newValue) {
+    protected void entryRemoved(boolean evicted, Integer key, CachedSegment oldValue, CachedSegment newValue) {
         if(newValue != null && newValue == oldValue) {
             // When a value replaces itself, do nothing
             return;
@@ -42,7 +42,7 @@ class SegmentLruCache extends LruCache<Segment, CachedSegment> {
     }
 
     @Override
-    protected int sizeOf(Segment key, CachedSegment value) {
+    protected int sizeOf(Integer key, CachedSegment value) {
         // Return the size of the file
         // NOTE an alternative would be to operate on time units and return the length of the segment
         return (int)value.file.length();

@@ -25,11 +25,15 @@ import java.io.File;
  * Created by Mario on 03.09.2014.
  */
 class CachedSegment {
+    int number;
+    Segment segment;
+    Representation representation;
     File file;
     long ptsOffsetUs;
 
-    CachedSegment(File file, long ptsOffsetUs) {
-        this.file = file;
-        this.ptsOffsetUs = ptsOffsetUs;
+    CachedSegment(int number, Segment segment, Representation representation) {
+        this.number = number;
+        this.segment = segment;
+        this.representation = representation;
     }
 }
