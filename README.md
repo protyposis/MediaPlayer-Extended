@@ -7,8 +7,8 @@ The ITEC MediaPlayer library is a video player library for Android supporting
 exact seeking to frames, playback speed adjustment, shader support, zooming & panning, frame extraction
 and a lot of media source protocols and formats, including DASH. It strives to be an API-compatible 
 direct replacement for the Android `MediaPlayer` and `VideoView` components and builds upon the Android 
-`MediaExtractor` and `MediaCodec` components. It is very lightweight, easy to use, and makes native 
-code / NDK fiddling unnecessary. 
+`MediaExtractor` and `MediaCodec` API components. It is very lightweight, easy to use, makes native 
+code / NDK fiddling unnecessary, and works from Android 4.1 up.
 
 A [demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) is available on the Google Play Store.
 
@@ -31,13 +31,14 @@ Features
 Changelog
 ---------
 
+* __v1.3__: DASH playback / representation switching greatly improved (no more screen resizing, skipped frames, and video artefacts, better segment caching), external dependencies updated, various other improvements
 * v1.2.4: demo app enhanced with option to type/paste url and Crashlytics exception reporting
 * v1.2.3: device compatibility improved, contrast/brightness adjustment filter added
 * v1.2.2: hotfix for display aspect ratio
 * v1.2.1: hotfix for video decoder crash
-* v1.2: audio playback support, improved DASH rate based adaption, support for DASH non-square pixel aspect ratios, keep screen on during playback
+* __v1.2__: audio playback support, improved DASH rate based adaption, support for DASH non-square pixel aspect ratios, keep screen on during playback
 * v1.0.1: do not catch up lost time after a lag, error handling for invalid URLs improved
-* v1.0: initial release
+* __v1.0__: initial release
 
 
 Requirements
@@ -71,20 +72,12 @@ install the modules to your local Maven repository and add one or more of the fo
     }
     
     dependencies {
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.2-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.2-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.2-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.2-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.2-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.3-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.3-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.3-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.3-SNAPSHOT'
     }
-
-The DASH module needs a recent version of the isoparser library from the 
-[mp4parser](https://github.com/sannies/mp4parser) project. You can install it to your local maven 
-repository by checking out my [dashfix branch](https://github.com/protyposis/mp4parser/tree/dashfix) and 
-running `mvn install` in the `isoparser` subdirectory. Alternatively, you can check out a more recent 
-version from the original repository where the dashfix is already merged 
-([55e0e6c04f](https://github.com/sannies/mp4parser/tree/55e0e6c04f61b39d2af248daa2c3cde914ccc15f) and up), 
-but then you need to adjust the version in the gradle dependency.
 
 
 ### Components ###
@@ -146,6 +139,7 @@ Known Issues
 
 * MediaPlayer: audio can get out of sync on slow devices
 * MediaPlayer-DASH: MPD parser is basic and only tested with the test MPDs listed below
+* MediaPlayer-DASH: representation switching can result in a short lag (this only happens with mp4/avc videos because reinitializing Android's MediaCodec takes some time; a workaround would be to prepare a second codec with a second surface, and switch them at the right frame; webm works flawlessly)
 * MediaPlayer-GLES-FlowAbs: The OrientationAlignedBilateralFilterShaderProgram / FlowAbsBilateralFilterEffect does 
   not work correctly for some unknown reason and is deactivated in the FlowAbs effect, making it 
   slightly less fancy
@@ -156,13 +150,15 @@ Device specific:
 * MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off on the Nexus 7 2013 back camera (seems to be a system bug)
 * MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because shaders contain dynamic loops
 
-Tested and confirmed working on
-LG Nexus 4 (Android 4.4.4, Adreno 320),
-LG Nexus 5 (Android 4.4.4/5.0, Adreno 330),
-ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs),
-ASUS Nexus 7 2013 (Android 4.4.4/5.0, Adreno 320),
-ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs),
-Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP).
+Tested and confirmed working on:
+
+* LG Nexus 4 (Android 4.4.4/5.0/5.0.1, Adreno 320)
+* LG Nexus 5 (Android 4.4.4/5.0/5.0.1, Adreno 330)
+* ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs)
+* ASUS Nexus 7 2013 (Android 4.4.4/5.0/5.0.2, Adreno 320)
+* ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs)
+* Samsung Galaxy SII (Android 4.1.2, ARM Mali-400MP4)
+* Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP4)
 
 
 Online Streaming Test URLs
