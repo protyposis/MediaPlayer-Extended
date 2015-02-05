@@ -31,6 +31,7 @@ import android.widget.MediaController;
 import android.widget.Toast;
 
 import at.aau.itec.android.mediaplayer.MediaPlayer;
+import at.aau.itec.android.mediaplayer.MediaSource;
 import at.aau.itec.android.mediaplayer.VideoView;
 
 public class VideoViewActivity extends Activity {
@@ -68,7 +69,7 @@ public class VideoViewActivity extends Activity {
     private void initPlayer(Uri uri, final int position, final boolean playback) {
         mVideoUri = uri;
         getActionBar().setSubtitle(mVideoUri+"");
-        mVideoView.setVideoSource(Utils.uriToMediaSource(this, uri));
+
         mVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer vp) {
@@ -112,6 +113,18 @@ public class VideoViewActivity extends Activity {
             @Override
             public void onBufferingUpdate(MediaPlayer mp, int percent) {
                 Log.d(TAG, "onBufferingUpdate " + percent + "%");
+            }
+        });
+
+        Utils.uriToMediaSourceAsync(this, uri, new Utils.MediaSourceAsyncCallbackHandler() {
+            @Override
+            public void onMediaSourceLoaded(MediaSource mediaSource) {
+                mVideoView.setVideoSource(mediaSource);
+            }
+
+            @Override
+            public void onException(Exception e) {
+                Log.e(TAG, "error loading video", e);
             }
         });
     }

@@ -23,6 +23,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
@@ -61,6 +62,16 @@ public class Utils {
             source = new UriSource(context, uri);
         }
         return source;
+    }
+
+    public static void uriToMediaSourceAsync(final Context context, Uri uri, MediaSourceAsyncCallbackHandler callback) {
+        LoadMediaSourceAsyncTask loadingTask = new LoadMediaSourceAsyncTask(context, callback);
+
+        try {
+            loadingTask.execute(uri).get();
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
     }
 
     public static void setActionBarSubtitleEllipsizeMiddle(Activity activity) {
@@ -103,5 +114,43 @@ public class Utils {
                 Toast.makeText(mContext, "Failed saving frame", Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    private static class LoadMediaSourceAsyncTask extends AsyncTask<Uri, Void, MediaSource> {
+
+        private Context mContext;
+        private MediaSourceAsyncCallbackHandler mCallbackHandler;
+        private MediaSource mMediaSource;
+        private Exception mException;
+
+        public LoadMediaSourceAsyncTask(Context context, MediaSourceAsyncCallbackHandler callbackHandler) {
+            mContext = context;
+            mCallbackHandler = callbackHandler;
+        }
+
+        @Override
+        protected MediaSource doInBackground(Uri... params) {
+            try {
+                mMediaSource = Utils.uriToMediaSource(mContext, params[0]);
+                return mMediaSource;
+            } catch (Exception e) {
+                mException = e;
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(MediaSource mediaSource) {
+            if(mException != null) {
+                mCallbackHandler.onException(mException);
+            } else {
+                mCallbackHandler.onMediaSourceLoaded(mMediaSource);
+            }
+        }
+    }
+
+    public static interface MediaSourceAsyncCallbackHandler {
+        void onMediaSourceLoaded(MediaSource mediaSource);
+        void onException(Exception e);
     }
 }

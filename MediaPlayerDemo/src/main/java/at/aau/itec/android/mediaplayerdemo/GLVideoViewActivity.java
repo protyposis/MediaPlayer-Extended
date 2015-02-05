@@ -22,6 +22,7 @@ package at.aau.itec.android.mediaplayerdemo;
 import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -30,6 +31,7 @@ import android.widget.Toast;
 
 import at.aau.itec.android.mediaplayer.GLVideoView;
 import at.aau.itec.android.mediaplayer.MediaPlayer;
+import at.aau.itec.android.mediaplayer.MediaSource;
 
 
 public class GLVideoViewActivity extends Activity {
@@ -73,7 +75,7 @@ public class GLVideoViewActivity extends Activity {
     private void initPlayer(Uri uri, final int position, final boolean playback) {
         mVideoUri = uri;
         getActionBar().setSubtitle(mVideoUri+"");
-        mGLVideoView.setVideoSource(Utils.uriToMediaSource(this, uri));
+
         mGLVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer vp) {
@@ -86,6 +88,18 @@ public class GLVideoViewActivity extends Activity {
             }
         });
         mGLVideoView.setOnFrameCapturedCallback(new Utils.OnFrameCapturedCallback(this, "glvideoview"));
+
+        Utils.uriToMediaSourceAsync(this, uri, new Utils.MediaSourceAsyncCallbackHandler() {
+            @Override
+            public void onMediaSourceLoaded(MediaSource mediaSource) {
+                mGLVideoView.setVideoSource(mediaSource);
+            }
+
+            @Override
+            public void onException(Exception e) {
+                Log.e(TAG, "error loading video", e);
+            }
+        });
     }
 
     @Override

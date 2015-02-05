@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 import at.aau.itec.android.mediaplayer.MediaPlayer;
+import at.aau.itec.android.mediaplayer.MediaSource;
 import at.aau.itec.android.mediaplayer.VideoView;
 
 
@@ -126,7 +127,18 @@ public class SideBySideSeekTestActivity extends Activity {
                     }
                 }
             });
-            videoView.setVideoSource(Utils.uriToMediaSource(SideBySideSeekTestActivity.this, uri));
+
+            Utils.uriToMediaSourceAsync(this, uri, new Utils.MediaSourceAsyncCallbackHandler() {
+                @Override
+                public void onMediaSourceLoaded(MediaSource mediaSource) {
+                    videoView.setVideoSource(mediaSource);
+                }
+
+                @Override
+                public void onException(Exception e) {
+                    Log.e(TAG, "error loading video", e);
+                }
+            });
         }
     }
 

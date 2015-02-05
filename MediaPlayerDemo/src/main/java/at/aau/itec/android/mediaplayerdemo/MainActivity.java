@@ -203,7 +203,7 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
         super.onSaveInstanceState(outState);
     }
 
-    private void updateUri(Uri uri) {
+    private void updateUri(final Uri uri) {
         if(uri == null) {
             mVideoUriText.setText(getString(R.string.uri_missing));
 
@@ -212,21 +212,33 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
             mSideBySideButton.setEnabled(false);
             mSideBySideSeekTestButton.setEnabled(false);
         } else {
-            String text = uri.toString();
-            MediaSource mediaSource = Utils.uriToMediaSource(this, uri);
-            if(mediaSource instanceof DashSource) {
-                text = "DASH: " + text;
-            }
-            mVideoUriText.setText(text);
-            mVideoUri = uri;
+            updateUri(null); // disable buttons
+            mVideoUriText.setText("Loading...");
 
-            mVideoViewButton.setEnabled(true);
-            mGLVideoViewButton.setEnabled(true);
-            mSideBySideButton.setEnabled(!(mediaSource instanceof DashSource));
-            mSideBySideSeekTestButton.setEnabled(true);
+            Utils.uriToMediaSourceAsync(MainActivity.this, uri, new Utils.MediaSourceAsyncCallbackHandler() {
+                @Override
+                public void onMediaSourceLoaded(MediaSource mediaSource) {
+                    String text = uri.toString();
+                    if (mediaSource instanceof DashSource) {
+                        text = "DASH: " + text;
+                    }
+                    mVideoUriText.setText(text);
+                    mVideoUri = uri;
 
-            PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
-                    .edit().putString("lastUri", uri.toString()).commit();
+                    mVideoViewButton.setEnabled(true);
+                    mGLVideoViewButton.setEnabled(true);
+                    mSideBySideButton.setEnabled(!(mediaSource instanceof DashSource));
+                    mSideBySideSeekTestButton.setEnabled(true);
+
+                    PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                            .edit().putString("lastUri", uri.toString()).commit();
+                }
+
+                @Override
+                public void onException(Exception e) {
+                    mVideoUriText.setText("Error loading video" + (e.getMessage() != null ? ": " + e.getMessage() : " :("));
+                }
+            });
         }
     }
 

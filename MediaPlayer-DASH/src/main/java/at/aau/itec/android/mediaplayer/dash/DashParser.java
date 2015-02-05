@@ -19,7 +19,6 @@
 
 package at.aau.itec.android.mediaplayer.dash;
 
-import android.os.AsyncTask;
 import android.util.Log;
 import android.util.Xml;
 
@@ -33,7 +32,6 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,28 +46,14 @@ public class DashParser {
 
     private static Pattern PATTERN_TIME = Pattern.compile("PT((\\d+)H)?((\\d+)M)?((\\d+(\\.\\d+)?)S)");
 
-    public MPD parse(final UriSource source) {
-        MPD mpd = null;
-
-        // Execute MPD download and parsing in an asnyc task to avoid NetworkOnMainThreadException
-        try {
-            mpd = new AsyncTask<Void, Void, MPD>() {
-
-                @Override
-                protected MPD doInBackground(Void... params) {
-                    return parseInternal(source);
-                }
-            }.execute().get();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-
-        return mpd;
-    }
-
-    private MPD parseInternal(UriSource source) {
+    /**
+     * Parses an MPD XML file. This needs to be executed off the main thread, else a
+     * NetworkOnMainThreadException gets thrown.
+     * @param source the URl of an MPD XML file
+     * @return a MPD object
+     * @throws android.os.NetworkOnMainThreadException if executed on the main thread
+     */
+    public MPD parse(UriSource source) {
         MPD mpd = null;
         OkHttpClient httpClient = new OkHttpClient();
 
@@ -92,8 +76,10 @@ public class DashParser {
             mpd = parse(response.body().byteStream());
         } catch (IOException e) {
             Log.e(TAG, "error downloading the MPD", e);
+            throw new RuntimeException("error downloading the MPD", e);
         } catch (XmlPullParserException e) {
             Log.e(TAG, "error parsing the MPD", e);
+            throw new RuntimeException("error parsing the MPD", e);
         }
 
         return mpd;
