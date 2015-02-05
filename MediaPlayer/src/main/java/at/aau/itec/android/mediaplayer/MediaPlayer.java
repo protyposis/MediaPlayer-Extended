@@ -626,7 +626,7 @@ public class MediaPlayer {
                                 mAudioPlayback.setPlaybackSpeed((float)mTimeBase.getSpeed());
                             }
 
-                            Log.d(TAG, "waiting time = " + waitingTime);
+                            //Log.d(TAG, "waiting time = " + waitingTime);
 
                             /* If this is an online stream, notify the client of the buffer fill level.
                              * The cached duration from the MediaExtractor returns the cached time from
@@ -680,7 +680,7 @@ public class MediaPlayer {
                                     break;
                                 }
                             }
-                            Log.d(TAG, "audio stream decode time " + (SystemClock.elapsedRealtime() - start));
+                            //Log.d(TAG, "audio stream decode time " + (SystemClock.elapsedRealtime() - start));
                         }
 
                         if (preparing) {
