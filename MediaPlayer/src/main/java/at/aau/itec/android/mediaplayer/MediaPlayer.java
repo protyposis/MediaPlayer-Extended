@@ -380,6 +380,13 @@ public class MediaPlayer {
         private boolean mBuffering;
         private AudioPlayback mAudioPlayback;
 
+        /* Flag notifying that the representation has changed in the extractor and needs to be passed
+         * to the decoder. This transition state is only needed in playback, not when seeking. */
+        private boolean mRepresentationChanging;
+        /* Flag notifying that the decoder has changed to a new representation, post-actions need to
+         * be carried out. */
+        private boolean mRepresentationChanged;
+
         private PlaybackThread() {
             super(TAG);
             mPaused = true;
@@ -437,28 +444,6 @@ public class MediaPlayer {
                 long lastPTS = 0;
 
                 while (!mVideoOutputEos) {
-                    if(mVideoExtractor.hasTrackFormatChanged()) {
-                        // Get new video format and restart video codec with this format
-                        mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
-
-                        mVideoCodec.stop();
-                        mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
-                        mVideoCodec.start();
-                        mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
-                        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-
-                        if(mAudioFormat != null) {
-                            mAudioCodec.stop();
-                            mAudioCodec.configure(mAudioFormat, null, null, 0);
-                            mAudioCodec.start();
-                            mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
-                            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-                        }
-
-                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                                getVideoWidth(), getVideoHeight()));
-                    }
-
                     if (mPaused && !mSeekPrepare && !mSeeking && !preparing) {
                         if(mAudioPlayback != null) mAudioPlayback.pause();
                         synchronized (this) {
@@ -484,7 +469,13 @@ public class MediaPlayer {
                         Log.d(TAG, "extractor new position:     " + mVideoExtractor.getSampleTime());
 
                         mVideoCodec.flush();
-                        if(mAudioFormat != null) mAudioCodec.flush();
+                        if (mAudioFormat != null) mAudioCodec.flush();
+
+                        if(mVideoExtractor.hasTrackFormatChanged()) {
+                            reinitCodecs();
+                            mRepresentationChanged = true;
+                        }
+
                         mSeekPrepare = false;
                         mSeeking = true;
 
@@ -504,13 +495,26 @@ public class MediaPlayer {
                         }
                     }
 
-                    if (!mVideoInputEos) {
+                    if (!mVideoInputEos && !mRepresentationChanging) {
                         queueMediaSampleToCodec(mSeeking);
                     }
                     lastPTS = mVideoInfo.presentationTimeUs;
                     int res = mVideoCodec.dequeueOutputBuffer(mVideoInfo, mTimeOutUs);
                     mVideoOutputEos = res >= 0 && (mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
-                    if (res >= 0) {
+
+                    if(mVideoOutputEos && mRepresentationChanging) {
+                        /* Here, the video output is not really at its end, it's just the end of the
+                         * current representation segment, and the codec needs to be reconfigured to
+                         * the following representation format to carry on.
+                         */
+
+                        reinitCodecs();
+
+                        mVideoOutputEos = false;
+                        mRepresentationChanging = false;
+                        mRepresentationChanged = true;
+                    }
+                    else if (res >= 0) {
                         int outputBufIndex = res;
                         boolean render = true;
                         //ByteBuffer buf = codecOutputBuffers[outputBufIndex];
@@ -656,6 +660,14 @@ public class MediaPlayer {
                                     MEDIA_INFO_BUFFERING_END, 0));
                         }
 
+                        /* Defer the video size changed message until the first frame of the new
+                         * size is being rendered. */
+                        if(mRepresentationChanged && render) {
+                            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
+                                    getVideoWidth(), getVideoHeight()));
+                            mRepresentationChanged = false;
+                        }
+
                         mVideoCodec.releaseOutputBuffer(outputBufIndex, render); // render picture
 
                         if (mAudioExtractor != null && !mSeeking && !mPaused) {
@@ -758,6 +770,14 @@ public class MediaPlayer {
                         mBuffering = true;
                         mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                                 MEDIA_INFO_BUFFERING_START, 0));
+                    }
+                    if(mVideoExtractor.hasTrackFormatChanged()) {
+                        /* The mRepresentationChanging flag and BUFFER_FLAG_END_OF_STREAM flag together
+                         * notify the decoding loop that the representation changes and the codec
+                         * needs to be reconfigured.
+                         */
+                        mRepresentationChanging = true;
+                        mVideoCodec.queueInputBuffer(inputBufIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     }
                 } else {
                     if (sampleSize < 0) {
@@ -927,6 +947,32 @@ public class MediaPlayer {
             Log.d(TAG, "exact fastseek match:       " + mVideoExtractor.getSampleTime());
 
             return targetTime;
+        }
+
+        /**
+         * Restarts the codecs with a new format, e.g. after a representation change.
+         */
+        private void reinitCodecs() {
+            long t1 = SystemClock.elapsedRealtime();
+
+            // Get new video format and restart video codec with this format
+            mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
+
+            mVideoCodec.stop();
+            mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
+            mVideoCodec.start();
+            mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
+            mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+
+            if(mAudioFormat != null) {
+                mAudioCodec.stop();
+                mAudioCodec.configure(mAudioFormat, null, null, 0);
+                mAudioCodec.start();
+                mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
+                mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+            }
+
+            Log.d(TAG, "reinitCodecs " + (SystemClock.elapsedRealtime() - t1) + "ms");
         }
     }
 
