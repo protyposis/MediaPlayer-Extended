@@ -86,9 +86,9 @@
     <orderEntry type="jdk" jdkName="Android API 19 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="aspectjrt-1.8.2" level="project" />
-    <orderEntry type="library" exported="" name="isoparser-1.0.3.11-DASHFIX" level="project" />
     <orderEntry type="library" exported="" name="okio-1.2.0" level="project" />
     <orderEntry type="library" exported="" name="okhttp-2.2.0" level="project" />
+    <orderEntry type="library" exported="" name="isoparser-1.0.5.4" level="project" />
     <orderEntry type="module" module-name="MediaPlayer" exported="" />
   </component>
 </module>

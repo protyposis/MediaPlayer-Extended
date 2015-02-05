@@ -24,7 +24,7 @@ dependencies {
     compile project(':MediaPlayer')
     compile 'com.squareup.okio:okio:1.2.0'
     compile "com.squareup.okhttp:okhttp:2.2.0"
-    compile "com.googlecode.mp4parser:isoparser:1.0.3.11-DASHFIX"
+    compile "com.googlecode.mp4parser:isoparser:1.0.5.4"
 }
 
 /* this serves to publish a snapshot to the local maven repository, so the artifact can be used
