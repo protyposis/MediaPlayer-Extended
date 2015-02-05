@@ -315,17 +315,21 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mp) {
-            mVideoWidth = mp.getVideoWidth();
-            mVideoHeight = mp.getVideoHeight();
-
-            if (mVideoWidth != 0 && mVideoHeight != 0) {
-                // this is necessary, else onMeasure doesn't have an effect
-                getHolder().setFixedSize(mVideoWidth, mVideoHeight);
-            }
+            mSizeChangedListener.onVideoSizeChanged(mp, mp.getVideoWidth(), mp.getVideoHeight());
 
             if(mOnPreparedListener != null) {
                 mOnPreparedListener.onPrepared(mp);
             }
+        }
+    };
+
+    private MediaPlayer.OnVideoSizeChangedListener mSizeChangedListener =
+            new MediaPlayer.OnVideoSizeChangedListener() {
+        @Override
+        public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
+            mVideoWidth = width;
+            mVideoHeight = height;
+            requestLayout();
         }
     };
 
@@ -345,19 +349,6 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         public void onCompletion(MediaPlayer mp) {
             if(mOnCompletionListener != null) {
                 mOnCompletionListener.onCompletion(mp);
-            }
-        }
-    };
-
-    private MediaPlayer.OnVideoSizeChangedListener mSizeChangedListener =
-            new MediaPlayer.OnVideoSizeChangedListener() {
-        @Override
-        public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-            mVideoWidth = mp.getVideoWidth();
-            mVideoHeight = mp.getVideoHeight();
-            if (mVideoWidth != 0 && mVideoHeight != 0) {
-                getHolder().setFixedSize(mVideoWidth, mVideoHeight);
-                requestLayout();
             }
         }
     };
