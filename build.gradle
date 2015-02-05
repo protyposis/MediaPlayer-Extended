@@ -23,6 +23,6 @@ ext {
     packageBase = 'at.aau.itec.android'
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
-    libraryVersionCode = 2
-    libraryVersionName = "1.2"
+    libraryVersionCode = 3
+    libraryVersionName = "1.3"
 }
