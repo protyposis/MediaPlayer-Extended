@@ -28,9 +28,25 @@ import java.io.IOException;
 public class FileSource implements MediaSource {
 
     private File mFile;
+    private File mAudioFile;
 
+    /**
+     * Creates a media source from a local file. The file can be either video-only, or multiplexed
+     * audio/video.
+     * @param file the av source file
+     */
     public FileSource(File file) {
         mFile = file;
+    }
+
+    /**
+     * Creates a media source from separate local video and audio files.
+     * @param videoFile the video source file
+     * @param audioFile the audio source file
+     */
+    public FileSource(File videoFile, File audioFile) {
+        mFile = videoFile;
+        mAudioFile = audioFile;
     }
 
     @Override
@@ -42,6 +58,14 @@ public class FileSource implements MediaSource {
 
     @Override
     public MediaExtractor getAudioExtractor() throws IOException {
-        return null; // FileSource does only handle single (multiplexed) files
+        if(mAudioFile != null) {
+            // In case of a separate audio file, return an audio extractor
+            MediaExtractor mediaExtractor = new MediaExtractor();
+            mediaExtractor.setDataSource(mAudioFile.getAbsolutePath());
+            return mediaExtractor;
+        }
+        // We do not need a separate audio extractor when only a single (multiplexed) file
+        // is passed into this class.
+        return null;
     }
 }
