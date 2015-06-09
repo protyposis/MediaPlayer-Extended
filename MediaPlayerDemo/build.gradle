@@ -53,6 +53,11 @@ android {
             }
         }
     }
+
+    lintOptions {
+        // Lint fix for Okio: https://github.com/square/okio/issues/58
+        warning 'InvalidPackage'
+    }
 }
 
 dependencies {

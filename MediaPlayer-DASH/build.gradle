@@ -17,6 +17,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    lintOptions {
+        // Lint fix for Okio: https://github.com/square/okio/issues/58
+        warning 'InvalidPackage'
+    }
 }
 
 dependencies {
