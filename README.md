@@ -31,7 +31,7 @@ Features
 Changelog
 ---------
 
-* __v1.3.1__: support for separate audio and video sources added, lint error fix
+* v1.3.1: support for separate audio and video sources added, lint error fix
 * __v1.3__: DASH playback / representation switching greatly improved (no more screen resizing, skipped frames, and video artefacts, better segment caching), external dependencies updated, various other improvements
 * v1.2.4: demo app enhanced with option to type/paste url and Crashlytics exception reporting
 * v1.2.3: device compatibility improved, contrast/brightness adjustment filter added
