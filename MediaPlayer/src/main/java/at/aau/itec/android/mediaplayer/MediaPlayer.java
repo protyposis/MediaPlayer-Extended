@@ -734,6 +734,8 @@ public class MediaPlayer {
                 interrupt();
             } catch (IllegalStateException e) {
                 Log.e(TAG, "decoder error, too many instances?", e);
+            } catch(IOException e){
+                Log.e(TAG, "decoder error, codec can not be created", e);
             }
 
             if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
