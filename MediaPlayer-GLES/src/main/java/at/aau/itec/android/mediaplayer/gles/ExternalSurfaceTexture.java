@@ -25,7 +25,7 @@ import android.opengl.GLES20;
 import android.view.Surface;
 
 /**
- * @author Mario Guggenberger <mg@protyposis.net>
+ * @author Mario Guggenberger
  */
 public class ExternalSurfaceTexture extends Texture implements SurfaceTexture.OnFrameAvailableListener {
 

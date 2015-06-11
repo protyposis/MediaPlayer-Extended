@@ -102,7 +102,7 @@ abstract class QrMarkerShaderProgram extends TextureShaderProgram {
     }
 
     /**
-     * This method is a VERY UGLY HACK. The QRMarker shaders have their sampler width & height
+     * This method is a VERY UGLY HACK. The QRMarker shaders have their sampler width and height
      * hardcoded as constants, and for the preprocessFragmentShaderCode function to replace them
      * correctly, they need to be known in advance. Passing them in the constructor does not work
      * because the super() call, which in turn calls preprocessFragmentShaderCode, needs to come

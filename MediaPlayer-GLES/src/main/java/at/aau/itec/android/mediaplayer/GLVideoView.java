@@ -93,7 +93,7 @@ public class GLVideoView extends GLTextureView implements
     }
 
     /**
-     * @see android.widget.VideoView#setVideoURI(android.net.Uri, Map<String, String>)
+     * @see android.widget.VideoView#setVideoURI(android.net.Uri, Map)
      * @param uri
      * @param headers
      * @deprecated only for compatibility with Android API

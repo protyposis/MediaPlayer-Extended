@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * @author Mario Guggenberger <mg@protyposis.net>
+ * @author Mario Guggenberger
  */
 public class GLCameraView extends GLTextureView {
 
