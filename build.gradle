@@ -26,8 +26,8 @@ ext {
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
     libraryVersionCode = 3
-    libraryVersionName = '1.3.0'
-    librarySnaphotEnabled = false
+    libraryVersionName = '1.3.1'
+    librarySnaphotEnabled = true
 
     libraryVersionString = {
         return libraryVersionName + (librarySnaphotEnabled ? '-SNAPSHOT' : '')
