@@ -1,5 +1,5 @@
 apply plugin: 'com.android.library'
-apply plugin: 'maven-publish'
+apply plugin: 'bintray-release'
 
 android {
     compileSdkVersion 22
@@ -24,23 +24,14 @@ dependencies {
     compile project(':MediaPlayer-GLES')
 }
 
-/* this serves to publish a snapshot to the local maven repository, so the artifact can be used
- * in other projects. */
-publishing {
-    publications {
-        debugSnapshot(MavenPublication) {
-            groupId = playerModuleBase
-            artifactId = "mediaplayer-gles-flowabs"
-            version = android.defaultConfig.versionName + "-SNAPSHOT"
-
-            artifact file('build/outputs/aar/MediaPlayer-GLES-FlowAbs-debug.aar')
-        }
-    }
-}
-model {
-    tasks.publishDebugSnapshotPublicationToMavenLocal {
-        dependsOn assembleDebug
-    }
+publish {
+    userOrg = 'protyposis'
+    groupId = playerModuleBase
+    artifactId = 'mediaplayer-gles-flowabs'
+    publishVersion = libraryVersionString()
+    description = 'ITEC MediaPlayer GLES FlowAbs shaders'
+    website = 'https://github.com/protyposis/ITEC-MediaPlayer'
+    licences = ['GPL-3.0']
 }
 
 //apply from: "../gitversioning.gradle"

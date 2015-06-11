@@ -1,5 +1,5 @@
 apply plugin: 'com.android.library'
-apply plugin: 'maven-publish'
+apply plugin: 'bintray-release'
 
 android {
     compileSdkVersion 22
@@ -31,43 +31,14 @@ dependencies {
     compile "com.googlecode.mp4parser:isoparser:1.0.5.4"
 }
 
-/* this serves to publish a snapshot to the local maven repository, so the artifact can be used
- * in other projects. */
-publishing {
-    publications {
-        debugSnapshot(MavenPublication) {
-            groupId = playerModuleBase
-            artifactId = "mediaplayer-dash"
-            version = android.defaultConfig.versionName + "-SNAPSHOT"
-
-            artifact file('build/outputs/aar/MediaPlayer-DASH-debug.aar')
-
-            /* The maven-publish plugin fails to automatically pick up (Android) dependencies,
-             * so they need to be added manually:
-             * http://forums.gradle.org/gradle/topics/using_the_maven_publish_plugin_no_dependencies_in_pom_xml
-             * http://stackoverflow.com/questions/24743562/gradle-not-including-dependencies-in-published-pom-xml
-             */
-            pom.withXml {
-                def dependenciesNode = asNode().appendNode('dependencies')
-
-                //Iterate over the compile dependencies (we don't want the test ones), adding a <dependency> node for each
-                configurations.compile.allDependencies.each {
-                    // only add external dependencies
-                    if (it instanceof ExternalModuleDependency) {
-                        def dependencyNode = dependenciesNode.appendNode('dependency')
-                        dependencyNode.appendNode('groupId', it.group)
-                        dependencyNode.appendNode('artifactId', it.name)
-                        dependencyNode.appendNode('version', it.version)
-                    }
-                }
-            }
-        }
-    }
-}
-model {
-    tasks.publishDebugSnapshotPublicationToMavenLocal {
-        dependsOn assembleDebug
-    }
+publish {
+    userOrg = 'protyposis'
+    groupId = playerModuleBase
+    artifactId = 'mediaplayer-dash'
+    publishVersion = libraryVersionString()
+    description = 'ITEC MediaPlayer DASH extension module'
+    website = 'https://github.com/protyposis/ITEC-MediaPlayer'
+    licences = ['GPL-3.0']
 }
 
 //apply from: "../gitversioning.gradle"

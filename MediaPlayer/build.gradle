@@ -1,5 +1,5 @@
 apply plugin: 'com.android.library'
-apply plugin: 'maven-publish'
+apply plugin: 'bintray-release'
 
 android {
     compileSdkVersion 22
@@ -23,23 +23,14 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 }
 
-/* this serves to publish a snapshot to the local maven repository, so the artifact can be used
- * in other projects. */
-publishing {
-    publications {
-        debugSnapshot(MavenPublication) {
-            groupId = playerModuleBase
-            artifactId = "mediaplayer"
-            version = android.defaultConfig.versionName + "-SNAPSHOT"
-
-            artifact file('build/outputs/aar/MediaPlayer-debug.aar')
-        }
-    }
-}
-model {
-    tasks.publishDebugSnapshotPublicationToMavenLocal {
-        dependsOn assembleDebug
-    }
+publish {
+    userOrg = 'protyposis'
+    groupId = playerModuleBase
+    artifactId = 'mediaplayer'
+    publishVersion = libraryVersionString()
+    description = 'ITEC MediaPlayer core module'
+    website = 'https://github.com/protyposis/ITEC-MediaPlayer'
+    licences = ['GPL-3.0']
 }
 
 //apply from: "../gitversioning.gradle"
