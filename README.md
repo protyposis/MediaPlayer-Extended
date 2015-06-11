@@ -31,6 +31,7 @@ Features
 Changelog
 ---------
 
+* v1.3.2: compile and target SDK updated to 22, added to JCenter repository
 * v1.3.1: support for separate audio and video sources added, lint error fix
 * __v1.3__: DASH playback / representation switching greatly improved (no more screen resizing, skipped frames, and video artefacts, better segment caching), external dependencies updated, various other improvements
 * v1.2.4: demo app enhanced with option to type/paste url and Crashlytics exception reporting
@@ -63,9 +64,33 @@ there are any methods missing, fill free to open an issue on the issue tracker o
 
 ### Gradle ###
 
-To use this library in your own project, check out the repository and either include the required
-gradle modules directly, or run `gradlew publishDebugSnapshotPublicationToMavenLocal` to compile and 
-install the modules to your local Maven repository and add one or more of the following dependencies:
+To use this library in your own project, you can either (1) fetch the modules from the
+JCenter central Maven repository, or checkout the Git repository and (2) install the modules to
+your local Maven repository or (3) include the required gradle modules directly.
+
+#### JCenter repository ####
+
+The [JCenter](https://bintray.com/bintray/jcenter) Maven repository contains release builds of the
+library, usage is similar to any other Maven dependency:
+
+    repositories {
+        ...
+        jcenter()
+    }
+
+    dependencies {
+        ...
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3.2'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.3.2'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.3.2'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.3.2'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.3.2'
+    }
+
+#### Local Maven repository ####
+
+Run `gradlew publishMavenPublicationToMavenLocal` to compile and install the modules to your
+local Maven repository and add one or more of the following dependencies:
 
     repositories {
         ...
@@ -73,11 +98,12 @@ install the modules to your local Maven repository and add one or more of the fo
     }
     
     dependencies {
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.3-SNAPSHOT'
+        ...
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3.2-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.3.2-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.3.2-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.3.2-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.3.2-SNAPSHOT'
     }
 
 
