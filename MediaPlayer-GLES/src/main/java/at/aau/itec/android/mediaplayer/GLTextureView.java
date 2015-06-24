@@ -159,6 +159,7 @@ public class GLTextureView extends GLSurfaceView implements
      * Sets the zoom factor of the texture in the view. 1.0 means no zoom, 2.0 2x zoom, etc.
      */
     public void setZoom(float zoomFactor) {
+        mTotalZoomLevel = zoomFactor;
         mRenderer.setZoomLevel(mTotalZoomLevel);
         requestRender(GLVideoRenderer.RenderRequest.GEOMETRY);
     }
