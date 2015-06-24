@@ -175,7 +175,9 @@ public class GLTextureView extends GLSurfaceView implements
      * @param y
      */
     public void setPan(float x, float y) {
-        mRenderer.setPan(-x, y);
+        mTotalPanX = x;
+        mTotalPanY = y;
+        mRenderer.setPan(-mTotalPanX, mTotalPanY);
         requestRender(GLVideoRenderer.RenderRequest.GEOMETRY);
     }
 
