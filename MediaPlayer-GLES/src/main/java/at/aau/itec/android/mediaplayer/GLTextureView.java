@@ -55,10 +55,10 @@ public class GLTextureView extends GLSurfaceView implements
     private OnEffectInitializedListener mOnEffectInitializedListener;
     private OnFrameCapturedCallback mOnFrameCapturedCallback;
 
-    private float mTotalZoomLevel = 1.0f;
+    private float mZoomLevel = 1.0f;
     private float mZoomSnappingRange = 0.02f;
-    private float mTotalPanX;
-    private float mTotalPanY;
+    private float mPanX;
+    private float mPanY;
     private float mPanSnappingRange = 0.02f;
 
     protected int mVideoWidth;
@@ -98,18 +98,18 @@ public class GLTextureView extends GLSurfaceView implements
                 new ScaleGestureDetector.SimpleOnScaleGestureListener() {
                     @Override
                     public boolean onScale(ScaleGestureDetector detector) {
-                        mTotalZoomLevel *= detector.getScaleFactor();
+                        mZoomLevel *= detector.getScaleFactor();
 
-                        if(LibraryHelper.isBetween(mTotalZoomLevel, 1-mZoomSnappingRange, 1+mZoomSnappingRange)) {
-                            mTotalZoomLevel = 1.0f;
+                        if(LibraryHelper.isBetween(mZoomLevel, 1-mZoomSnappingRange, 1+mZoomSnappingRange)) {
+                            mZoomLevel = 1.0f;
                         }
 
                         // limit zooming to magnification zooms (zoom-ins)
-                        if(mTotalZoomLevel < 1.0f) {
-                            mTotalZoomLevel = 1.0f;
+                        if(mZoomLevel < 1.0f) {
+                            mZoomLevel = 1.0f;
                         }
 
-                        setZoom(mTotalZoomLevel);
+                        setZoom(mZoomLevel);
                         return true;
                     }
                 });
@@ -120,35 +120,35 @@ public class GLTextureView extends GLSurfaceView implements
                     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
                         // divide by zoom level to adjust panning speed to zoomed picture size
                         // multiply by fixed scaling factor to compensate for panning lag
-                        mTotalPanX += distanceX / getWidth() / mTotalZoomLevel * 1.2f;
-                        mTotalPanY += distanceY / getHeight() / mTotalZoomLevel * 1.2f;
+                        mPanX += distanceX / getWidth() / mZoomLevel * 1.2f;
+                        mPanY += distanceY / getHeight() / mZoomLevel * 1.2f;
 
-                        float panSnappingRange = mPanSnappingRange / mTotalZoomLevel;
-                        if(LibraryHelper.isBetween(mTotalPanX, -panSnappingRange, +panSnappingRange)) {
-                            mTotalPanX = 0;
+                        float panSnappingRange = mPanSnappingRange / mZoomLevel;
+                        if(LibraryHelper.isBetween(mPanX, -panSnappingRange, +panSnappingRange)) {
+                            mPanX = 0;
                         }
-                        if(LibraryHelper.isBetween(mTotalPanY, -panSnappingRange, +panSnappingRange)) {
-                            mTotalPanY = 0;
+                        if(LibraryHelper.isBetween(mPanY, -panSnappingRange, +panSnappingRange)) {
+                            mPanY = 0;
                         }
 
                         // limit panning to the texture bounds so it always covers the complete view
-                        float maxPanX = Math.abs((1.0f / mTotalZoomLevel) - 1.0f);
-                        float maxPanY = Math.abs((1.0f / mTotalZoomLevel) - 1.0f);
-                        mTotalPanX = LibraryHelper.clamp(mTotalPanX, -maxPanX, maxPanX);
-                        mTotalPanY = LibraryHelper.clamp(mTotalPanY, -maxPanY, maxPanY);
+                        float maxPanX = Math.abs((1.0f / mZoomLevel) - 1.0f);
+                        float maxPanY = Math.abs((1.0f / mZoomLevel) - 1.0f);
+                        mPanX = LibraryHelper.clamp(mPanX, -maxPanX, maxPanX);
+                        mPanY = LibraryHelper.clamp(mPanY, -maxPanY, maxPanY);
 
-                        setPan(mTotalPanX, mTotalPanY);
+                        setPan(mPanX, mPanY);
                         return true;
                     }
 
                     @Override
                     public boolean onDoubleTap(MotionEvent e) {
-                        mTotalZoomLevel = 1;
-                        mTotalPanX = 0;
-                        mTotalPanY = 0;
+                        mZoomLevel = 1;
+                        mPanX = 0;
+                        mPanY = 0;
 
-                        setZoom(mTotalZoomLevel);
-                        setPan(mTotalPanX, mTotalPanY);
+                        setZoom(mZoomLevel);
+                        setPan(mPanX, mPanY);
 
                         return true;
                     }
@@ -159,13 +159,13 @@ public class GLTextureView extends GLSurfaceView implements
      * Sets the zoom factor of the texture in the view. 1.0 means no zoom, 2.0 2x zoom, etc.
      */
     public void setZoom(float zoomFactor) {
-        mTotalZoomLevel = zoomFactor;
-        mRenderer.setZoomLevel(mTotalZoomLevel);
+        mZoomLevel = zoomFactor;
+        mRenderer.setZoomLevel(mZoomLevel);
         requestRender(GLVideoRenderer.RenderRequest.GEOMETRY);
     }
 
     public float getZoomLevel() {
-        return mTotalZoomLevel;
+        return mZoomLevel;
     }
 
     /**
@@ -175,18 +175,18 @@ public class GLTextureView extends GLSurfaceView implements
      * @param y
      */
     public void setPan(float x, float y) {
-        mTotalPanX = x;
-        mTotalPanY = y;
-        mRenderer.setPan(-mTotalPanX, mTotalPanY);
+        mPanX = x;
+        mPanY = y;
+        mRenderer.setPan(-mPanX, mPanY);
         requestRender(GLVideoRenderer.RenderRequest.GEOMETRY);
     }
 
     public float getPanX() {
-        return mTotalPanX;
+        return mPanX;
     }
 
     public float getPanY() {
-        return mTotalPanY;
+        return mPanY;
     }
 
     /**
