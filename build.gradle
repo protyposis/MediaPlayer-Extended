@@ -26,7 +26,7 @@ ext {
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
     libraryVersionCode = 3
-    libraryVersionName = '1.3.2'
+    libraryVersionName = '1.3.3'
     librarySnaphotEnabled = true
 
     libraryVersionString = {
