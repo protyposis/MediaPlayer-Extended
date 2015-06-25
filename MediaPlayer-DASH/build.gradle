@@ -1,5 +1,5 @@
 apply plugin: 'com.android.library'
-apply plugin: 'bintray-release'
+apply plugin: 'com.novoda.bintray-release'
 
 android {
     compileSdkVersion 22
@@ -36,7 +36,7 @@ publish {
     groupId = playerModuleBase
     artifactId = 'mediaplayer-dash'
     publishVersion = libraryVersionString()
-    description = 'ITEC MediaPlayer DASH extension module'
+    desc = 'ITEC MediaPlayer DASH extension module'
     website = 'https://github.com/protyposis/ITEC-MediaPlayer'
     licences = ['GPL-3.0']
 }
