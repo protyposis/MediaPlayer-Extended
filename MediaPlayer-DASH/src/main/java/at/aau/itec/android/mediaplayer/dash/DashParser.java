@@ -102,7 +102,7 @@ public class DashParser {
             MPD mpd = new MPD();
 
             int type = 0;
-            while((type = parser.nextTag()) >= 0) {
+            while((type = parser.next()) >= 0) {
                 if(type == XmlPullParser.START_TAG) {
                     String tagName = parser.getName();
 
@@ -139,7 +139,7 @@ public class DashParser {
         adaptationSet.mimeType = getAttributeValue(parser, "mimeType");
 
         int type = 0;
-        while((type = parser.nextTag()) >= 0) {
+        while((type = parser.next()) >= 0) {
             if(type == XmlPullParser.START_TAG) {
                 String tagName = parser.getName();
 
@@ -173,7 +173,7 @@ public class DashParser {
         Log.d(TAG, representation.toString());
 
         int type = 0;
-        while((type = parser.nextTag()) >= 0) {
+        while((type = parser.next()) >= 0) {
             String tagName = parser.getName();
 
             if(type == XmlPullParser.START_TAG) {
