@@ -110,10 +110,10 @@ public class DashParser {
                         mpd.mediaPresentationDurationUs = getAttributeValueTime(parser, "mediaPresentationDuration");
                         mpd.minBufferTimeUs = getAttributeValueTime(parser, "minBufferTime");
                     } else if(tagName.equals("BaseURL")) {
-                        baseUrl = Uri.parse(parser.nextText());
+                        baseUrl = extendUrl(baseUrl, parser.nextText());
                         Log.d(TAG, "base url: " + baseUrl);
                     } else if(tagName.equals("AdaptationSet")) {
-                        mpd.adaptationSets.add(readAdaptationSet(mpd, baseUrl.toString(), parser));
+                        mpd.adaptationSets.add(readAdaptationSet(mpd, baseUrl, parser));
                     }
                 } else if(type == XmlPullParser.END_TAG) {
                     String tagName = parser.getName();
@@ -131,7 +131,7 @@ public class DashParser {
         }
     }
 
-    private AdaptationSet readAdaptationSet(MPD mpd, String baseUrl, XmlPullParser parser)
+    private AdaptationSet readAdaptationSet(MPD mpd, Uri baseUrl, XmlPullParser parser)
             throws XmlPullParserException, IOException {
         AdaptationSet adaptationSet = new AdaptationSet();
 
@@ -157,7 +157,7 @@ public class DashParser {
         throw new RuntimeException("invalid state");
     }
 
-    private Representation readRepresentation(MPD mpd, AdaptationSet adaptationSet, String baseUrl, XmlPullParser parser)
+    private Representation readRepresentation(MPD mpd, AdaptationSet adaptationSet, Uri baseUrl, XmlPullParser parser)
             throws XmlPullParserException, IOException {
         Representation representation = new Representation();
 
@@ -179,7 +179,7 @@ public class DashParser {
             if(type == XmlPullParser.START_TAG) {
                 if (tagName.equals("Initialization")) {
                     representation.initSegment = new Segment(
-                            baseUrl + getAttributeValue(parser, "sourceURL"),
+                            extendUrl(baseUrl, getAttributeValue(parser, "sourceURL")).toString(),
                             getAttributeValue(parser, "range"));
                     Log.d(TAG, "Initialization: " + representation.initSegment.toString());
                 } else if(tagName.equals("SegmentList")) {
@@ -188,7 +188,7 @@ public class DashParser {
                     representation.segmentDurationUs = (long)(((double)duration / timescale) * 1000000d);
                 } else if(tagName.equals("SegmentURL")) {
                     representation.segments.add(new Segment(
-                            baseUrl + getAttributeValue(parser, "media"),
+                            extendUrl(baseUrl, getAttributeValue(parser, "media")).toString(),
                             getAttributeValue(parser, "mediaRange")));
                 } else if(tagName.equals("SegmentTemplate")) {
                     long timescale = getAttributeValueLong(parser, "timescale", 1);
@@ -198,16 +198,18 @@ public class DashParser {
                     int numSegments = (int)Math.ceil((double)mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
 
                     // init segments
-                    representation.initSegment = new Segment(baseUrl + getAttributeValue(parser, "initialization"));
+                    representation.initSegment = new Segment(
+                            extendUrl(baseUrl, getAttributeValue(parser, "initialization")).toString());
 
                     // media segments
-                    String mediaUrl = getAttributeValue(parser, "media");
+                    String mediaUrl = extendUrl(baseUrl, getAttributeValue(parser, "media")).toString();
                     for(int i = startNumber; i < startNumber + numSegments; i++) {
-                        representation.segments.add(new Segment(baseUrl + mediaUrl.replace("$Number$", i+"")));
+                        representation.segments.add(new Segment(
+                                extendUrl(baseUrl, mediaUrl.replace("$Number$", i+"")).toString()));
                     }
                 } else if(tagName.equals("BaseURL")) {
-                    String newBaseUrl = parser.nextText();
-                    Log.d(TAG, "new base url: " + newBaseUrl);
+                    baseUrl = extendUrl(baseUrl, parser.nextText());
+                    Log.d(TAG, "new base url: " + baseUrl);
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 if(tagName.equals("Representation")) {
@@ -267,6 +269,19 @@ public class DashParser {
         }
 
         return -1;
+    }
+
+    /**
+     * Extends an URL with an extended path if the extension is relative, or replaces the entire URL
+     * with the extension if it is absolute.
+     */
+    private static Uri extendUrl(Uri url, String urlExtension) {
+        Uri newUrl = Uri.parse(urlExtension);
+
+        if(newUrl.isRelative()) {
+            newUrl = Uri.withAppendedPath(url, urlExtension);
+        }
+        return newUrl;
     }
 
     private static String getAttributeValue(XmlPullParser parser, String name, String defValue) {
