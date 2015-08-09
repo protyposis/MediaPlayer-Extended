@@ -50,6 +50,19 @@ public class DashParser {
     private static Pattern PATTERN_TIME = Pattern.compile("PT((\\d+)H)?((\\d+)M)?((\\d+(\\.\\d+)?)S)");
     private static Pattern PATTERN_TEMPLATE = Pattern.compile("\\$(\\w+)(%0\\d+d)?\\$");
 
+    private static class SegmentTemplate {
+        long presentationTimeOffset;
+        long timescale;
+        String init;
+        String media;
+        long duration;
+        int startNumber;
+
+        long calculateDurationUs() {
+            return (long)(((double)duration / timescale) * 1000000d);
+        }
+    }
+
     /**
      * Parses an MPD XML file. This needs to be executed off the main thread, else a
      * NetworkOnMainThreadException gets thrown.
@@ -141,13 +154,18 @@ public class DashParser {
         adaptationSet.group = getAttributeValueInt(parser, "group");
         adaptationSet.mimeType = getAttributeValue(parser, "mimeType");
 
+        SegmentTemplate segmentTemplate = null;
+
         int type = 0;
         while((type = parser.next()) >= 0) {
             if(type == XmlPullParser.START_TAG) {
                 String tagName = parser.getName();
 
-                if(tagName.equals("Representation")) {
-                    adaptationSet.representations.add(readRepresentation(mpd, adaptationSet, baseUrl, parser));
+                if(tagName.equals("SegmentTemplate")) {
+                    segmentTemplate = readSegmentTemplate(parser, baseUrl);
+                } else if(tagName.equals("Representation")) {
+                    adaptationSet.representations.add(readRepresentation(
+                            mpd, adaptationSet, baseUrl, parser, segmentTemplate));
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 String tagName = parser.getName();
@@ -160,7 +178,8 @@ public class DashParser {
         throw new RuntimeException("invalid state");
     }
 
-    private Representation readRepresentation(MPD mpd, AdaptationSet adaptationSet, Uri baseUrl, XmlPullParser parser)
+    private Representation readRepresentation(MPD mpd, AdaptationSet adaptationSet, Uri baseUrl,
+                                              XmlPullParser parser, SegmentTemplate segmentTemplate)
             throws XmlPullParserException, IOException {
         Representation representation = new Representation();
 
@@ -194,30 +213,33 @@ public class DashParser {
                             extendUrl(baseUrl, getAttributeValue(parser, "media")).toString(),
                             getAttributeValue(parser, "mediaRange")));
                 } else if(tagName.equals("SegmentTemplate")) {
-                    long timescale = getAttributeValueLong(parser, "timescale", 1);
-                    long duration = getAttributeValueLong(parser, "duration");
-                    representation.segmentDurationUs = (long)(((double)duration / timescale) * 1000000d);
-                    int startNumber = getAttributeValueInt(parser, "startNumber");
-                    int numSegments = (int)Math.ceil((double)mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
-
-                    // init segments
-                    representation.initSegment = new Segment(
-                            extendUrl(baseUrl, getAttributeValue(parser, "initialization")).toString());
-
-                    // media segments
-                    String mediaUrl = extendUrl(baseUrl, getAttributeValue(parser, "media")).toString();
-                    for(int i = startNumber; i < startNumber + numSegments; i++) {
-                        String processedMediaUrl = processMediaUrl(
-                                mediaUrl, representation.id, i, representation.bandwidth, null); // TODO insert SegmentTimeline@t
-                        representation.segments.add(new Segment(
-                                extendUrl(baseUrl, processedMediaUrl).toString()));
-                    }
+                    // Overwrite passed template with newly parsed one
+                    segmentTemplate = readSegmentTemplate(parser, baseUrl);
                 } else if(tagName.equals("BaseURL")) {
                     baseUrl = extendUrl(baseUrl, parser.nextText());
                     Log.d(TAG, "new base url: " + baseUrl);
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 if(tagName.equals("Representation")) {
+
+                    // If there is a segment template, expand it to a list of segments
+                    if(segmentTemplate != null) {
+                        representation.segmentDurationUs = segmentTemplate.calculateDurationUs();
+                        int numSegments = (int)Math.ceil((double)mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
+
+                        // init segment
+                        String processedInitUrl = processMediaUrl(
+                                segmentTemplate.init, representation.id, null, representation.bandwidth, null); // TODO insert SegmentTimeline@t
+                        representation.initSegment = new Segment(processedInitUrl);
+
+                        // media segments
+                        for(int i = segmentTemplate.startNumber; i < segmentTemplate.startNumber + numSegments; i++) {
+                            String processedMediaUrl = processMediaUrl(
+                                    segmentTemplate.media, representation.id, i, representation.bandwidth, null); // TODO insert SegmentTimeline@t
+                            representation.segments.add(new Segment(processedMediaUrl));
+                        }
+                    }
+
                     return representation;
                 }
             }
@@ -241,6 +263,19 @@ public class DashParser {
                     break;
             }
         }
+    }
+
+    private SegmentTemplate readSegmentTemplate(XmlPullParser parser, Uri baseUrl) {
+        SegmentTemplate st = new SegmentTemplate();
+
+        st.presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffset"); // TODO use this?
+        st.timescale = getAttributeValueLong(parser, "timescale", 1);
+        st.duration = getAttributeValueLong(parser, "duration");
+        st.startNumber = getAttributeValueInt(parser, "startNumber");
+        st.init = extendUrl(baseUrl, getAttributeValue(parser, "initialization")).toString();
+        st.media = extendUrl(baseUrl, getAttributeValue(parser, "media")).toString();
+
+        return st;
     }
 
     /**
