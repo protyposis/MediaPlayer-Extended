@@ -19,6 +19,7 @@
 
 package at.aau.itec.android.mediaplayer.dash;
 
+import android.net.Uri;
 import android.util.Log;
 import android.util.Xml;
 
@@ -64,8 +65,10 @@ public class DashParser {
             }
         }
 
+        Uri uri = source.getUri();
+
         Request.Builder request = new Request.Builder()
-                .url(source.getUri().toString())
+                .url(uri.toString())
                 .headers(headers.build());
 
         try {
@@ -73,7 +76,12 @@ public class DashParser {
             if(!response.isSuccessful()) {
                 throw new IOException("error requesting the MPD");
             }
-            mpd = parse(response.body().byteStream());
+
+            // Determine this MPD's default BaseURL by removing the last path segment (which is the MPD file)
+            Uri baseUrl = Uri.parse(uri.toString().substring(0, uri.toString().lastIndexOf("/") + 1));
+
+            // Parse the MPD file
+            mpd = parse(response.body().byteStream(), baseUrl);
         } catch (IOException e) {
             Log.e(TAG, "error downloading the MPD", e);
             throw new RuntimeException("error downloading the MPD", e);
@@ -85,13 +93,12 @@ public class DashParser {
         return mpd;
     }
 
-    private MPD parse(InputStream in) throws XmlPullParserException, IOException {
+    private MPD parse(InputStream in, Uri baseUrl) throws XmlPullParserException, IOException {
         try {
             XmlPullParser parser = Xml.newPullParser();
             parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
             parser.setInput(in, null);
 
-            String baseUrl = "";
             MPD mpd = new MPD();
 
             int type = 0;
@@ -103,10 +110,10 @@ public class DashParser {
                         mpd.mediaPresentationDurationUs = getAttributeValueTime(parser, "mediaPresentationDuration");
                         mpd.minBufferTimeUs = getAttributeValueTime(parser, "minBufferTime");
                     } else if(tagName.equals("BaseURL")) {
-                        baseUrl = parser.nextText();
+                        baseUrl = Uri.parse(parser.nextText());
                         Log.d(TAG, "base url: " + baseUrl);
                     } else if(tagName.equals("AdaptationSet")) {
-                        mpd.adaptationSets.add(readAdaptationSet(mpd, baseUrl, parser));
+                        mpd.adaptationSets.add(readAdaptationSet(mpd, baseUrl.toString(), parser));
                     }
                 } else if(type == XmlPullParser.END_TAG) {
                     String tagName = parser.getName();
