@@ -33,6 +33,8 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,6 +48,7 @@ public class DashParser {
     private static final String TAG = DashParser.class.getSimpleName();
 
     private static Pattern PATTERN_TIME = Pattern.compile("PT((\\d+)H)?((\\d+)M)?((\\d+(\\.\\d+)?)S)");
+    private static Pattern PATTERN_TEMPLATE = Pattern.compile("\\$(\\w+)(%0\\d+d)?\\$");
 
     /**
      * Parses an MPD XML file. This needs to be executed off the main thread, else a
@@ -204,8 +207,10 @@ public class DashParser {
                     // media segments
                     String mediaUrl = extendUrl(baseUrl, getAttributeValue(parser, "media")).toString();
                     for(int i = startNumber; i < startNumber + numSegments; i++) {
+                        String processedMediaUrl = processMediaUrl(
+                                mediaUrl, representation.id, i, representation.bandwidth, null); // TODO insert SegmentTimeline@t
                         representation.segments.add(new Segment(
-                                extendUrl(baseUrl, mediaUrl.replace("$Number$", i+"")).toString()));
+                                extendUrl(baseUrl, processedMediaUrl).toString()));
                     }
                 } else if(tagName.equals("BaseURL")) {
                     baseUrl = extendUrl(baseUrl, parser.nextText());
@@ -307,5 +312,48 @@ public class DashParser {
 
     private static long getAttributeValueTime(XmlPullParser parser, String name) {
         return parseTime(getAttributeValue(parser, name));
+    }
+
+    /**
+     * Processes templates in media URLs.
+     * 
+     * Example: $RepresentationID$_$Number%05d$.ts
+     *
+     * 5.3.9.4.4 Template-based Segment URL construction
+     * Table 16 - Identifiers for URL templates
+     */
+    private static String processMediaUrl(String url, String representationId,
+                                          Integer number, Integer bandwidth, Long time) {
+        // $$
+        url = url.replace("$$", "$");
+
+        // RepresentationID
+        if(representationId != null) {
+            url = url.replace("$RepresentationID$", representationId);
+        }
+
+        // Number, Bandwidth & Time with formatting support
+        // The following block converts DASH segment URL templates to a Java String.format expression
+
+        List<String> templates = Arrays.asList("Number", "Bandwidth", "Time");
+        Matcher matcher = PATTERN_TEMPLATE.matcher(url);
+
+        while(matcher.find()) {
+            String template = matcher.group(1);
+            String pattern = matcher.group(2);
+            int index = templates.indexOf(template);
+
+            if(pattern != null) {
+                url = url.replace("$" + template + pattern + "$",
+                        "%" + (index + 1) + "$" + pattern.substring(1));
+            } else {
+                // Table 16: If no format tag is present, a default format tag with width=1 shall be used.
+                url = url.replace("$" + template + "$", "%" + (index + 1) + "$01d");
+            }
+        }
+
+        url = String.format(url, number, bandwidth, time); // order must match templates list above
+
+        return url;
     }
 }
