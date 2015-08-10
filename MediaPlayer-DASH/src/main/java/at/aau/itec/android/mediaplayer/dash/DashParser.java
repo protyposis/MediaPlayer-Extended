@@ -376,7 +376,7 @@ public class DashParser {
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 String tagName = parser.getName();
-                if(tagName.equals("SegmentTimeline")) {
+                if(tagName.equals("SegmentTemplate")) {
                     return st;
                 }
             }
