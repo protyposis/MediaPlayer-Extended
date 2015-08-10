@@ -33,6 +33,7 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -51,15 +52,49 @@ public class DashParser {
     private static Pattern PATTERN_TEMPLATE = Pattern.compile("\\$(\\w+)(%0\\d+d)?\\$");
 
     private static class SegmentTemplate {
+
+        private static class SegmentTimelineEntry {
+            /**
+             * The segment start time in timescale units. Optional value.
+             * Default is 0 for the first element in a timeline, and t+d*(r+1) of previous element
+             * for all subsequent elements.
+             */
+            long t;
+
+            /**
+             * The segment duration in timescale units.
+             */
+            long d;
+
+            /**
+             * The segment repeat count. Specifies the number of contiguous segments with
+             * duration d, that follow the first segment (r=2 means first segment plus two
+             * following segments, a total of 3).
+             * A negative number tells that there are contiguous segments until the start of the
+             * next timeline entry, the end of the period, or the next MPD update.
+             * The default is 0.
+             */
+            int r;
+
+            long calculateDuration() {
+                return d * (r + 1);
+            }
+        }
+
         long presentationTimeOffset;
         long timescale;
         String init;
         String media;
         long duration;
         int startNumber;
+        List<SegmentTimelineEntry> timeline = new ArrayList<>();
 
         long calculateDurationUs() {
-            return (long)(((double)duration / timescale) * 1000000d);
+            return calculateUs(duration, timescale);
+        }
+
+        boolean hasTimeline() {
+            return !timeline.isEmpty();
         }
     }
 
@@ -192,8 +227,6 @@ public class DashParser {
         }
         representation.bandwidth = getAttributeValueInt(parser, "bandwidth");
 
-        Log.d(TAG, representation.toString());
-
         int type = 0;
         while((type = parser.next()) >= 0) {
             String tagName = parser.getName();
@@ -224,21 +257,66 @@ public class DashParser {
 
                     // If there is a segment template, expand it to a list of segments
                     if(segmentTemplate != null) {
-                        representation.segmentDurationUs = segmentTemplate.calculateDurationUs();
-                        int numSegments = (int)Math.ceil((double)mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
+                        if(segmentTemplate.hasTimeline()) {
+                            if(segmentTemplate.timeline.size() > 1) {
+                                /* TODO Add support for individual segment lengths
+                                 * To support multiple timeline entries, the segmentDurationUs
+                                 * must be moved from the representation to the individual segments,
+                                 * because their length is not necessarily constant and can change
+                                 * over time.
+                                 */
+                                throw new IOException("timeline with multiple entries is not supported yet");
+                            }
 
-                        // init segment
-                        String processedInitUrl = processMediaUrl(
-                                segmentTemplate.init, representation.id, null, representation.bandwidth, null); // TODO insert SegmentTimeline@t
-                        representation.initSegment = new Segment(processedInitUrl);
+                            SegmentTemplate.SegmentTimelineEntry current, previous, next;
+                            for(int i = 0; i < segmentTemplate.timeline.size(); i++) {
+                                current = segmentTemplate.timeline.get(i);
+                                //previous = i > 0 ? segmentTemplate.timeline.get(i - 1) : null;
+                                next = i < segmentTemplate.timeline.size() - 1 ? segmentTemplate.timeline.get(i + 1) : null;
 
-                        // media segments
-                        for(int i = segmentTemplate.startNumber; i < segmentTemplate.startNumber + numSegments; i++) {
-                            String processedMediaUrl = processMediaUrl(
-                                    segmentTemplate.media, representation.id, i, representation.bandwidth, null); // TODO insert SegmentTimeline@t
-                            representation.segments.add(new Segment(processedMediaUrl));
+                                int repeat = current.r;
+                                if(repeat < 0) {
+                                    long duration = next != null ? next.t - current.t :
+                                            calculateTimescaleTime(mpd.mediaPresentationDurationUs, segmentTemplate.timescale) - current.t;
+                                    repeat = (int)(duration / current.d) - 1;
+                                }
+
+                                representation.segmentDurationUs = calculateUs(current.d, segmentTemplate.timescale);
+
+                                // init segment
+                                String processedInitUrl = processMediaUrl(
+                                        segmentTemplate.init, representation.id, null, representation.bandwidth, null);
+                                representation.initSegment = new Segment(processedInitUrl);
+
+                                // media segments
+                                long time = current.t;
+                                for (int j = segmentTemplate.startNumber; j < repeat + 1; j++) {
+                                    String processedMediaUrl = processMediaUrl(
+                                            segmentTemplate.media, representation.id, null, representation.bandwidth, time);
+                                    representation.segments.add(new Segment(processedMediaUrl));
+                                    time += current.d;
+                                }
+                            }
+                        }
+                        else {
+                            representation.segmentDurationUs = segmentTemplate.calculateDurationUs();
+                            int numSegments = (int) Math.ceil((double) mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
+
+                            // init segment
+                            String processedInitUrl = processMediaUrl(
+                                    segmentTemplate.init, representation.id, null, representation.bandwidth, null);
+                            representation.initSegment = new Segment(processedInitUrl);
+
+                            // media segments
+                            for (int i = segmentTemplate.startNumber; i < segmentTemplate.startNumber + numSegments; i++) {
+                                String processedMediaUrl = processMediaUrl(
+                                        segmentTemplate.media, representation.id, i, representation.bandwidth, null);
+                                representation.segments.add(new Segment(processedMediaUrl));
+                            }
                         }
                     }
+
+                    Log.d(TAG, representation.toString());
 
                     return representation;
                 }
@@ -265,7 +343,8 @@ public class DashParser {
         }
     }
 
-    private SegmentTemplate readSegmentTemplate(XmlPullParser parser, Uri baseUrl) {
+    private SegmentTemplate readSegmentTemplate(XmlPullParser parser, Uri baseUrl)
+            throws IOException, XmlPullParserException {
         SegmentTemplate st = new SegmentTemplate();
 
         st.presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffset"); // TODO use this?
@@ -275,7 +354,35 @@ public class DashParser {
         st.init = extendUrl(baseUrl, getAttributeValue(parser, "initialization")).toString();
         st.media = extendUrl(baseUrl, getAttributeValue(parser, "media")).toString();
 
-        return st;
+        int type = 0;
+        while((type = parser.next()) >= 0) {
+            if(type == XmlPullParser.START_TAG) {
+                String tagName = parser.getName();
+
+                if(tagName.equals("S")) {
+                    SegmentTemplate.SegmentTimelineEntry e = new SegmentTemplate.SegmentTimelineEntry();
+
+                    long defaultTime = 0;
+                    if(!st.timeline.isEmpty()) {
+                        SegmentTemplate.SegmentTimelineEntry previous = st.timeline.get(st.timeline.size() - 1);
+                        defaultTime = previous.t + previous.calculateDuration();
+                    }
+
+                    e.t = getAttributeValueLong(parser, "t", defaultTime);
+                    e.d = getAttributeValueLong(parser, "d");
+                    e.r = getAttributeValueInt(parser, "r");
+
+                    st.timeline.add(e);
+                }
+            } else if(type == XmlPullParser.END_TAG) {
+                String tagName = parser.getName();
+                if(tagName.equals("SegmentTimeline")) {
+                    return st;
+                }
+            }
+        }
+
+        throw new RuntimeException("invalid state");
     }
 
     /**
@@ -322,6 +429,17 @@ public class DashParser {
             newUrl = Uri.withAppendedPath(url, urlExtension);
         }
         return newUrl;
+    }
+
+    /**
+     * Converts a time/timescale pair to microseconds.
+     */
+    private static long calculateUs(long time, long timescale) {
+        return (long)(((double)time / timescale) * 1000000d);
+    }
+
+    private static long calculateTimescaleTime(long time, long timescale) {
+        return (long)((time / 1000000d) * timescale);
     }
 
     private static String getAttributeValue(XmlPullParser parser, String name, String defValue) {
