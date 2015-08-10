@@ -56,7 +56,11 @@ public class DashSource extends UriSource {
             throw new RuntimeException("AdaptationLogic missing!");
         }
         if(getUri() != null) {
-            mMPD = new DashParser().parse(this);
+            try {
+                mMPD = new DashParser().parse(this);
+            } catch (DashParserException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

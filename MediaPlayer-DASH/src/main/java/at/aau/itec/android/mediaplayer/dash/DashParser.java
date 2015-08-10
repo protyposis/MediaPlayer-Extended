@@ -105,7 +105,7 @@ public class DashParser {
      * @return a MPD object
      * @throws android.os.NetworkOnMainThreadException if executed on the main thread
      */
-    public MPD parse(UriSource source) {
+    public MPD parse(UriSource source) throws DashParserException {
         MPD mpd = null;
         OkHttpClient httpClient = new OkHttpClient();
 
@@ -135,16 +135,16 @@ public class DashParser {
             mpd = parse(response.body().byteStream(), baseUrl);
         } catch (IOException e) {
             Log.e(TAG, "error downloading the MPD", e);
-            throw new RuntimeException("error downloading the MPD", e);
+            throw new DashParserException("error downloading the MPD", e);
         } catch (XmlPullParserException e) {
             Log.e(TAG, "error parsing the MPD", e);
-            throw new RuntimeException("error parsing the MPD", e);
+            throw new DashParserException("error parsing the MPD", e);
         }
 
         return mpd;
     }
 
-    private MPD parse(InputStream in, Uri baseUrl) throws XmlPullParserException, IOException {
+    private MPD parse(InputStream in, Uri baseUrl) throws XmlPullParserException, IOException, DashParserException {
         try {
             XmlPullParser parser = Xml.newPullParser();
             parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
@@ -183,7 +183,7 @@ public class DashParser {
     }
 
     private AdaptationSet readAdaptationSet(MPD mpd, Uri baseUrl, XmlPullParser parser)
-            throws XmlPullParserException, IOException {
+            throws XmlPullParserException, IOException, DashParserException {
         AdaptationSet adaptationSet = new AdaptationSet();
 
         adaptationSet.group = getAttributeValueInt(parser, "group");
@@ -210,12 +210,12 @@ public class DashParser {
             }
         }
 
-        throw new RuntimeException("invalid state");
+        throw new DashParserException("invalid state");
     }
 
     private Representation readRepresentation(MPD mpd, AdaptationSet adaptationSet, Uri baseUrl,
                                               XmlPullParser parser, SegmentTemplate segmentTemplate)
-            throws XmlPullParserException, IOException {
+            throws XmlPullParserException, IOException, DashParserException {
         Representation representation = new Representation();
 
         representation.id = getAttributeValue(parser, "id");
@@ -265,7 +265,7 @@ public class DashParser {
                                  * because their length is not necessarily constant and can change
                                  * over time.
                                  */
-                                throw new IOException("timeline with multiple entries is not supported yet");
+                                throw new DashParserException("timeline with multiple entries is not supported yet");
                             }
 
                             SegmentTemplate.SegmentTimelineEntry current, previous, next;
@@ -323,7 +323,7 @@ public class DashParser {
             }
         }
 
-        throw new RuntimeException("invalid state");
+        throw new DashParserException("invalid state");
     }
 
     private void skip(XmlPullParser parser) throws XmlPullParserException, IOException {
@@ -344,7 +344,7 @@ public class DashParser {
     }
 
     private SegmentTemplate readSegmentTemplate(XmlPullParser parser, Uri baseUrl)
-            throws IOException, XmlPullParserException {
+            throws IOException, XmlPullParserException, DashParserException {
         SegmentTemplate st = new SegmentTemplate();
 
         st.presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffset"); // TODO use this?
@@ -382,7 +382,7 @@ public class DashParser {
             }
         }
 
-        throw new RuntimeException("invalid state");
+        throw new DashParserException("invalid state");
     }
 
     /**
