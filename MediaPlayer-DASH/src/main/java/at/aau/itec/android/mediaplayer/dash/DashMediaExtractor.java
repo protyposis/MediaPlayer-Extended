@@ -488,8 +488,11 @@ class DashMediaExtractor extends MediaExtractor {
             /* The PTS in a converted MP4 always start at 0, so we read the offset from the segment
              * index box and work with it at the necessary places to adjust the local PTS to global
              * PTS concerning the whole stream. */
-            SegmentIndexBox sidx = fragment.getBoxes(SegmentIndexBox.class).get(0);
-            segmentPTSOffsetUs = (long)((double)sidx.getEarliestPresentationTime() / sidx.getTimeScale() * 1000000);
+            List<SegmentIndexBox> segmentIndexBoxes = fragment.getBoxes(SegmentIndexBox.class);
+            if(segmentIndexBoxes.size() > 0) {
+                SegmentIndexBox sidx = segmentIndexBoxes.get(0);
+                segmentPTSOffsetUs = (long) ((double) sidx.getEarliestPresentationTime() / sidx.getTimeScale() * 1000000);
+            }
 
             Movie mp4Segment = new Movie();
             mp4Segment.addTrack(new Mp4TrackImpl(null, baseIsoFile.getMovieBox().getBoxes(TrackBox.class).get(0), fragment));
