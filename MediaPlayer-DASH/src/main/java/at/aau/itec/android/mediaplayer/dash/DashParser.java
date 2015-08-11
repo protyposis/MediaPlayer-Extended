@@ -33,9 +33,15 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,6 +56,12 @@ public class DashParser {
 
     private static Pattern PATTERN_TIME = Pattern.compile("PT((\\d+)H)?((\\d+)M)?((\\d+(\\.\\d+)?)S)");
     private static Pattern PATTERN_TEMPLATE = Pattern.compile("\\$(\\w+)(%0\\d+d)?\\$");
+    private static DateFormat ISO8601UTC;
+
+    static {
+        ISO8601UTC = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+        ISO8601UTC.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
 
     private static class SegmentTemplate {
 
@@ -158,7 +170,30 @@ public class DashParser {
                     String tagName = parser.getName();
 
                     if(tagName.equals("MPD")) {
-                        mpd.mediaPresentationDurationUs = getAttributeValueTime(parser, "mediaPresentationDuration");
+                        mpd.isDynamic = getAttributeValue(parser, "type", "static").equals("dynamic");
+
+                        if (mpd.isDynamic) {
+                            Log.i(TAG, "dynamic MPD not supported yet, but giving it a try...");
+                            // Set a dummy duration to get the stream to work for some time
+                            mpd.mediaPresentationDurationUs = 1l /* h */ * 60 * 60 * 1000000;
+                            mpd.timeShiftBufferDepthUs = getAttributeValueTime(parser, "timeShiftBufferDepth", "PT0S");
+                            mpd.maxSegmentDurationUs = getAttributeValueTime(parser, "maxSegmentDuration", "PT0S");
+                            mpd.suggestedPresentationDelayUs = getAttributeValueTime(parser, "suggestedPresentationDelay", "PT0S");
+                            // TODO add support for dynamic streams with unknown duration
+
+                            String date = getAttributeValue(parser, "availabilityStartTime");
+                            try {
+                                if(date.length() == 19) {
+                                    date = date + "Z";
+                                }
+                                mpd.availabilityStartTime = ISO8601UTC.parse(date.replace("Z", "+00:00"));
+                            } catch (ParseException e) {
+                                Log.e(TAG, "unable to parse date: " + date);
+                            }
+                        }
+                         else { // type == static
+                             mpd.mediaPresentationDurationUs = getAttributeValueTime(parser, "mediaPresentationDuration");
+                         }
                         mpd.minBufferTimeUs = getAttributeValueTime(parser, "minBufferTime");
                     } else if(tagName.equals("BaseURL")) {
                         baseUrl = extendUrl(baseUrl, parser.nextText());
@@ -311,6 +346,30 @@ public class DashParser {
                         else {
                             representation.segmentDurationUs = segmentTemplate.calculateDurationUs();
                             int numSegments = (int) Math.ceil((double) mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
+
+                            if(mpd.isDynamic) {
+                                // Simulate availabilityStartTime support by converting it to a startNumber
+                                Date now = new Date();
+                                Calendar calendar = Calendar.getInstance();
+
+                                calendar.setTime(now);
+                                calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
+                                now = calendar.getTime();
+
+                                /* Calculate the time delta between the availability start time
+                                 * and the current time, for that we know at which position we
+                                 * currently are in the live stream. */
+                                // TODO sync local time with server time (from http date header)?
+                                long availabilityDeltaTimeUs = (now.getTime() - mpd.availabilityStartTime.getTime()) * 1000;
+
+                                // go back in time by the buffering period (else the segments to be buffered are not available yet)
+                                availabilityDeltaTimeUs -= Math.max(mpd.minBufferTimeUs, 10 * 1000000L);
+
+                                // go back in time by the suggested presentation delay
+                                availabilityDeltaTimeUs -= mpd.suggestedPresentationDelayUs;
+
+                                segmentTemplate.startNumber = (int)(availabilityDeltaTimeUs / representation.segmentDurationUs);
+                            }
 
                             // init segment
                             String processedInitUrl = processMediaUrl(
@@ -490,6 +549,10 @@ public class DashParser {
 
     private static long getAttributeValueTime(XmlPullParser parser, String name) {
         return parseTime(getAttributeValue(parser, name));
+    }
+
+    private static long getAttributeValueTime(XmlPullParser parser, String name, String defValue) {
+        return parseTime(getAttributeValue(parser, name, defValue));
     }
 
     private static float getAttributeValueRatio(XmlPullParser parser, String name) {
