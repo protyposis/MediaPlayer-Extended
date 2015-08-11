@@ -386,6 +386,11 @@ public class MediaPlayer {
         /* Flag notifying that the decoder has changed to a new representation, post-actions need to
          * be carried out. */
         private boolean mRepresentationChanged;
+        /* Flag needed to initialize the time base with the first PTS of the first frame after it
+         * has been decoded. This is necessary because the first PTS does not necessarily need to be
+         * zero. This is especially important for live streams where playback can start at an
+         * arbitrary position into the stream. */
+        private boolean mTimeBaseInitialized;
 
         private PlaybackThread() {
             super(TAG);
@@ -602,6 +607,13 @@ public class MediaPlayer {
                                 }
                             }
                         } else {
+                            if(!mTimeBaseInitialized) {
+                                // Initialize the time base with the first PTS
+                                // This happens only once after the first frame is decoded.
+                                mTimeBaseInitialized = true;
+                                mTimeBase.startAt(mVideoInfo.presentationTimeUs);
+                            }
+
                             mCurrentPosition = mVideoInfo.presentationTimeUs;
 
                             long waitingTime = mTimeBase.getOffsetFrom(mVideoInfo.presentationTimeUs);
