@@ -273,11 +273,15 @@ public class DashParser {
             if(type == XmlPullParser.START_TAG) {
                 if (tagName.equals("Initialization")) {
                     String sourceURL = getAttributeValue(parser, "sourceURL");
+                    String range = getAttributeValue(parser, "range");
+
                     if(sourceURL != null) {
                         representation.initSegment = new Segment(
-                                extendUrl(baseUrl, sourceURL).toString(),
-                                getAttributeValue(parser, "range"));
+                                extendUrl(baseUrl, sourceURL).toString(), range);
                         Log.d(TAG, "Initialization: " + representation.initSegment.toString());
+                    }
+                    else if(range != null) {
+                        throw new DashParserException("single segment / init range without sourceURL is not supported yet");
                     }
                 } else if(tagName.equals("SegmentList")) {
                     long timescale = getAttributeValueLong(parser, "timescale", 1);
@@ -287,12 +291,19 @@ public class DashParser {
                     representation.segments.add(new Segment(
                             extendUrl(baseUrl, getAttributeValue(parser, "media")).toString(),
                             getAttributeValue(parser, "mediaRange")));
+                } else if(tagName.equals("SegmentBase")) {
+                    String indexRange = getAttributeValue(parser, "indexRange");
+                    if(indexRange != null) {
+                        throw new DashParserException("single segment / indexRange is not supported yet");
+                    }
                 } else if(tagName.equals("SegmentTemplate")) {
                     // Overwrite passed template with newly parsed one
                     segmentTemplate = readSegmentTemplate(parser, baseUrl, segmentTemplate);
                 } else if(tagName.equals("BaseURL")) {
                     baseUrl = extendUrl(baseUrl, parser.nextText());
                     Log.d(TAG, "new base url: " + baseUrl);
+                } else if(tagName.equals("RepresentationIndex")) {
+                    throw new DashParserException("RepresentationIndex is not supported yet");
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 if(tagName.equals("Representation")) {
@@ -473,6 +484,8 @@ public class DashParser {
                     e.r = getAttributeValueInt(parser, "r");
 
                     st.timeline.add(e);
+                } else if(tagName.equals("RepresentationIndex")) {
+                    throw new DashParserException("RepresentationIndex is not supported yet");
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 String tagName = parser.getName();
