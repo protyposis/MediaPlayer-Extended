@@ -237,10 +237,13 @@ public class DashParser {
 
             if(type == XmlPullParser.START_TAG) {
                 if (tagName.equals("Initialization")) {
-                    representation.initSegment = new Segment(
-                            extendUrl(baseUrl, getAttributeValue(parser, "sourceURL")).toString(),
-                            getAttributeValue(parser, "range"));
-                    Log.d(TAG, "Initialization: " + representation.initSegment.toString());
+                    String sourceURL = getAttributeValue(parser, "sourceURL");
+                    if(sourceURL != null) {
+                        representation.initSegment = new Segment(
+                                extendUrl(baseUrl, sourceURL).toString(),
+                                getAttributeValue(parser, "range"));
+                        Log.d(TAG, "Initialization: " + representation.initSegment.toString());
+                    }
                 } else if(tagName.equals("SegmentList")) {
                     long timescale = getAttributeValueLong(parser, "timescale", 1);
                     long duration = getAttributeValueLong(parser, "duration");
