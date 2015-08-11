@@ -254,9 +254,12 @@ public class DashParser {
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 if(tagName.equals("Representation")) {
+                    if(!representation.segments.isEmpty()) {
+                        // a SegmentList has been parsed, nothing to do here
+                    }
+                    else if(segmentTemplate != null) {
+                        // We have a SegmentTemplate, expand it to a list of segments
 
-                    // If there is a segment template, expand it to a list of segments
-                    if(segmentTemplate != null) {
                         if(segmentTemplate.hasTimeline()) {
                             if(segmentTemplate.timeline.size() > 1) {
                                 /* TODO Add support for individual segment lengths
@@ -314,6 +317,11 @@ public class DashParser {
                                 representation.segments.add(new Segment(processedMediaUrl));
                             }
                         }
+                    }
+                    else {
+                        throw new DashParserException("single-segment representations are not supported yet");
+                        // TODO implement single-file/single-segment support
+                        // TODO add SegmentBase and sidx downloading and parsing
                     }
 
                     Log.d(TAG, representation.toString());
