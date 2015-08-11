@@ -516,6 +516,11 @@ class DashMediaExtractor extends MediaExtractor {
                 SegmentIndexBox sidx = segmentIndexBoxes.get(0);
                 segmentPTSOffsetUs = (long) ((double) sidx.getEarliestPresentationTime() / sidx.getTimeScale() * 1000000);
             }
+            /* If there is no segment index box to read the PTS from, we calculate the PTS offset
+             * from the info given in the MPD. */
+            else {
+                segmentPTSOffsetUs = cachedSegment.number * cachedSegment.representation.segmentDurationUs;
+            }
 
             Movie mp4Segment = new Movie();
             mp4Segment.addTrack(new Mp4TrackImpl(null, baseIsoFile.getMovieBox().getBoxes(TrackBox.class).get(0), fragment));
