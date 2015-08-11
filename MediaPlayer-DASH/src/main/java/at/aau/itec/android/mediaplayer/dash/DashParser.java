@@ -235,7 +235,7 @@ public class DashParser {
                 String tagName = parser.getName();
 
                 if(tagName.equals("SegmentTemplate")) {
-                    segmentTemplate = readSegmentTemplate(parser, baseUrl);
+                    segmentTemplate = readSegmentTemplate(parser, baseUrl, null);
                 } else if(tagName.equals("Representation")) {
                     adaptationSet.representations.add(readRepresentation(
                             mpd, adaptationSet, baseUrl, parser, segmentTemplate));
@@ -289,7 +289,7 @@ public class DashParser {
                             getAttributeValue(parser, "mediaRange")));
                 } else if(tagName.equals("SegmentTemplate")) {
                     // Overwrite passed template with newly parsed one
-                    segmentTemplate = readSegmentTemplate(parser, baseUrl);
+                    segmentTemplate = readSegmentTemplate(parser, baseUrl, segmentTemplate);
                 } else if(tagName.equals("BaseURL")) {
                     baseUrl = extendUrl(baseUrl, parser.nextText());
                     Log.d(TAG, "new base url: " + baseUrl);
@@ -427,16 +427,30 @@ public class DashParser {
         }
     }
 
-    private SegmentTemplate readSegmentTemplate(XmlPullParser parser, Uri baseUrl)
+    private SegmentTemplate readSegmentTemplate(XmlPullParser parser, Uri baseUrl, SegmentTemplate parent)
             throws IOException, XmlPullParserException, DashParserException {
         SegmentTemplate st = new SegmentTemplate();
 
-        st.presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffset"); // TODO use this?
-        st.timescale = getAttributeValueLong(parser, "timescale", 1);
-        st.duration = getAttributeValueLong(parser, "duration");
-        st.startNumber = getAttributeValueInt(parser, "startNumber");
-        st.init = extendUrl(baseUrl, getAttributeValue(parser, "initialization")).toString();
-        st.media = extendUrl(baseUrl, getAttributeValue(parser, "media")).toString();
+        // Read properties from template or carry them over from a parent
+
+        st.presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffset", parent != null ? parent.presentationTimeOffset : 0); // TODO use this?
+        st.timescale = getAttributeValueLong(parser, "timescale", parent != null ? parent.timescale : 1);
+        st.duration = getAttributeValueLong(parser, "duration", parent != null ? parent.duration : 0);
+        st.startNumber = getAttributeValueInt(parser, "startNumber", parent != null ? parent.startNumber : 0);
+
+        String initialization = getAttributeValue(parser, "initialization");
+        if(initialization != null) {
+            st.init = extendUrl(baseUrl, initialization).toString();
+        } else if(parent != null) {
+            st.init = parent.init;
+        }
+
+        String media = getAttributeValue(parser, "media");
+        if(media != null) {
+            st.media = extendUrl(baseUrl, media).toString();
+        } else if(parent != null) {
+            st.media = parent.media;
+        }
 
         int type = 0;
         while((type = parser.next()) >= 0) {
@@ -537,6 +551,10 @@ public class DashParser {
 
     private static int getAttributeValueInt(XmlPullParser parser, String name) {
         return Integer.parseInt(getAttributeValue(parser, name, "0"));
+    }
+
+    private static int getAttributeValueInt(XmlPullParser parser, String name, int defValue) {
+        return Integer.parseInt(getAttributeValue(parser, name, defValue+""));
     }
 
     private static long getAttributeValueLong(XmlPullParser parser, String name) {
