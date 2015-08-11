@@ -168,8 +168,12 @@ class DashMediaExtractor extends MediaExtractor {
         if(index == -1) {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
-            if(switchToNextSegment()) {
-                return super.getSampleTrackIndex();
+            try {
+                if (switchToNextSegment()) {
+                    return super.getSampleTrackIndex();
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "segment switching failed", e);
             }
         }
         return index;
@@ -181,18 +185,22 @@ class DashMediaExtractor extends MediaExtractor {
         if(size == -1) {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
-            if(switchToNextSegment()) {
-                /* If the representation switches during this read call, we cannot continue reading
-                 * data from the next segment, because the video codec needs to reinitialize before.
-                 * Else, some data is first fed into the decoder and then it is reinitialized, which
-                 * results in skipped (sync) frames and artefacts.
-                 * By returning 0, the decoder has time to check if the representation has changed,
-                 * reconfigure itself and then issue another read. */
-                if(mRepresentationSwitched) {
-                    return 0;
-                } else {
-                    return super.readSampleData(byteBuf, offset);
+            try {
+                if (switchToNextSegment()) {
+                    /* If the representation switches during this read call, we cannot continue reading
+                     * data from the next segment, because the video codec needs to reinitialize before.
+                     * Else, some data is first fed into the decoder and then it is reinitialized, which
+                     * results in skipped (sync) frames and artifacts.
+                     * By returning 0, the decoder has time to check if the representation has changed,
+                     * reconfigure itself and then issue another read. */
+                    if (mRepresentationSwitched) {
+                        return 0;
+                    } else {
+                        return super.readSampleData(byteBuf, offset);
+                    }
                 }
+            } catch (IOException e) {
+                Log.e(TAG, "segment switching failed", e);
             }
         }
         return size;
@@ -202,7 +210,7 @@ class DashMediaExtractor extends MediaExtractor {
      * Tries to switch to the next segment and returns true if there is one, false if there is none
      * and thus the current is the last one.
      */
-    private boolean switchToNextSegment() {
+    private boolean switchToNextSegment() throws IOException {
         Integer next = getNextSegment();
         if(next != null) {
             /* Since it seems that an extractor cannot be reused by setting another data source,
@@ -254,11 +262,15 @@ class DashMediaExtractor extends MediaExtractor {
              * going back in time. */
             super.seekTo(0, mode);
         } else {
-            invalidateFutureCache();
-            renewExtractor();
-            mCurrentSegment = targetSegmentIndex;
-            initOnWorkerThread(targetSegmentIndex);
-            super.seekTo(timeUs - mSegmentPTSOffsetUs, mode);
+            try {
+                invalidateFutureCache();
+                renewExtractor();
+                mCurrentSegment = targetSegmentIndex;
+                initOnWorkerThread(targetSegmentIndex);
+                super.seekTo(timeUs - mSegmentPTSOffsetUs, mode);
+            } catch (IOException e) {
+                Log.e(TAG, "seeking failed", e);
+            }
         }
     }
 
@@ -283,19 +295,30 @@ class DashMediaExtractor extends MediaExtractor {
         return false;
     }
 
-    private void initOnWorkerThread(final Integer segmentNr) {
+    private void initOnWorkerThread(final Integer segmentNr) throws IOException {
         /* Avoid NetworkOnMainThreadException by running network request in worker thread
          * but blocking until finished to avoid complicated and in this case unnecessary
          * async handling.
          */
         try {
+            final Exception[] asyncException = new Exception[1];
+
             new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(Void... params) {
-                    init(segmentNr);
+                    try {
+                        init(segmentNr);
+                    } catch (Exception e) {
+                        asyncException[0] = e;
+                    }
                     return null;
                 }
             }.execute().get();
+
+            // hand an async thrown exception over to the main thread
+            if(asyncException[0] != null) {
+                throw new IOException("error initializing segment", asyncException[0]);
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
