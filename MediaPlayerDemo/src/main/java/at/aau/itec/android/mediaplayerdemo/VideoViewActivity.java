@@ -27,7 +27,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.MediaController;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import at.aau.itec.android.mediaplayer.MediaPlayer;
@@ -40,6 +42,7 @@ public class VideoViewActivity extends Activity {
 
     private Uri mVideoUri;
     private VideoView mVideoView;
+    private ProgressBar mProgress;
 
     private MediaController.MediaPlayerControl mMediaPlayerControl;
     private MediaController mMediaController;
@@ -51,11 +54,14 @@ public class VideoViewActivity extends Activity {
         Utils.setActionBarSubtitleEllipsizeMiddle(this);
 
         mVideoView = (VideoView) findViewById(R.id.vv);
+        mProgress = (ProgressBar) findViewById(R.id.progress);
 
         mMediaPlayerControl = mVideoView; //new MediaPlayerDummyControl();
         mMediaController = new MediaController(this);
         mMediaController.setAnchorView(findViewById(R.id.container));
         mMediaController.setMediaPlayer(mMediaPlayerControl);
+
+        mProgress.setVisibility(View.VISIBLE);
 
         if(savedInstanceState != null) {
             initPlayer((Uri)savedInstanceState.getParcelable("uri"),
@@ -79,13 +85,15 @@ public class VideoViewActivity extends Activity {
                 if (playback) {
                     mVideoView.start();
                 }
+
+                mProgress.setVisibility(View.GONE);
             }
         });
         mVideoView.setOnInfoListener(new MediaPlayer.OnInfoListener() {
             @Override
             public boolean onInfo(MediaPlayer mp, int what, int extra) {
                 String whatName = "";
-                switch(what) {
+                switch (what) {
                     case MediaPlayer.MEDIA_INFO_BUFFERING_END:
                         whatName = "MEDIA_INFO_BUFFERING_END";
                         break;
@@ -103,10 +111,18 @@ public class VideoViewActivity extends Activity {
                 return false;
             }
         });
+        mVideoView.setOnSeekListener(new MediaPlayer.OnSeekListener() {
+            @Override
+            public void onSeek(MediaPlayer mp) {
+                Log.d(TAG, "onSeek");
+                mProgress.setVisibility(View.VISIBLE);
+            }
+        });
         mVideoView.setOnSeekCompleteListener(new MediaPlayer.OnSeekCompleteListener() {
             @Override
             public void onSeekComplete(MediaPlayer mp) {
                 Log.d(TAG, "onSeekComplete");
+                mProgress.setVisibility(View.GONE);
             }
         });
         mVideoView.setOnBufferingUpdateListener(new MediaPlayer.OnBufferingUpdateListener() {

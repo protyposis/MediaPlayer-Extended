@@ -42,6 +42,14 @@
         android:layout_centerHorizontal="true"
         android:layout_below="@+id/infotext"/>
 
+    <ProgressBar
+        android:id="@+id/progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        style="@android:style/Widget.Holo.ProgressBar.Large"
+        android:visibility="gone"/>
+
     <ScrollView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

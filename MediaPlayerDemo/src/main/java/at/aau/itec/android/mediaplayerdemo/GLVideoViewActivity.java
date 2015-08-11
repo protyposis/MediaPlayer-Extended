@@ -26,7 +26,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.MediaController;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import at.aau.itec.android.mediaplayer.GLVideoView;
@@ -40,6 +42,7 @@ public class GLVideoViewActivity extends Activity {
 
     private Uri mVideoUri;
     private GLVideoView mGLVideoView;
+    private ProgressBar mProgress;
 
     private MediaController.MediaPlayerControl mMediaPlayerControl;
     private MediaController mMediaController;
@@ -54,11 +57,14 @@ public class GLVideoViewActivity extends Activity {
         Utils.setActionBarSubtitleEllipsizeMiddle(this);
 
         mGLVideoView = (GLVideoView) findViewById(R.id.glvv);
+        mProgress = (ProgressBar) findViewById(R.id.progress);
 
         mMediaPlayerControl = mGLVideoView;
         mMediaController = new MediaController(this);
         mMediaController.setAnchorView(findViewById(R.id.container));
         mMediaController.setMediaPlayer(mMediaPlayerControl);
+
+        mProgress.setVisibility(View.VISIBLE);
 
         mEffectList = new GLEffects(this, R.id.parameterlist, mGLVideoView);
         mEffectList.addEffects();
@@ -85,6 +91,20 @@ public class GLVideoViewActivity extends Activity {
                 if (playback) {
                     mGLVideoView.start();
                 }
+
+                mProgress.setVisibility(View.GONE);
+            }
+        });
+        mGLVideoView.setOnSeekListener(new MediaPlayer.OnSeekListener() {
+            @Override
+            public void onSeek(MediaPlayer mp) {
+                mProgress.setVisibility(View.VISIBLE);
+            }
+        });
+        mGLVideoView.setOnSeekCompleteListener(new MediaPlayer.OnSeekCompleteListener() {
+            @Override
+            public void onSeekComplete(MediaPlayer mp) {
+                mProgress.setVisibility(View.GONE);
             }
         });
         mGLVideoView.setOnFrameCapturedCallback(new Utils.OnFrameCapturedCallback(this, "glvideoview"));
