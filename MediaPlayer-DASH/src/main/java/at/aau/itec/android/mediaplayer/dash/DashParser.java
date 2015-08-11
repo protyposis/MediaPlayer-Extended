@@ -319,9 +319,19 @@ public class DashParser {
                         }
                     }
                     else {
-                        throw new DashParserException("single-segment representations are not supported yet");
-                        // TODO implement single-file/single-segment support
-                        // TODO add SegmentBase and sidx downloading and parsing
+                        /* When there is no SegmentList or SegmentTemplate, the only option left is
+                         * a single file/segment representation. */
+
+                        // Subtitle are not supported yet and can be ignored
+                        if(representation.mimeType != null && representation.mimeType.startsWith("text/")) {
+                            Log.i(TAG, "unsupported subtitle representation");
+                        }
+                        // Video and audio representations are vital for the player and cannot be ignored
+                        else {
+                            throw new DashParserException("single-segment representations are not supported yet");
+                            // TODO implement single-file/single-segment support
+                            // TODO add SegmentBase and sidx downloading and parsing
+                        }
                     }
 
                     Log.d(TAG, representation.toString());
