@@ -406,6 +406,11 @@ class DashMediaExtractor extends MediaExtractor {
                 Request request = buildSegmentRequest(representation.initSegment);
                 long startTime = SystemClock.elapsedRealtime();
                 Response response = mHttpClient.newCall(request).execute();
+                if(!response.isSuccessful()) {
+                    throw new IOException("sync dl error @ init segment: "
+                            + response.code() + " " + response.message()
+                            + " " + request.url().toString());
+                }
                 ByteString segmentData = response.body().source().readByteString();
                 mInitSegments.put(representation, segmentData);
                 mAdaptationLogic.reportSegmentDownload(mAdaptationSet, representation, representation.segments.get(segmentNr), segmentData.size(), SystemClock.elapsedRealtime() - startTime);
@@ -417,6 +422,11 @@ class DashMediaExtractor extends MediaExtractor {
         Request request = buildSegmentRequest(segment);
         long startTime = SystemClock.elapsedRealtime();
         Response response = mHttpClient.newCall(request).execute();
+        if(!response.isSuccessful()) {
+            throw new IOException("sync dl error @ segment " + segmentNr + ": "
+                    + response.code() + " " + response.message()
+                    + " " + request.url().toString());
+        }
         byte[] segmentData = response.body().bytes();
         mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, segment, segmentData.length, SystemClock.elapsedRealtime() - startTime);
         CachedSegment cachedSegment = new CachedSegment(segmentNr, segment, mRepresentation);
