@@ -93,6 +93,7 @@ public class MediaPlayer {
     private EventHandler mEventHandler;
     private OnPreparedListener mOnPreparedListener;
     private OnCompletionListener mOnCompletionListener;
+    private OnSeekListener mOnSeekListener;
     private OnSeekCompleteListener mOnSeekCompleteListener;
     private OnInfoListener mOnInfoListener;
     private OnVideoSizeChangedListener mOnVideoSizeChangedListener;
@@ -230,6 +231,11 @@ public class MediaPlayer {
          * starts, then a frame is decoded, and then the codec is flushed; the PTS of the decoded frame
          * then interferes the seeking procedure, the seek stops prematurely and a wrong waiting time
          * gets calculated. */
+
+        Log.d(TAG, "onSeek");
+        if (mOnSeekListener != null) {
+            mOnSeekListener.onSeek(MediaPlayer.this);
+        }
 
         // inform the decoder thread of an upcoming seek
         mSeekPrepare = true;
@@ -1032,6 +1038,26 @@ public class MediaPlayer {
      */
     public void setOnCompletionListener(OnCompletionListener listener) {
         mOnCompletionListener = listener;
+    }
+
+    /**
+     * Interface definition of a callback to be invoked when a seek
+     * is issued.
+     */
+    public interface OnSeekListener {
+        /**
+         * Called to indicate that a seek operation has been started.
+         * @param mp the mediaPlayer that the seek was called on
+         */
+        public void onSeek(MediaPlayer mp);
+    }
+
+    /**
+     * Register a calback to be invoked when a seek operation has been started.
+     * @param listener the callback that will be run
+     */
+    public void setOnSeekListener(OnSeekListener listener) {
+        mOnSeekListener = listener;
     }
 
     /**

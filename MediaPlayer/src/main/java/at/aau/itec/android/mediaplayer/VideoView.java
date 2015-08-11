@@ -45,6 +45,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
     private int mVideoHeight;
 
     private MediaPlayer.OnPreparedListener mOnPreparedListener;
+    private MediaPlayer.OnSeekListener mOnSeekListener;
     private MediaPlayer.OnSeekCompleteListener mOnSeekCompleteListener;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
@@ -124,6 +125,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             mPlayer.setDisplay(mSurfaceHolder);
             mPlayer.setScreenOnWhilePlaying(true);
             mPlayer.setOnPreparedListener(mPreparedListener);
+            mPlayer.setOnSeekListener(mSeekListener);
             mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
             mPlayer.setOnCompletionListener(mCompletionListener);
             mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
@@ -213,6 +215,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     public void setOnPreparedListener(MediaPlayer.OnPreparedListener l) {
         this.mOnPreparedListener = l;
+    }
+
+    public void setOnSeekListener(MediaPlayer.OnSeekListener l) {
+        this.mOnSeekListener = l;
     }
 
     public void setOnSeekCompleteListener(MediaPlayer.OnSeekCompleteListener l) {
@@ -330,6 +336,15 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             mVideoWidth = width;
             mVideoHeight = height;
             requestLayout();
+        }
+    };
+
+    private MediaPlayer.OnSeekListener mSeekListener = new MediaPlayer.OnSeekListener() {
+        @Override
+        public void onSeek(MediaPlayer mp) {
+            if(mOnSeekListener != null) {
+                mOnSeekListener.onSeek(mp);
+            }
         }
     };
 

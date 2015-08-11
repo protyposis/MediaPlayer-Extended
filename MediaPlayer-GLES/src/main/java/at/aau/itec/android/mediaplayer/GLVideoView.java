@@ -44,6 +44,7 @@ public class GLVideoView extends GLTextureView implements
     private Surface mVideoSurface;
 
     private MediaPlayer.OnPreparedListener mOnPreparedListener;
+    private MediaPlayer.OnSeekListener mOnSeekListener;
     private MediaPlayer.OnSeekCompleteListener mOnSeekCompleteListener;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
@@ -113,6 +114,7 @@ public class GLVideoView extends GLTextureView implements
             mPlayer.setSurface(mVideoSurface);
             mPlayer.setOnPreparedListener(mPreparedListener);
             mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
+            mPlayer.setOnSeekListener(mSeekListener);
             mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
             mPlayer.setOnCompletionListener(mCompletionListener);
             mPlayer.setOnInfoListener(mInfoListener);
@@ -133,6 +135,10 @@ public class GLVideoView extends GLTextureView implements
 
     public void setOnPreparedListener(MediaPlayer.OnPreparedListener l) {
         this.mOnPreparedListener = l;
+    }
+
+    public void setOnSeekListener(MediaPlayer.OnSeekListener l) {
+        this.mOnSeekListener = l;
     }
 
     public void setOnSeekCompleteListener(MediaPlayer.OnSeekCompleteListener l) {
@@ -254,6 +260,15 @@ public class GLVideoView extends GLTextureView implements
             mVideoWidth = width;
             mVideoHeight = height;
             requestLayout();
+        }
+    };
+
+    private MediaPlayer.OnSeekListener mSeekListener = new MediaPlayer.OnSeekListener() {
+        @Override
+        public void onSeek(MediaPlayer mp) {
+            if(mOnSeekListener != null) {
+                mOnSeekListener.onSeek(mp);
+            }
         }
     };
 
