@@ -237,6 +237,7 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                 @Override
                 public void onException(Exception e) {
                     mVideoUriText.setText("Error loading video" + (e.getMessage() != null ? ": " + e.getMessage() : " :("));
+                    Log.e(TAG, "Error loading video", e);
                 }
             });
         }
