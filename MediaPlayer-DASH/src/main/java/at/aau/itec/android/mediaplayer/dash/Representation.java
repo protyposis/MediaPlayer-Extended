@@ -31,6 +31,7 @@ public class Representation {
     String mimeType;
     int width; // pixels
     int height; // pixels
+    float sar; // storage aspect ratio
     int bandwidth; // bits/sec
 
     long segmentDurationUs;
@@ -59,6 +60,15 @@ public class Representation {
 
     public int getHeight() {
         return height;
+    }
+
+    public boolean hasSAR() {
+        return sar > 0;
+    }
+
+    public float calculatePAR() {
+        float sizeRatio = (float) width / height;
+        return sizeRatio * (hasSAR() ? sar : 1);
     }
 
     public int getBandwidth() {
@@ -93,6 +103,7 @@ public class Representation {
                 ", mimeType='" + mimeType + '\'' +
                 ", width=" + width +
                 ", height=" + height +
+                ", dar=" + sar +
                 ", bandwidth=" + bandwidth +
                 //", initSegment=" + initSegment +
                 ", segmentDurationUs=" + segmentDurationUs +

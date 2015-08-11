@@ -188,6 +188,9 @@ public class DashParser {
 
         adaptationSet.group = getAttributeValueInt(parser, "group");
         adaptationSet.mimeType = getAttributeValue(parser, "mimeType");
+        adaptationSet.maxWidth = getAttributeValueInt(parser, "maxWidth");
+        adaptationSet.maxHeight = getAttributeValueInt(parser, "maxHeight");
+        adaptationSet.par = getAttributeValueRatio(parser, "par");
 
         SegmentTemplate segmentTemplate = null;
 
@@ -224,6 +227,7 @@ public class DashParser {
         if(representation.mimeType.startsWith("video/")) {
             representation.width = getAttributeValueInt(parser, "width");
             representation.height = getAttributeValueInt(parser, "height");
+            representation.sar = getAttributeValueRatio(parser, "sar");
         }
         representation.bandwidth = getAttributeValueInt(parser, "bandwidth");
 
@@ -483,6 +487,17 @@ public class DashParser {
 
     private static long getAttributeValueTime(XmlPullParser parser, String name) {
         return parseTime(getAttributeValue(parser, name));
+    }
+
+    private static float getAttributeValueRatio(XmlPullParser parser, String name) {
+        String value = getAttributeValue(parser, name);
+
+        if(value != null) {
+            String[] values = value.split(":");
+            return (float)Integer.parseInt(values[0]) / Integer.parseInt(values[1]);
+        }
+
+        return 0;
     }
 
     /**
