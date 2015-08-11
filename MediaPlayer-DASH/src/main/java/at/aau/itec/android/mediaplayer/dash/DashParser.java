@@ -368,7 +368,9 @@ public class DashParser {
                                 // go back in time by the suggested presentation delay
                                 availabilityDeltaTimeUs -= mpd.suggestedPresentationDelayUs;
 
-                                segmentTemplate.startNumber = (int)(availabilityDeltaTimeUs / representation.segmentDurationUs);
+                                // convert the delta time to the number of corresponding segments
+                                // add it to the start number (which by default is 0 if not specified)
+                                segmentTemplate.startNumber += (int)(availabilityDeltaTimeUs / representation.segmentDurationUs);
                             }
 
                             // init segment
