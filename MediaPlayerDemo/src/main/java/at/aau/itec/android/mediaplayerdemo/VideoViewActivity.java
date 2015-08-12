@@ -60,6 +60,7 @@ public class VideoViewActivity extends Activity {
         mMediaController = new MediaController(this);
         mMediaController.setAnchorView(findViewById(R.id.container));
         mMediaController.setMediaPlayer(mMediaPlayerControl);
+        mMediaController.setEnabled(false);
 
         mProgress.setVisibility(View.VISIBLE);
 
@@ -87,6 +88,18 @@ public class VideoViewActivity extends Activity {
                 }
 
                 mProgress.setVisibility(View.GONE);
+                mMediaController.setEnabled(true);
+            }
+        });
+        mVideoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+            @Override
+            public boolean onError(MediaPlayer mp, int what, int extra) {
+                Toast.makeText(VideoViewActivity.this,
+                        "Cannot play the video, see logcat for the detailed exception",
+                        Toast.LENGTH_LONG).show();
+                mProgress.setVisibility(View.GONE);
+                mMediaController.setEnabled(false);
+                return true;
             }
         });
         mVideoView.setOnInfoListener(new MediaPlayer.OnInfoListener() {
