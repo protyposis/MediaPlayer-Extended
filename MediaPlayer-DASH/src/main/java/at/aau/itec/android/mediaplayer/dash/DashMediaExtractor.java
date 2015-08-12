@@ -253,7 +253,7 @@ class DashMediaExtractor extends MediaExtractor {
     }
 
     @Override
-    public void seekTo(long timeUs, int mode) {
+    public void seekTo(long timeUs, int mode) throws IOException {
         int targetSegmentIndex = Math.min((int) (timeUs / mRepresentation.segmentDurationUs), mRepresentation.segments.size() - 1);
         Log.d(TAG, "seek to " + timeUs + " @ segment " + targetSegmentIndex);
         if(targetSegmentIndex == mCurrentSegment) {
@@ -262,15 +262,11 @@ class DashMediaExtractor extends MediaExtractor {
              * going back in time. */
             super.seekTo(0, mode);
         } else {
-            try {
-                invalidateFutureCache();
-                renewExtractor();
-                mCurrentSegment = targetSegmentIndex;
-                initOnWorkerThread(targetSegmentIndex);
-                super.seekTo(timeUs - mSegmentPTSOffsetUs, mode);
-            } catch (IOException e) {
-                Log.e(TAG, "seeking failed", e);
-            }
+            invalidateFutureCache();
+            renewExtractor();
+            mCurrentSegment = targetSegmentIndex;
+            initOnWorkerThread(targetSegmentIndex);
+            super.seekTo(timeUs - mSegmentPTSOffsetUs, mode);
         }
     }
 
@@ -326,64 +322,60 @@ class DashMediaExtractor extends MediaExtractor {
         }
     }
 
-    private void init(Integer segmentNr) {
-        try {
-            // Check for segment in caches, and execute blocking download if missing
-            // First, check the future cache, without a seek the chance is much higher of finding it there
-            CachedSegment cachedSegment = mFutureCache.remove(segmentNr);
+    private void init(Integer segmentNr) throws IOException {
+        // Check for segment in caches, and execute blocking download if missing
+        // First, check the future cache, without a seek the chance is much higher of finding it there
+        CachedSegment cachedSegment = mFutureCache.remove(segmentNr);
+        if(cachedSegment == null) {
+            // Second, check the already used cache, maybe we had a seek and the segment is already there
+            cachedSegment = mUsedCache.get(segmentNr);
             if(cachedSegment == null) {
-                // Second, check the already used cache, maybe we had a seek and the segment is already there
-                cachedSegment = mUsedCache.get(segmentNr);
-                if(cachedSegment == null) {
-                    // Third, check if a request is already active
-                    Call call = mFutureCacheRequests.get(segmentNr);
-                    /* TODO add synchronization to the whole caching code
-                     * E.g., a request could have finished between this mFutureCacheRequests call and
-                     * the previous mUsedCache call, whose result is missed.
-                     */
-                    if(call != null) {
-                        synchronized (mFutureCache) {
-                            try {
-                                while((cachedSegment = mFutureCache.remove(segmentNr)) == null) {
-                                    Log.d(TAG, "waiting for request to finish " + segmentNr);
-                                    mFutureCache.wait();
-                                }
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                // Third, check if a request is already active
+                Call call = mFutureCacheRequests.get(segmentNr);
+                /* TODO add synchronization to the whole caching code
+                 * E.g., a request could have finished between this mFutureCacheRequests call and
+                 * the previous mUsedCache call, whose result is missed.
+                 */
+                if(call != null) {
+                    synchronized (mFutureCache) {
+                        try {
+                            while((cachedSegment = mFutureCache.remove(segmentNr)) == null) {
+                                Log.d(TAG, "waiting for request to finish " + segmentNr);
+                                mFutureCache.wait();
                             }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
-                    } else {
-                        // Fourth, least and worst alternative: blocking download of segment
-                        cachedSegment = downloadFile(segmentNr);
                     }
+                } else {
+                    // Fourth, least and worst alternative: blocking download of segment
+                    cachedSegment = downloadFile(segmentNr);
                 }
             }
-
-            mUsedCache.put(segmentNr, cachedSegment);
-            mSegmentPTSOffsetUs = cachedSegment.ptsOffsetUs;
-            setDataSource(cachedSegment.file.getPath());
-
-            // Reselect tracks at reinitialization for a successive segment
-            if(!mSelectedTracks.isEmpty()) {
-                for(int index : mSelectedTracks) {
-                    super.selectTrack(index);
-                }
-            }
-
-            // Switch representation
-            if(cachedSegment.representation != mRepresentation) {
-                //invalidateFutureCache();
-                Log.d(TAG, "representation switch: " + mRepresentation + " -> " + cachedSegment.representation);
-                mRepresentationSwitched = true;
-                mRepresentation = cachedSegment.representation;
-            }
-
-            // Switch future caching to the currently best representation
-            Representation recommendedRepresentation = mAdaptationLogic.getRecommendedRepresentation(mAdaptationSet);
-            fillFutureCache(recommendedRepresentation);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+
+        mUsedCache.put(segmentNr, cachedSegment);
+        mSegmentPTSOffsetUs = cachedSegment.ptsOffsetUs;
+        setDataSource(cachedSegment.file.getPath());
+
+        // Reselect tracks at reinitialization for a successive segment
+        if(!mSelectedTracks.isEmpty()) {
+            for(int index : mSelectedTracks) {
+                super.selectTrack(index);
+            }
+        }
+
+        // Switch representation
+        if(cachedSegment.representation != mRepresentation) {
+            //invalidateFutureCache();
+            Log.d(TAG, "representation switch: " + mRepresentation + " -> " + cachedSegment.representation);
+            mRepresentationSwitched = true;
+            mRepresentation = cachedSegment.representation;
+        }
+
+        // Switch future caching to the currently best representation
+        Representation recommendedRepresentation = mAdaptationLogic.getRecommendedRepresentation(mAdaptationSet);
+        fillFutureCache(recommendedRepresentation);
     }
 
     private Integer getNextSegment() {

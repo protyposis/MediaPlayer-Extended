@@ -227,7 +227,7 @@ public class MediaExtractor {
      * All selected tracks seek near the requested time according to the
      * specified mode.
      */
-    public void seekTo(long timeUs, int mode) {
+    public void seekTo(long timeUs, int mode) throws IOException {
         mApiExtractor.seekTo(timeUs, mode);
     }
 

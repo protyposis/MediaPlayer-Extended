@@ -27,6 +27,7 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.widget.MediaController;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.Map;
@@ -47,6 +48,7 @@ public class GLVideoView extends GLTextureView implements
     private MediaPlayer.OnSeekListener mOnSeekListener;
     private MediaPlayer.OnSeekCompleteListener mOnSeekCompleteListener;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
+    private MediaPlayer.OnErrorListener mOnErrorListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
 
     /**
@@ -117,11 +119,13 @@ public class GLVideoView extends GLTextureView implements
             mPlayer.setOnSeekListener(mSeekListener);
             mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
             mPlayer.setOnCompletionListener(mCompletionListener);
+            mPlayer.setOnErrorListener(mErrorListener);
             mPlayer.setOnInfoListener(mInfoListener);
             mPlayer.setDataSource(mSource);
             Log.d(TAG, "video opened");
         } catch (IOException e) {
             Log.e(TAG, "video open failed", e);
+            mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
         }
     }
 
@@ -147,6 +151,10 @@ public class GLVideoView extends GLTextureView implements
 
     public void setOnCompletionListener(MediaPlayer.OnCompletionListener l) {
         this.mOnCompletionListener = l;
+    }
+
+    public void setOnErrorListener(MediaPlayer.OnErrorListener l) {
+        this.mOnErrorListener = l;
     }
 
     public void setOnInfoListener(MediaPlayer.OnInfoListener l) {
@@ -290,6 +298,20 @@ public class GLVideoView extends GLTextureView implements
                 mOnCompletionListener.onCompletion(mp);
             }
             stayAwake(false);
+        }
+    };
+
+    private MediaPlayer.OnErrorListener mErrorListener =
+            new MediaPlayer.OnErrorListener() {
+        @Override
+        public boolean onError(MediaPlayer mp, int what, int extra) {
+            if(mOnErrorListener != null) {
+                return mOnErrorListener.onError(mp, what, extra);
+            }
+
+            Toast.makeText(getContext(), "Cannot play the video", Toast.LENGTH_LONG).show();
+
+            return true;
         }
     };
 

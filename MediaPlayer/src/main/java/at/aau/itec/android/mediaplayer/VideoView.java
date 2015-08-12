@@ -26,6 +26,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.MediaController;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.Map;
@@ -48,6 +49,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
     private MediaPlayer.OnSeekListener mOnSeekListener;
     private MediaPlayer.OnSeekCompleteListener mOnSeekCompleteListener;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
+    private MediaPlayer.OnErrorListener mOnErrorListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
     private MediaPlayer.OnBufferingUpdateListener mOnBufferingUpdateListener;
 
@@ -129,12 +131,14 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
             mPlayer.setOnCompletionListener(mCompletionListener);
             mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
+            mPlayer.setOnErrorListener(mErrorListener);
             mPlayer.setOnInfoListener(mInfoListener);
             mPlayer.setOnBufferingUpdateListener(mBufferingUpdateListener);
             mPlayer.setDataSource(mSource);
             Log.d(TAG, "video opened");
         } catch (IOException e) {
             Log.e(TAG, "video open failed", e);
+            mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
         }
     }
 
@@ -231,6 +235,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     public void setOnBufferingUpdateListener(MediaPlayer.OnBufferingUpdateListener l) {
         this.mOnBufferingUpdateListener = l;
+    }
+
+    public void setOnErrorListener(MediaPlayer.OnErrorListener l) {
+        this.mOnErrorListener = l;
     }
 
     public void setOnInfoListener(MediaPlayer.OnInfoListener l) {
@@ -365,6 +373,20 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             if(mOnCompletionListener != null) {
                 mOnCompletionListener.onCompletion(mp);
             }
+        }
+    };
+
+    private MediaPlayer.OnErrorListener mErrorListener =
+            new MediaPlayer.OnErrorListener() {
+        @Override
+        public boolean onError(MediaPlayer mp, int what, int extra) {
+            if(mOnErrorListener != null) {
+                return mOnErrorListener.onError(mp, what, extra);
+            }
+
+            Toast.makeText(getContext(), "Cannot play the video", Toast.LENGTH_LONG).show();
+
+            return true;
         }
     };
 
