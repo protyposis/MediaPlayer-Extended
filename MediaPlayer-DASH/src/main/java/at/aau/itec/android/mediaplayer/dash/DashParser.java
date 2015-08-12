@@ -545,7 +545,12 @@ public class DashParser {
         Uri newUrl = Uri.parse(urlExtension);
 
         if(newUrl.isRelative()) {
-            newUrl = Uri.withAppendedPath(url, urlExtension);
+            /* Uri.withAppendedPath appends the extension to the end of the "real" server path,
+             * instead of the end of the uri string.
+             * Example: http://server.com/foo?file=http://server2.net/ + file1.mp4
+             *           => http://server.com/foo/file1.mp4?file=http://server2.net/
+             * To avoid this, we need to join as strings instead. */
+            newUrl = Uri.parse(url.toString() + urlExtension);
         }
         return newUrl;
     }
