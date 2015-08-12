@@ -103,6 +103,7 @@ public class MediaPlayer {
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
+    private boolean mIsStopping;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -273,6 +274,7 @@ public class MediaPlayer {
 
     public void stop() {
         if(mPlaybackThread != null) {
+            mIsStopping = true;
             mPlaybackThread.interrupt();
             mPlaybackThread = null;
         }
@@ -759,8 +761,14 @@ public class MediaPlayer {
             } catch (InterruptedException e) {
                 Log.d(TAG, "decoder interrupted");
                 interrupt();
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
-                        MEDIA_ERROR_UNKNOWN, 0));
+                if(mIsStopping) {
+                    // An intentional stop does not trigger an error message
+                    mIsStopping = false;
+                } else {
+                    // Unexpected interruption, send error message
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                            MEDIA_ERROR_UNKNOWN, 0));
+                }
             } catch (IllegalStateException e) {
                 Log.e(TAG, "decoder error, too many instances?", e);
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
