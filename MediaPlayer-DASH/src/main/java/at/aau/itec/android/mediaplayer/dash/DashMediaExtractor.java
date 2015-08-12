@@ -299,17 +299,28 @@ class DashMediaExtractor extends MediaExtractor {
         try {
             final Exception[] asyncException = new Exception[1];
 
-            new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected Void doInBackground(Void... params) {
-                    try {
-                        init(segmentNr);
-                    } catch (Exception e) {
-                        asyncException[0] = e;
-                    }
-                    return null;
+            String currentThreadName = Thread.currentThread().getName();
+            if(currentThreadName != null && currentThreadName.startsWith("AsyncTask")) {
+                // We are already inside an async task, just continue on this thread
+                try {
+                    init(segmentNr);
+                } catch (Exception e) {
+                    asyncException[0] = e;
                 }
-            }.execute().get();
+            } else {
+                // We are on the main thread, execute asynchronously and wait for the result
+                new AsyncTask<Void, Void, Void>() {
+                    @Override
+                    protected Void doInBackground(Void... params) {
+                        try {
+                            init(segmentNr);
+                        } catch (Exception e) {
+                            asyncException[0] = e;
+                        }
+                        return null;
+                    }
+                }.execute().get();
+            }
 
             // hand an async thrown exception over to the main thread
             if(asyncException[0] != null) {
