@@ -468,6 +468,7 @@ class DashMediaExtractor extends MediaExtractor {
     private File getTempFile(Context context, String fileName) {
         File file = null;
         try {
+            fileName = fileName.replaceAll("\\W+", ""); // remove all special chars to get a valid filename
             file = File.createTempFile(fileName, null, context.getCacheDir());
         } catch (IOException e) {
             // Error while creating file
