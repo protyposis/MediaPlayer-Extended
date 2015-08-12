@@ -486,8 +486,12 @@ class DashMediaExtractor extends MediaExtractor {
      * Builds a request object for a segment.
      */
     private Request buildSegmentRequest(Segment segment) {
-        Request.Builder builder = new Request.Builder()
-                .url(segment.media);
+        // Replace illegal special chars
+        String url = segment.media
+                .replace(" ", "%20") // space
+                .replace("^", "%5E"); // circumflex
+
+        Request.Builder builder = new Request.Builder().url(url);
 
         if(segment.hasRange()) {
             builder.addHeader("Range", "bytes=" + segment.range);
