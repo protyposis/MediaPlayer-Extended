@@ -457,7 +457,7 @@ public class DashParser {
         long presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffsetUs", parent != null ? parent.presentationTimeOffsetUs : 0);
         st.presentationTimeOffsetUs = calculateUs(presentationTimeOffset, st.timescale);
         st.duration = getAttributeValueLong(parser, "duration", parent != null ? parent.duration : 0);
-        st.startNumber = getAttributeValueInt(parser, "startNumber", parent != null ? parent.startNumber : 0);
+        st.startNumber = getAttributeValueInt(parser, "startNumber", parent != null ? parent.startNumber : 1);
 
         String initialization = getAttributeValue(parser, "initialization");
         if(initialization != null) {
