@@ -699,7 +699,7 @@ public class MediaPlayer {
 
                         mVideoCodec.releaseOutputBuffer(outputBufIndex, render); // render picture
 
-                        if (mAudioFormat != null && !mSeeking && !mPaused) {
+                        if (mAudioFormat != null & mAudioExtractor != null && !mSeeking && !mPaused) {
                             // TODO rewrite; this is just a quick and dirty hack
                             long start = SystemClock.elapsedRealtime();
                             while (mAudioPlayback.getBufferTimeUs() < 100000) {
