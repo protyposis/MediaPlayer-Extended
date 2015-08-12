@@ -131,7 +131,7 @@ public class GLVideoView extends GLTextureView implements
 
     private void release() {
         if(mPlayer != null) {
-            mPlayer.stop();
+            mPlayer.release();
             mPlayer = null;
         }
         stayAwake(false);

@@ -279,6 +279,14 @@ public class MediaPlayer {
         stayAwake(false);
     }
 
+    public void release() {
+        stop();
+    }
+
+    public void reset() {
+        stop();
+    }
+
     /**
      * @see android.media.MediaPlayer#setWakeMode(android.content.Context, int)
      */

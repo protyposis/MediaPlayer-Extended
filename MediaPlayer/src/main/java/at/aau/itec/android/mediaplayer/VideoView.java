@@ -212,7 +212,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     private void release() {
         if(mPlayer != null) {
-            mPlayer.stop();
+            mPlayer.release();
             mPlayer = null;
         }
     }
