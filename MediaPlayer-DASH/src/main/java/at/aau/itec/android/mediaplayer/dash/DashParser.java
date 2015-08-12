@@ -93,7 +93,7 @@ public class DashParser {
             }
         }
 
-        long presentationTimeOffset;
+        long presentationTimeOffsetUs;
         long timescale;
         String init;
         String media;
@@ -377,6 +377,9 @@ public class DashParser {
                                 // TODO sync local time with server time (from http date header)?
                                 long availabilityDeltaTimeUs = (now.getTime() - mpd.availabilityStartTime.getTime()) * 1000;
 
+                                // shift by the presentationTimeStamp
+                                availabilityDeltaTimeUs -= segmentTemplate.presentationTimeOffsetUs;
+
                                 // go back in time by the buffering period (else the segments to be buffered are not available yet)
                                 availabilityDeltaTimeUs -= Math.max(mpd.minBufferTimeUs, 10 * 1000000L);
 
@@ -450,8 +453,9 @@ public class DashParser {
 
         // Read properties from template or carry them over from a parent
 
-        st.presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffset", parent != null ? parent.presentationTimeOffset : 0); // TODO use this?
         st.timescale = getAttributeValueLong(parser, "timescale", parent != null ? parent.timescale : 1);
+        long presentationTimeOffset = getAttributeValueLong(parser, "presentationTimeOffsetUs", parent != null ? parent.presentationTimeOffsetUs : 0);
+        st.presentationTimeOffsetUs = calculateUs(presentationTimeOffset, st.timescale);
         st.duration = getAttributeValueLong(parser, "duration", parent != null ? parent.duration : 0);
         st.startNumber = getAttributeValueInt(parser, "startNumber", parent != null ? parent.startNumber : 0);
 
