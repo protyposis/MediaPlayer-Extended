@@ -275,22 +275,26 @@ public class DashParser {
                     String sourceURL = getAttributeValue(parser, "sourceURL");
                     String range = getAttributeValue(parser, "range");
 
-                    if(sourceURL != null) {
-                        representation.initSegment = new Segment(
-                                extendUrl(baseUrl, sourceURL).toString(), range);
-                        Log.d(TAG, "Initialization: " + representation.initSegment.toString());
-                    }
-                    else if(range != null) {
-                        throw new DashParserException("single segment / init range without sourceURL is not supported yet");
-                    }
+                    sourceURL = sourceURL != null ? extendUrl(baseUrl, sourceURL).toString() : baseUrl.toString();
+
+                    representation.initSegment = new Segment(sourceURL, range);
+                    Log.d(TAG, "Initialization: " + representation.initSegment.toString());
                 } else if(tagName.equals("SegmentList")) {
                     long timescale = getAttributeValueLong(parser, "timescale", 1);
                     long duration = getAttributeValueLong(parser, "duration");
                     representation.segmentDurationUs = (long)(((double)duration / timescale) * 1000000d);
                 } else if(tagName.equals("SegmentURL")) {
-                    representation.segments.add(new Segment(
-                            extendUrl(baseUrl, getAttributeValue(parser, "media")).toString(),
-                            getAttributeValue(parser, "mediaRange")));
+                    String media = getAttributeValue(parser, "media");
+                    String mediaRange = getAttributeValue(parser, "mediaRange");
+                    String indexRange = getAttributeValue(parser, "indexRange");
+
+                    media = media != null ? extendUrl(baseUrl, media).toString() : baseUrl.toString();
+
+                    representation.segments.add(new Segment(media, mediaRange));
+
+                    if(indexRange != null) {
+                        Log.v(TAG, "skipping unsupported indexRange in SegmentURL");
+                    }
                 } else if(tagName.equals("SegmentBase")) {
                     String indexRange = getAttributeValue(parser, "indexRange");
                     if(indexRange != null) {
