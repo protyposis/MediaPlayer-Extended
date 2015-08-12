@@ -22,11 +22,13 @@ package at.aau.itec.android.mediaplayer;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.widget.MediaController;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.Map;
@@ -44,8 +46,10 @@ public class GLVideoView extends GLTextureView implements
     private Surface mVideoSurface;
 
     private MediaPlayer.OnPreparedListener mOnPreparedListener;
+    private MediaPlayer.OnSeekListener mOnSeekListener;
     private MediaPlayer.OnSeekCompleteListener mOnSeekCompleteListener;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
+    private MediaPlayer.OnErrorListener mOnErrorListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
 
     /**
@@ -108,24 +112,46 @@ public class GLVideoView extends GLTextureView implements
             // not ready for playback yet, will be called again later
             return;
         }
-        try {
-            mPlayer = new MediaPlayer();
-            mPlayer.setSurface(mVideoSurface);
-            mPlayer.setOnPreparedListener(mPreparedListener);
-            mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
-            mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
-            mPlayer.setOnCompletionListener(mCompletionListener);
-            mPlayer.setOnInfoListener(mInfoListener);
-            mPlayer.setDataSource(mSource);
-            Log.d(TAG, "video opened");
-        } catch (IOException e) {
-            Log.e(TAG, "video open failed", e);
-        }
+
+        mPlayer = new MediaPlayer();
+        mPlayer.setSurface(mVideoSurface);
+        mPlayer.setOnPreparedListener(mPreparedListener);
+        mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
+        mPlayer.setOnSeekListener(mSeekListener);
+        mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
+        mPlayer.setOnCompletionListener(mCompletionListener);
+        mPlayer.setOnErrorListener(mErrorListener);
+        mPlayer.setOnInfoListener(mInfoListener);
+
+        // Set the data source asynchronously as this might take a while, e.g. is data has to be
+        // requested from the network/internet.
+        new AsyncTask<Void, Void, Void>() {
+            private IOException mException;
+
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    mPlayer.setDataSource(mSource);
+                    Log.d(TAG, "video opened");
+                } catch (IOException e) {
+                    Log.e(TAG, "video open failed", e);
+                    mException = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                if(mException != null) {
+                    mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+                }
+            }
+        }.execute();
     }
 
     private void release() {
         if(mPlayer != null) {
-            mPlayer.stop();
+            mPlayer.release();
             mPlayer = null;
         }
         stayAwake(false);
@@ -135,12 +161,20 @@ public class GLVideoView extends GLTextureView implements
         this.mOnPreparedListener = l;
     }
 
+    public void setOnSeekListener(MediaPlayer.OnSeekListener l) {
+        this.mOnSeekListener = l;
+    }
+
     public void setOnSeekCompleteListener(MediaPlayer.OnSeekCompleteListener l) {
         this.mOnSeekCompleteListener = l;
     }
 
     public void setOnCompletionListener(MediaPlayer.OnCompletionListener l) {
         this.mOnCompletionListener = l;
+    }
+
+    public void setOnErrorListener(MediaPlayer.OnErrorListener l) {
+        this.mOnErrorListener = l;
     }
 
     public void setOnInfoListener(MediaPlayer.OnInfoListener l) {
@@ -257,6 +291,15 @@ public class GLVideoView extends GLTextureView implements
         }
     };
 
+    private MediaPlayer.OnSeekListener mSeekListener = new MediaPlayer.OnSeekListener() {
+        @Override
+        public void onSeek(MediaPlayer mp) {
+            if(mOnSeekListener != null) {
+                mOnSeekListener.onSeek(mp);
+            }
+        }
+    };
+
     private MediaPlayer.OnSeekCompleteListener mSeekCompleteListener =
             new MediaPlayer.OnSeekCompleteListener() {
         @Override
@@ -275,6 +318,20 @@ public class GLVideoView extends GLTextureView implements
                 mOnCompletionListener.onCompletion(mp);
             }
             stayAwake(false);
+        }
+    };
+
+    private MediaPlayer.OnErrorListener mErrorListener =
+            new MediaPlayer.OnErrorListener() {
+        @Override
+        public boolean onError(MediaPlayer mp, int what, int extra) {
+            if(mOnErrorListener != null) {
+                return mOnErrorListener.onError(mp, what, extra);
+            }
+
+            Toast.makeText(getContext(), "Cannot play the video", Toast.LENGTH_LONG).show();
+
+            return true;
         }
     };
 

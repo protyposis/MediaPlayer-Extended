@@ -20,6 +20,7 @@
 package at.aau.itec.android.mediaplayer.dash;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -27,7 +28,12 @@ import java.util.List;
  */
 public class MPD {
 
+    boolean isDynamic;
     long mediaPresentationDurationUs;
+    Date availabilityStartTime;
+    long timeShiftBufferDepthUs;
+    long suggestedPresentationDelayUs;
+    long maxSegmentDurationUs;
     long minBufferTimeUs;
     List<AdaptationSet> adaptationSets;
 

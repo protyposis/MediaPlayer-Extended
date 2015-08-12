@@ -21,11 +21,13 @@ package at.aau.itec.android.mediaplayer;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.MediaController;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.Map;
@@ -45,8 +47,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
     private int mVideoHeight;
 
     private MediaPlayer.OnPreparedListener mOnPreparedListener;
+    private MediaPlayer.OnSeekListener mOnSeekListener;
     private MediaPlayer.OnSeekCompleteListener mOnSeekCompleteListener;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
+    private MediaPlayer.OnErrorListener mOnErrorListener;
     private MediaPlayer.OnInfoListener mOnInfoListener;
     private MediaPlayer.OnBufferingUpdateListener mOnBufferingUpdateListener;
 
@@ -119,21 +123,43 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             // not ready for playback yet, will be called again later
             return;
         }
-        try {
-            mPlayer = new MediaPlayer();
-            mPlayer.setDisplay(mSurfaceHolder);
-            mPlayer.setScreenOnWhilePlaying(true);
-            mPlayer.setOnPreparedListener(mPreparedListener);
-            mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
-            mPlayer.setOnCompletionListener(mCompletionListener);
-            mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
-            mPlayer.setOnInfoListener(mInfoListener);
-            mPlayer.setOnBufferingUpdateListener(mBufferingUpdateListener);
-            mPlayer.setDataSource(mSource);
-            Log.d(TAG, "video opened");
-        } catch (IOException e) {
-            Log.e(TAG, "video open failed", e);
-        }
+
+        mPlayer = new MediaPlayer();
+        mPlayer.setDisplay(mSurfaceHolder);
+        mPlayer.setScreenOnWhilePlaying(true);
+        mPlayer.setOnPreparedListener(mPreparedListener);
+        mPlayer.setOnSeekListener(mSeekListener);
+        mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
+        mPlayer.setOnCompletionListener(mCompletionListener);
+        mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
+        mPlayer.setOnErrorListener(mErrorListener);
+        mPlayer.setOnInfoListener(mInfoListener);
+        mPlayer.setOnBufferingUpdateListener(mBufferingUpdateListener);
+
+        // Set the data source asynchronously as this might take a while, e.g. is data has to be
+        // requested from the network/internet.
+        new AsyncTask<Void, Void, Void>() {
+            private IOException mException;
+
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    mPlayer.setDataSource(mSource);
+                    Log.d(TAG, "video opened");
+                } catch (IOException e) {
+                    Log.e(TAG, "video open failed", e);
+                    mException = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                if(mException != null) {
+                    mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+                }
+            }
+        }.execute();
     }
 
     /**
@@ -206,13 +232,17 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     private void release() {
         if(mPlayer != null) {
-            mPlayer.stop();
+            mPlayer.release();
             mPlayer = null;
         }
     }
 
     public void setOnPreparedListener(MediaPlayer.OnPreparedListener l) {
         this.mOnPreparedListener = l;
+    }
+
+    public void setOnSeekListener(MediaPlayer.OnSeekListener l) {
+        this.mOnSeekListener = l;
     }
 
     public void setOnSeekCompleteListener(MediaPlayer.OnSeekCompleteListener l) {
@@ -225,6 +255,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     public void setOnBufferingUpdateListener(MediaPlayer.OnBufferingUpdateListener l) {
         this.mOnBufferingUpdateListener = l;
+    }
+
+    public void setOnErrorListener(MediaPlayer.OnErrorListener l) {
+        this.mOnErrorListener = l;
     }
 
     public void setOnInfoListener(MediaPlayer.OnInfoListener l) {
@@ -333,6 +367,15 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         }
     };
 
+    private MediaPlayer.OnSeekListener mSeekListener = new MediaPlayer.OnSeekListener() {
+        @Override
+        public void onSeek(MediaPlayer mp) {
+            if(mOnSeekListener != null) {
+                mOnSeekListener.onSeek(mp);
+            }
+        }
+    };
+
     private MediaPlayer.OnSeekCompleteListener mSeekCompleteListener =
             new MediaPlayer.OnSeekCompleteListener() {
         @Override
@@ -350,6 +393,20 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             if(mOnCompletionListener != null) {
                 mOnCompletionListener.onCompletion(mp);
             }
+        }
+    };
+
+    private MediaPlayer.OnErrorListener mErrorListener =
+            new MediaPlayer.OnErrorListener() {
+        @Override
+        public boolean onError(MediaPlayer mp, int what, int extra) {
+            if(mOnErrorListener != null) {
+                return mOnErrorListener.onError(mp, what, extra);
+            }
+
+            Toast.makeText(getContext(), "Cannot play the video", Toast.LENGTH_LONG).show();
+
+            return true;
         }
     };
 

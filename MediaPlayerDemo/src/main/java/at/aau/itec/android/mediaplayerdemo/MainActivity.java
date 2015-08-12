@@ -22,6 +22,7 @@ package at.aau.itec.android.mediaplayerdemo;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -56,6 +57,7 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
     private Button mSideBySideSeekTestButton;
 
     private TextView mVideoUriText;
+    private int mVideoUriTextColor;
     private Uri mVideoUri;
 
     @Override
@@ -78,6 +80,7 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
         mSideBySideButton = (Button) findViewById(R.id.sidebyside);
         mSideBySideSeekTestButton = (Button) findViewById(R.id.sidebysideseektest);
         mVideoUriText = (TextView) findViewById(R.id.videouri);
+        mVideoUriTextColor = mVideoUriText.getCurrentTextColor();
 
         mVideoSelectButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -223,6 +226,7 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                         text = "DASH: " + text;
                     }
                     mVideoUriText.setText(text);
+                    mVideoUriText.setTextColor(mVideoUriTextColor);
                     mVideoUri = uri;
 
                     mVideoViewButton.setEnabled(true);
@@ -237,6 +241,8 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                 @Override
                 public void onException(Exception e) {
                     mVideoUriText.setText("Error loading video" + (e.getMessage() != null ? ": " + e.getMessage() : " :("));
+                    mVideoUriText.setTextColor(Color.RED);
+                    Log.e(TAG, "Error loading video", e);
                 }
             });
         }

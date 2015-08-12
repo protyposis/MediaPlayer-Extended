@@ -5,9 +5,9 @@ ITEC MediaPlayer
 
 The ITEC MediaPlayer library is a video player library for Android supporting
 exact seeking to frames, playback speed adjustment, shader support, zooming & panning, frame extraction
-and a lot of media source protocols and formats, including DASH. It strives to be an API-compatible 
-direct replacement for the Android `MediaPlayer` and `VideoView` components and builds upon the Android 
-`MediaExtractor` and `MediaCodec` API components. It is very lightweight, easy to use, makes native 
+and a lot of media source protocols and formats, including DASH. It strives to be an API-compatible
+direct replacement for the Android `MediaPlayer` and `VideoView` components and builds upon the Android
+`MediaExtractor` and `MediaCodec` API components. It is very lightweight, easy to use, makes native
 code / NDK fiddling unnecessary, and works from Android 4.1 up.
 
 A [demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) is available on the Google Play Store.
@@ -55,11 +55,11 @@ Requirements
 Usage
 -----
 
-Usage is very simple because the library's aim is to be API-compatible with the default Android classes. 
-The `MediaPlayer` in this library is the equivalent of Android's `MediaPlayer`, the `VideoView` 
+Usage is very simple because the library's aim is to be API-compatible with the default Android classes.
+The `MediaPlayer` in this library is the equivalent of Android's `MediaPlayer`, the `VideoView`
 and `GLVideoView` are equivalents of Android's `VideoView`.
 
-To migrate from the Android default classes to this library, just replace the imports in your Java headers. If 
+To migrate from the Android default classes to this library, just replace the imports in your Java headers. If
 there are any methods missing, fill free to open an issue on the issue tracker or submit a pull request.
 
 
@@ -97,7 +97,7 @@ local Maven repository and add one or more of the following dependencies:
         ...
         mavenLocal()
     }
-    
+
     dependencies {
         ...
         compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3.3-SNAPSHOT'
@@ -110,12 +110,12 @@ local Maven repository and add one or more of the following dependencies:
 
 ### Components ###
 
-The library is split into several logical components, comprising the base MediaPlayer and additional optional 
+The library is split into several logical components, comprising the base MediaPlayer and additional optional
 components that extend the functionality of the base.
 
 #### MediaPlayer ####
 
-The base component provides the `MediaPlayer`, which can be used as a replacement for the Android 
+The base component provides the `MediaPlayer`, which can be used as a replacement for the Android
 [MediaPlayer](http://developer.android.com/reference/android/media/MediaPlayer.html), and the `VideoView`,
 which can be used as a replacement for the Android [VideoView](http://developer.android.com/reference/android/widget/VideoView.html).
 To load a video, use either the compatibility methods known from the Android API to specify a file or URI, or supply a `UriSource`.
@@ -123,42 +123,43 @@ To load a video, use either the compatibility methods known from the Android API
 #### MediaPlayer-DASH ####
 
 Extends the MediaPlayer base with DASH support. To play a DASH stream, supply the MediaPlayer or VideoView a
-`DashSource` with the URI of the MPD file or an externally parsed/constructed `MPD` object, and an 
+`DashSource` with the URI of the MPD file or an externally parsed/constructed `MPD` object, and an
 `AdaptationLogic`. MPDs can be externally parsed with the `DashParser`. This component comes with
-two basic AdaptationLogic implementations, `ConstantPropertyBasedLogic` which selects a specified 
-constant representation mode, and `SimpleRateBasedAdaptationLogic`, which monitors the bandwidth and 
-tries to choose the best representation accordingly. It supports MP4, fragmented MP4 and WebM 
-containers, with both file and byte-range requests.
+two basic AdaptationLogic implementations, `ConstantPropertyBasedLogic` which selects a specified
+constant representation mode, and `SimpleRateBasedAdaptationLogic`, which monitors the bandwidth and
+tries to choose the best representation accordingly. It supports MP4, fragmented MP4 and WebM
+containers, with both file and byte-range requests. The DASH support does not cover the full standard,
+but many common use cases.
 
-MediaPlayer-DASH has external dependencies on [OkHttp](https://github.com/square/okhttp), 
+MediaPlayer-DASH has external dependencies on [OkHttp](https://github.com/square/okhttp),
 [Okio](https://github.com/square/okio), and [ISO Parser](https://github.com/sannies/mp4parser).
 
 #### MediaPlayer-GLES ####
 
-Extends the MediaPlayer base with a GLES surface and GLSL shader support. It provides the `GLVideoView`, 
+Extends the MediaPlayer base with a GLES surface and GLSL shader support. It provides the `GLVideoView`,
 a VideoView with a GL surface and a simple interface for custom shader effects. Effects implement
-the `Effect` interface and can be dynamically parameterized. It also provides the `GLCameraView`, 
-which is a camera preview widget with effect support. It comes with a few simple effects, e.g. 
+the `Effect` interface and can be dynamically parameterized. It also provides the `GLCameraView`,
+which is a camera preview widget with effect support. It comes with a few simple effects, e.g.
 a sobel edge detector, a simple toon effect and some 9x9 kernel effects. The GLES views can be zoomed
 and panned with the typical touchscreen gestures.
 
 #### MediaPlayer-GLES-FlowAbs ####
 
-This module adds the [FlowAbs](https://code.google.com/p/flowabs/) shader effect to the GLES component 
+This module adds the [FlowAbs](https://code.google.com/p/flowabs/) shader effect to the GLES component
 and demonstrates the possibility to construct and use very elaborate shaders. It also offers various
-sub-effects that the flowabs-effect is composed of, including (flow-based) difference of Gaussians, 
+sub-effects that the flowabs-effect is composed of, including (flow-based) difference of Gaussians,
 color quantization and a tangent flow map.
 
 #### MediaPlayer-GLES-QrMarker ####
 
-This module is another example of an effect composed of multiple shaders. It is taken from 
-[QrMarker](https://github.com/thHube/QrMarker-ComputerVision) and provides a rather pointless and 
+This module is another example of an effect composed of multiple shaders. It is taken from
+[QrMarker](https://github.com/thHube/QrMarker-ComputerVision) and provides a rather pointless and
 extremely slow QR marker identification effect, and a nice Canny edge detection effect.
 
 #### MediaPlayerDemo ####
 
 This module is a demo app that incorporates all the main functionality of the MediaPlayer modules
-and serves as an example on how they can be used and extended. It is available for download as 
+and serves as an example on how they can be used and extended. It is available for download as
 [ITEC MediaPlayer Demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) on the Google Play Store.
 
 
@@ -168,8 +169,8 @@ Known Issues
 * MediaPlayer: audio can get out of sync on slow devices
 * MediaPlayer-DASH: MPD parser is basic and only tested with the test MPDs listed below
 * MediaPlayer-DASH: representation switching can result in a short lag (this only happens with mp4/avc videos because reinitializing Android's MediaCodec takes some time; a workaround would be to prepare a second codec with a second surface, and switch them at the right frame; webm works flawlessly)
-* MediaPlayer-GLES-FlowAbs: The OrientationAlignedBilateralFilterShaderProgram / FlowAbsBilateralFilterEffect does 
-  not work correctly for some unknown reason and is deactivated in the FlowAbs effect, making it 
+* MediaPlayer-GLES-FlowAbs: The OrientationAlignedBilateralFilterShaderProgram / FlowAbsBilateralFilterEffect does
+  not work correctly for some unknown reason and is deactivated in the FlowAbs effect, making it
   slightly less fancy
 * Exception handling needs to be improved
 
@@ -180,7 +181,7 @@ Device specific:
 
 Tested and confirmed working on:
 
-* LG Nexus 4 (Android 4.4.4/5.0/5.0.1, Adreno 320)
+* LG Nexus 4 (Android 4.4.4/5.0/5.0.1/5.1.1, Adreno 320)
 * LG Nexus 5 (Android 4.4.4/5.0/5.0.1, Adreno 330)
 * ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs)
 * ASUS Nexus 7 2013 (Android 4.4.4/5.0/5.0.2, Adreno 320)
@@ -188,6 +189,27 @@ Tested and confirmed working on:
 * Samsung Galaxy SII (Android 4.1.2, ARM Mali-400MP4)
 * Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP4)
 
+### DASH ###
+
+The DASH support in this library is currently limited to the most common use cases. It supports
+video and audio, and switching between multiple representations thereof (bitrates and resolutions). Segments
+must be divided into separate files or explicit byte ranges and defined in a SegmentTemplate or
+SegmentList. The player can also display live streams (dynamic mode), but this is just a simple hack to
+demonstrate the ability. An evaluation of the DASH-IF test vectors is [available here](DASH-IF-test-vectors.md).
+
+Currently not supported are single-segment representations, audio-only MPDs, multiple periods (it only
+plays back the first period), segment index box parsing (sidx), dynamic MPD updates, and encryption.
+The supported codecs are limited by their support through the Android MediaCodec.
+
+There are two main cases when DASH fails:
+
+* At MPD parsing time, when the parser detects an unsupported feature and throws an exception, or when
+it crashes because of unexpected data. This is indicated in the demo app by a red error message and greyed
+out video view buttons.
+* At video view / media player initialization time, because segments cannot be downloaded, the
+MediaExtractor fails reading a stream (usually because of unsupported container features), or a stream
+uses a codec not supported by Android's MediaCodec. The demo app indicates this by an error toast
+message and disabled playback controls.
 
 Online Streaming Test URLs
 --------------------------
@@ -207,10 +229,13 @@ These URLs have been tested and definitely work in the demo app:
         * WebM 7 rep 200 kbps to 4700 kbps multiplexed audio: http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny.mpd
         * WebM 7 rep 1000 kbps to 8000 kbps multiplexed audio: http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny_1080p.mpd
     * MP4 8 rep 250 to 6000 kbps separate audio: http://dj9wk94416cg5.cloudfront.net/sintel2/sintel.mpd
+    * [DASH-IF test vectors](http://dashif.org/test-vectors/) (not all working, [evaluation protocol](DASH-IF-test-vectors.md))
+    * Akamai live stream: http://24x7dash-i.akamaihd.net/dash/live/900080/elemental/dash.mpd
+    * [IRT reference clips](http://av-standard.irt.de/wiki/index.php/Referenzclips) (not yet tested)
 
 
 License
 -------
 
-Copyright (C) 2014 Mario Guggenberger, Institute of Information Technology, Alpen-Adria-Universität Klagenfurt <mg@itec.aau.at>.
+Copyright (C) 2014, 2015 Mario Guggenberger, Institute of Information Technology, Alpen-Adria-Universität Klagenfurt <mg@itec.aau.at>.
 This project is released under the terms of the GNU General Public License. See `LICENSE` for details.

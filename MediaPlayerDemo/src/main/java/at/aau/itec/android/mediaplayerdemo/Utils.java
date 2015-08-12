@@ -153,4 +153,25 @@ public class Utils {
         void onMediaSourceLoaded(MediaSource mediaSource);
         void onException(Exception e);
     }
+
+    /**
+     * Iterates a hierarchy of exceptions and combines their messages. Useful for compact
+     * error representation to the user during debugging/development.
+     */
+    public static String getExceptionMessageHistory(Throwable e) {
+        String messages = "";
+
+        String message = e.getMessage();
+        if(message != null) {
+            messages += message;
+        }
+        while((e = e.getCause()) != null) {
+            message = e.getMessage();
+            if(message != null) {
+                messages += " <- " + message;
+            }
+        }
+
+        return messages;
+    }
 }

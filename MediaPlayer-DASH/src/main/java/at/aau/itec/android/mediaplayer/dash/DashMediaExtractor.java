@@ -145,7 +145,7 @@ class DashMediaExtractor extends MediaExtractor {
         if(mediaFormat.getString(MediaFormat.KEY_MIME).startsWith("video/")) {
             // Return the display aspect ratio as defined in the MPD (can be different from the encoded video size)
             mediaFormat.setFloat(MEDIA_FORMAT_EXTENSION_KEY_DAR,
-                    (float)mRepresentation.width / mRepresentation.height);
+                    mAdaptationSet.hasPAR() ? mAdaptationSet.par : mRepresentation.calculatePAR());
         }
         return mediaFormat;
     }
@@ -168,8 +168,12 @@ class DashMediaExtractor extends MediaExtractor {
         if(index == -1) {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
-            if(switchToNextSegment()) {
-                return super.getSampleTrackIndex();
+            try {
+                if (switchToNextSegment()) {
+                    return super.getSampleTrackIndex();
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "segment switching failed", e);
             }
         }
         return index;
@@ -181,18 +185,22 @@ class DashMediaExtractor extends MediaExtractor {
         if(size == -1) {
             /* EOS of current segment reached. Check for and read from successive segment if
              * existing, else return the EOS flag. */
-            if(switchToNextSegment()) {
-                /* If the representation switches during this read call, we cannot continue reading
-                 * data from the next segment, because the video codec needs to reinitialize before.
-                 * Else, some data is first fed into the decoder and then it is reinitialized, which
-                 * results in skipped (sync) frames and artefacts.
-                 * By returning 0, the decoder has time to check if the representation has changed,
-                 * reconfigure itself and then issue another read. */
-                if(mRepresentationSwitched) {
-                    return 0;
-                } else {
-                    return super.readSampleData(byteBuf, offset);
+            try {
+                if (switchToNextSegment()) {
+                    /* If the representation switches during this read call, we cannot continue reading
+                     * data from the next segment, because the video codec needs to reinitialize before.
+                     * Else, some data is first fed into the decoder and then it is reinitialized, which
+                     * results in skipped (sync) frames and artifacts.
+                     * By returning 0, the decoder has time to check if the representation has changed,
+                     * reconfigure itself and then issue another read. */
+                    if (mRepresentationSwitched) {
+                        return 0;
+                    } else {
+                        return super.readSampleData(byteBuf, offset);
+                    }
                 }
+            } catch (IOException e) {
+                Log.e(TAG, "segment switching failed", e);
             }
         }
         return size;
@@ -202,7 +210,7 @@ class DashMediaExtractor extends MediaExtractor {
      * Tries to switch to the next segment and returns true if there is one, false if there is none
      * and thus the current is the last one.
      */
-    private boolean switchToNextSegment() {
+    private boolean switchToNextSegment() throws IOException {
         Integer next = getNextSegment();
         if(next != null) {
             /* Since it seems that an extractor cannot be reused by setting another data source,
@@ -245,7 +253,7 @@ class DashMediaExtractor extends MediaExtractor {
     }
 
     @Override
-    public void seekTo(long timeUs, int mode) {
+    public void seekTo(long timeUs, int mode) throws IOException {
         int targetSegmentIndex = Math.min((int) (timeUs / mRepresentation.segmentDurationUs), mRepresentation.segments.size() - 1);
         Log.d(TAG, "seek to " + timeUs + " @ segment " + targetSegmentIndex);
         if(targetSegmentIndex == mCurrentSegment) {
@@ -283,19 +291,41 @@ class DashMediaExtractor extends MediaExtractor {
         return false;
     }
 
-    private void initOnWorkerThread(final Integer segmentNr) {
+    private void initOnWorkerThread(final Integer segmentNr) throws IOException {
         /* Avoid NetworkOnMainThreadException by running network request in worker thread
          * but blocking until finished to avoid complicated and in this case unnecessary
          * async handling.
          */
         try {
-            new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected Void doInBackground(Void... params) {
+            final Exception[] asyncException = new Exception[1];
+
+            String currentThreadName = Thread.currentThread().getName();
+            if(currentThreadName != null && currentThreadName.startsWith("AsyncTask")) {
+                // We are already inside an async task, just continue on this thread
+                try {
                     init(segmentNr);
-                    return null;
+                } catch (Exception e) {
+                    asyncException[0] = e;
                 }
-            }.execute().get();
+            } else {
+                // We are on the main thread, execute asynchronously and wait for the result
+                new AsyncTask<Void, Void, Void>() {
+                    @Override
+                    protected Void doInBackground(Void... params) {
+                        try {
+                            init(segmentNr);
+                        } catch (Exception e) {
+                            asyncException[0] = e;
+                        }
+                        return null;
+                    }
+                }.execute().get();
+            }
+
+            // hand an async thrown exception over to the main thread
+            if(asyncException[0] != null) {
+                throw new IOException("error initializing segment", asyncException[0]);
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
@@ -303,64 +333,60 @@ class DashMediaExtractor extends MediaExtractor {
         }
     }
 
-    private void init(Integer segmentNr) {
-        try {
-            // Check for segment in caches, and execute blocking download if missing
-            // First, check the future cache, without a seek the chance is much higher of finding it there
-            CachedSegment cachedSegment = mFutureCache.remove(segmentNr);
+    private void init(Integer segmentNr) throws IOException {
+        // Check for segment in caches, and execute blocking download if missing
+        // First, check the future cache, without a seek the chance is much higher of finding it there
+        CachedSegment cachedSegment = mFutureCache.remove(segmentNr);
+        if(cachedSegment == null) {
+            // Second, check the already used cache, maybe we had a seek and the segment is already there
+            cachedSegment = mUsedCache.get(segmentNr);
             if(cachedSegment == null) {
-                // Second, check the already used cache, maybe we had a seek and the segment is already there
-                cachedSegment = mUsedCache.get(segmentNr);
-                if(cachedSegment == null) {
-                    // Third, check if a request is already active
-                    Call call = mFutureCacheRequests.get(segmentNr);
-                    /* TODO add synchronization to the whole caching code
-                     * E.g., a request could have finished between this mFutureCacheRequests call and
-                     * the previous mUsedCache call, whose result is missed.
-                     */
-                    if(call != null) {
-                        synchronized (mFutureCache) {
-                            try {
-                                while((cachedSegment = mFutureCache.remove(segmentNr)) == null) {
-                                    Log.d(TAG, "waiting for request to finish " + segmentNr);
-                                    mFutureCache.wait();
-                                }
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                // Third, check if a request is already active
+                Call call = mFutureCacheRequests.get(segmentNr);
+                /* TODO add synchronization to the whole caching code
+                 * E.g., a request could have finished between this mFutureCacheRequests call and
+                 * the previous mUsedCache call, whose result is missed.
+                 */
+                if(call != null) {
+                    synchronized (mFutureCache) {
+                        try {
+                            while((cachedSegment = mFutureCache.remove(segmentNr)) == null) {
+                                Log.d(TAG, "waiting for request to finish " + segmentNr);
+                                mFutureCache.wait();
                             }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
-                    } else {
-                        // Fourth, least and worst alternative: blocking download of segment
-                        cachedSegment = downloadFile(segmentNr);
                     }
+                } else {
+                    // Fourth, least and worst alternative: blocking download of segment
+                    cachedSegment = downloadFile(segmentNr);
                 }
             }
-
-            mUsedCache.put(segmentNr, cachedSegment);
-            mSegmentPTSOffsetUs = cachedSegment.ptsOffsetUs;
-            setDataSource(cachedSegment.file.getPath());
-
-            // Reselect tracks at reinitialization for a successive segment
-            if(!mSelectedTracks.isEmpty()) {
-                for(int index : mSelectedTracks) {
-                    super.selectTrack(index);
-                }
-            }
-
-            // Switch representation
-            if(cachedSegment.representation != mRepresentation) {
-                //invalidateFutureCache();
-                Log.d(TAG, "representation switch: " + mRepresentation + " -> " + cachedSegment.representation);
-                mRepresentationSwitched = true;
-                mRepresentation = cachedSegment.representation;
-            }
-
-            // Switch future caching to the currently best representation
-            Representation recommendedRepresentation = mAdaptationLogic.getRecommendedRepresentation(mAdaptationSet);
-            fillFutureCache(recommendedRepresentation);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+
+        mUsedCache.put(segmentNr, cachedSegment);
+        mSegmentPTSOffsetUs = cachedSegment.ptsOffsetUs;
+        setDataSource(cachedSegment.file.getPath());
+
+        // Reselect tracks at reinitialization for a successive segment
+        if(!mSelectedTracks.isEmpty()) {
+            for(int index : mSelectedTracks) {
+                super.selectTrack(index);
+            }
+        }
+
+        // Switch representation
+        if(cachedSegment.representation != mRepresentation) {
+            //invalidateFutureCache();
+            Log.d(TAG, "representation switch: " + mRepresentation + " -> " + cachedSegment.representation);
+            mRepresentationSwitched = true;
+            mRepresentation = cachedSegment.representation;
+        }
+
+        // Switch future caching to the currently best representation
+        Representation recommendedRepresentation = mAdaptationLogic.getRecommendedRepresentation(mAdaptationSet);
+        fillFutureCache(recommendedRepresentation);
     }
 
     private Integer getNextSegment() {
@@ -383,6 +409,11 @@ class DashMediaExtractor extends MediaExtractor {
                 Request request = buildSegmentRequest(representation.initSegment);
                 long startTime = SystemClock.elapsedRealtime();
                 Response response = mHttpClient.newCall(request).execute();
+                if(!response.isSuccessful()) {
+                    throw new IOException("sync dl error @ init segment: "
+                            + response.code() + " " + response.message()
+                            + " " + request.url().toString());
+                }
                 ByteString segmentData = response.body().source().readByteString();
                 mInitSegments.put(representation, segmentData);
                 mAdaptationLogic.reportSegmentDownload(mAdaptationSet, representation, representation.segments.get(segmentNr), segmentData.size(), SystemClock.elapsedRealtime() - startTime);
@@ -394,6 +425,11 @@ class DashMediaExtractor extends MediaExtractor {
         Request request = buildSegmentRequest(segment);
         long startTime = SystemClock.elapsedRealtime();
         Response response = mHttpClient.newCall(request).execute();
+        if(!response.isSuccessful()) {
+            throw new IOException("sync dl error @ segment " + segmentNr + ": "
+                    + response.code() + " " + response.message()
+                    + " " + request.url().toString());
+        }
         byte[] segmentData = response.body().bytes();
         mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, segment, segmentData.length, SystemClock.elapsedRealtime() - startTime);
         CachedSegment cachedSegment = new CachedSegment(segmentNr, segment, mRepresentation);
@@ -443,6 +479,7 @@ class DashMediaExtractor extends MediaExtractor {
     private File getTempFile(Context context, String fileName) {
         File file = null;
         try {
+            fileName = fileName.replaceAll("\\W+", ""); // remove all special chars to get a valid filename
             file = File.createTempFile(fileName, null, context.getCacheDir());
         } catch (IOException e) {
             // Error while creating file
@@ -460,8 +497,12 @@ class DashMediaExtractor extends MediaExtractor {
      * Builds a request object for a segment.
      */
     private Request buildSegmentRequest(Segment segment) {
-        Request.Builder builder = new Request.Builder()
-                .url(segment.media);
+        // Replace illegal special chars
+        String url = segment.media
+                .replace(" ", "%20") // space
+                .replace("^", "%5E"); // circumflex
+
+        Request.Builder builder = new Request.Builder().url(url);
 
         if(segment.hasRange()) {
             builder.addHeader("Range", "bytes=" + segment.range);
@@ -488,8 +529,16 @@ class DashMediaExtractor extends MediaExtractor {
             /* The PTS in a converted MP4 always start at 0, so we read the offset from the segment
              * index box and work with it at the necessary places to adjust the local PTS to global
              * PTS concerning the whole stream. */
-            SegmentIndexBox sidx = fragment.getBoxes(SegmentIndexBox.class).get(0);
-            segmentPTSOffsetUs = (long)((double)sidx.getEarliestPresentationTime() / sidx.getTimeScale() * 1000000);
+            List<SegmentIndexBox> segmentIndexBoxes = fragment.getBoxes(SegmentIndexBox.class);
+            if(segmentIndexBoxes.size() > 0) {
+                SegmentIndexBox sidx = segmentIndexBoxes.get(0);
+                segmentPTSOffsetUs = (long) ((double) sidx.getEarliestPresentationTime() / sidx.getTimeScale() * 1000000);
+            }
+            /* If there is no segment index box to read the PTS from, we calculate the PTS offset
+             * from the info given in the MPD. */
+            else {
+                segmentPTSOffsetUs = cachedSegment.number * cachedSegment.representation.segmentDurationUs;
+            }
 
             Movie mp4Segment = new Movie();
             mp4Segment.addTrack(new Mp4TrackImpl(null, baseIsoFile.getMovieBox().getBoxes(TrackBox.class).get(0), fragment));

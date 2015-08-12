@@ -93,7 +93,9 @@ public class MediaPlayer {
     private EventHandler mEventHandler;
     private OnPreparedListener mOnPreparedListener;
     private OnCompletionListener mOnCompletionListener;
+    private OnSeekListener mOnSeekListener;
     private OnSeekCompleteListener mOnSeekCompleteListener;
+    private OnErrorListener mOnErrorListener;
     private OnInfoListener mOnInfoListener;
     private OnVideoSizeChangedListener mOnVideoSizeChangedListener;
     private OnBufferingUpdateListener mOnBufferingUpdateListener;
@@ -101,6 +103,7 @@ public class MediaPlayer {
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
+    private boolean mIsStopping;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -231,6 +234,11 @@ public class MediaPlayer {
          * then interferes the seeking procedure, the seek stops prematurely and a wrong waiting time
          * gets calculated. */
 
+        Log.d(TAG, "onSeek");
+        if (mOnSeekListener != null) {
+            mOnSeekListener.onSeek(MediaPlayer.this);
+        }
+
         // inform the decoder thread of an upcoming seek
         mSeekPrepare = true;
         mSeekTargetTime = Math.max(mVideoMinPTS, usec);
@@ -266,10 +274,19 @@ public class MediaPlayer {
 
     public void stop() {
         if(mPlaybackThread != null) {
+            mIsStopping = true;
             mPlaybackThread.interrupt();
             mPlaybackThread = null;
         }
         stayAwake(false);
+    }
+
+    public void release() {
+        stop();
+    }
+
+    public void reset() {
+        stop();
     }
 
     /**
@@ -386,6 +403,11 @@ public class MediaPlayer {
         /* Flag notifying that the decoder has changed to a new representation, post-actions need to
          * be carried out. */
         private boolean mRepresentationChanged;
+        /* Flag needed to initialize the time base with the first PTS of the first frame after it
+         * has been decoded. This is necessary because the first PTS does not necessarily need to be
+         * zero. This is especially important for live streams where playback can start at an
+         * arbitrary position into the stream. */
+        private boolean mTimeBaseInitialized;
 
         private PlaybackThread() {
             super(TAG);
@@ -602,6 +624,13 @@ public class MediaPlayer {
                                 }
                             }
                         } else {
+                            if(!mTimeBaseInitialized) {
+                                // Initialize the time base with the first PTS
+                                // This happens only once after the first frame is decoded.
+                                mTimeBaseInitialized = true;
+                                mTimeBase.startAt(mVideoInfo.presentationTimeUs);
+                            }
+
                             mCurrentPosition = mVideoInfo.presentationTimeUs;
 
                             long waitingTime = mTimeBase.getOffsetFrom(mVideoInfo.presentationTimeUs);
@@ -670,7 +699,7 @@ public class MediaPlayer {
 
                         mVideoCodec.releaseOutputBuffer(outputBufIndex, render); // render picture
 
-                        if (mAudioExtractor != null && !mSeeking && !mPaused) {
+                        if (mAudioFormat != null & mAudioExtractor != null && !mSeeking && !mPaused) {
                             // TODO rewrite; this is just a quick and dirty hack
                             long start = SystemClock.elapsedRealtime();
                             while (mAudioPlayback.getBufferTimeUs() < 100000) {
@@ -732,10 +761,22 @@ public class MediaPlayer {
             } catch (InterruptedException e) {
                 Log.d(TAG, "decoder interrupted");
                 interrupt();
+                if(mIsStopping) {
+                    // An intentional stop does not trigger an error message
+                    mIsStopping = false;
+                } else {
+                    // Unexpected interruption, send error message
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                            MEDIA_ERROR_UNKNOWN, 0));
+                }
             } catch (IllegalStateException e) {
                 Log.e(TAG, "decoder error, too many instances?", e);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                        MEDIA_ERROR_UNKNOWN, 0));
             } catch (IOException e) {
                 Log.e(TAG, "decoder error, codec can not be created", e);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                        MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
             }
 
             if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
@@ -901,7 +942,7 @@ public class MediaPlayer {
             return result;
         }
 
-        private long fastSeek(long targetTime) {
+        private long fastSeek(long targetTime) throws IOException {
             mVideoCodec.flush();
             if(mAudioFormat != null) mAudioCodec.flush();
             mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
@@ -1023,6 +1064,26 @@ public class MediaPlayer {
     }
 
     /**
+     * Interface definition of a callback to be invoked when a seek
+     * is issued.
+     */
+    public interface OnSeekListener {
+        /**
+         * Called to indicate that a seek operation has been started.
+         * @param mp the mediaPlayer that the seek was called on
+         */
+        public void onSeek(MediaPlayer mp);
+    }
+
+    /**
+     * Register a calback to be invoked when a seek operation has been started.
+     * @param listener the callback that will be run
+     */
+    public void setOnSeekListener(OnSeekListener listener) {
+        mOnSeekListener = listener;
+    }
+
+    /**
      * Interface definition of a callback to be invoked indicating
      * the completion of a seek operation.
      */
@@ -1103,6 +1164,76 @@ public class MediaPlayer {
         mOnBufferingUpdateListener = listener;
     }
 
+    /** Unspecified media player error.
+     * @see at.aau.itec.android.mediaplayer.MediaPlayer.OnErrorListener
+     */
+    public static final int MEDIA_ERROR_UNKNOWN = 1;
+
+    /** Media server died. In this case, the application must release the
+     * MediaPlayer object and instantiate a new one.
+     * @see at.aau.itec.android.mediaplayer.MediaPlayer.OnErrorListener
+     */
+    public static final int MEDIA_ERROR_SERVER_DIED = 100;
+
+    /** The video is streamed and its container is not valid for progressive
+     * playback i.e the video's index (e.g moov atom) is not at the start of the
+     * file.
+     * @see at.aau.itec.android.mediaplayer.MediaPlayer.OnErrorListener
+     */
+    public static final int MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK = 200;
+
+    /** File or network related operation errors. */
+    public static final int MEDIA_ERROR_IO = -1004;
+    /** Bitstream is not conforming to the related coding standard or file spec. */
+    public static final int MEDIA_ERROR_MALFORMED = -1007;
+    /** Bitstream is conforming to the related coding standard or file spec, but
+     * the media framework does not support the feature. */
+    public static final int MEDIA_ERROR_UNSUPPORTED = -1010;
+    /** Some operation takes too long to complete, usually more than 3-5 seconds. */
+    public static final int MEDIA_ERROR_TIMED_OUT = -110;
+
+    /**
+     * Interface definition of a callback to be invoked when there
+     * has been an error during an asynchronous operation (other errors
+     * will throw exceptions at method call time).
+     */
+    public interface OnErrorListener
+    {
+        /**
+         * Called to indicate an error.
+         *
+         * @param mp      the MediaPlayer the error pertains to
+         * @param what    the type of error that has occurred:
+         * <ul>
+         * <li>{@link #MEDIA_ERROR_UNKNOWN}
+         * <li>{@link #MEDIA_ERROR_SERVER_DIED}
+         * </ul>
+         * @param extra an extra code, specific to the error. Typically
+         * implementation dependent.
+         * <ul>
+         * <li>{@link #MEDIA_ERROR_IO}
+         * <li>{@link #MEDIA_ERROR_MALFORMED}
+         * <li>{@link #MEDIA_ERROR_UNSUPPORTED}
+         * <li>{@link #MEDIA_ERROR_TIMED_OUT}
+         * </ul>
+         * @return True if the method handled the error, false if it didn't.
+         * Returning false, or not having an OnErrorListener at all, will
+         * cause the OnCompletionListener to be called.
+         */
+        boolean onError(MediaPlayer mp, int what, int extra);
+    }
+
+    /**
+     * Register a callback to be invoked when an error has happened
+     * during an asynchronous operation.
+     *
+     * @param listener the callback that will be run
+     */
+    public void setOnErrorListener(OnErrorListener listener)
+    {
+        mOnErrorListener = listener;
+    }
+
     /** The player just pushed the very first video frame for rendering.
      * @see at.aau.itec.android.mediaplayer.MediaPlayer.OnInfoListener
      */
@@ -1163,6 +1294,7 @@ public class MediaPlayer {
     private static final int MEDIA_BUFFERING_UPDATE = 3;
     private static final int MEDIA_SEEK_COMPLETE = 4;
     private static final int MEDIA_SET_VIDEO_SIZE = 5;
+    private static final int MEDIA_ERROR = 100;
     private static final int MEDIA_INFO = 200;
 
     private class EventHandler extends Handler {
@@ -1193,6 +1325,17 @@ public class MediaPlayer {
                     if(mOnVideoSizeChangedListener != null) {
                         mOnVideoSizeChangedListener.onVideoSizeChanged(MediaPlayer.this, msg.arg1, msg.arg2);
                     }
+                    return;
+                case MEDIA_ERROR:
+                    Log.e(TAG, "Error (" + msg.arg1 + "," + msg.arg2 + ")");
+                    boolean error_was_handled = false;
+                    if (mOnErrorListener != null) {
+                        error_was_handled = mOnErrorListener.onError(MediaPlayer.this, msg.arg1, msg.arg2);
+                    }
+                    if (mOnCompletionListener != null && !error_was_handled) {
+                        mOnCompletionListener.onCompletion(MediaPlayer.this);
+                    }
+                    stayAwake(false);
                     return;
                 case MEDIA_INFO:
                     Log.d(TAG, "onInfo");
