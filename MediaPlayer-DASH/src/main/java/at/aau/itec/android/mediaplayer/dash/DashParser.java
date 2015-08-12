@@ -609,9 +609,6 @@ public class DashParser {
      */
     private static String processMediaUrl(String url, String representationId,
                                           Integer number, Integer bandwidth, Long time) {
-        // $$
-        url = url.replace("$$", "$");
-
         // RepresentationID
         if(representationId != null) {
             url = url.replace("$RepresentationID$", representationId);
@@ -638,6 +635,11 @@ public class DashParser {
         }
 
         url = String.format(url, number, bandwidth, time); // order must match templates list above
+
+        // $$
+        // Replace this at the end, else it breaks directly consecutive template expressions,
+        // e.g. $Bandwidth$$Number$.
+        url = url.replace("$$", "$");
 
         return url;
     }
