@@ -22,6 +22,7 @@ package at.aau.itec.android.mediaplayer;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
@@ -111,22 +112,41 @@ public class GLVideoView extends GLTextureView implements
             // not ready for playback yet, will be called again later
             return;
         }
-        try {
-            mPlayer = new MediaPlayer();
-            mPlayer.setSurface(mVideoSurface);
-            mPlayer.setOnPreparedListener(mPreparedListener);
-            mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
-            mPlayer.setOnSeekListener(mSeekListener);
-            mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
-            mPlayer.setOnCompletionListener(mCompletionListener);
-            mPlayer.setOnErrorListener(mErrorListener);
-            mPlayer.setOnInfoListener(mInfoListener);
-            mPlayer.setDataSource(mSource);
-            Log.d(TAG, "video opened");
-        } catch (IOException e) {
-            Log.e(TAG, "video open failed", e);
-            mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
-        }
+
+        mPlayer = new MediaPlayer();
+        mPlayer.setSurface(mVideoSurface);
+        mPlayer.setOnPreparedListener(mPreparedListener);
+        mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
+        mPlayer.setOnSeekListener(mSeekListener);
+        mPlayer.setOnSeekCompleteListener(mSeekCompleteListener);
+        mPlayer.setOnCompletionListener(mCompletionListener);
+        mPlayer.setOnErrorListener(mErrorListener);
+        mPlayer.setOnInfoListener(mInfoListener);
+
+        // Set the data source asynchronously as this might take a while, e.g. is data has to be
+        // requested from the network/internet.
+        new AsyncTask<Void, Void, Void>() {
+            private IOException mException;
+
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    mPlayer.setDataSource(mSource);
+                    Log.d(TAG, "video opened");
+                } catch (IOException e) {
+                    Log.e(TAG, "video open failed", e);
+                    mException = e;
+                }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                if(mException != null) {
+                    mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+                }
+            }
+        }.execute();
     }
 
     private void release() {
