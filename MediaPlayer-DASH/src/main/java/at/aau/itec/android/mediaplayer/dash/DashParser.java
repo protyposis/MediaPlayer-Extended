@@ -540,6 +540,8 @@ public class DashParser {
      * with the extension if it is absolute.
      */
     private static Uri extendUrl(Uri url, String urlExtension) {
+        urlExtension = urlExtension.replace(" ", "%20"); // Convert spaces
+
         Uri newUrl = Uri.parse(urlExtension);
 
         if(newUrl.isRelative()) {
