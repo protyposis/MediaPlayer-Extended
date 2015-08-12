@@ -195,7 +195,7 @@ The DASH support in this library is currently limited to the most common use cas
 video and audio, and switching between multiple representations thereof (bitrates and resolutions). Segments
 must be divided into separate files or explicit byte ranges and defined in a SegmentTemplate or
 SegmentList. The player can also display live streams (dynamic mode), but this is just a simple hack to
-demonstrate the ability.
+demonstrate the ability. An evaluation of the DASH-IF test vectors is [available here](DASH-IF-test-vectors.md).
 
 Currently not supported are single-segment representations, audio-only MPDs, multiple periods (it only
 plays back the first period), segment index box parsing (sidx), dynamic MPD updates, and encryption.
@@ -229,7 +229,7 @@ These URLs have been tested and definitely work in the demo app:
         * WebM 7 rep 200 kbps to 4700 kbps multiplexed audio: http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny.mpd
         * WebM 7 rep 1000 kbps to 8000 kbps multiplexed audio: http://www-itec.uni-klu.ac.at/dash/js/content/bigbuckbunny_1080p.mpd
     * MP4 8 rep 250 to 6000 kbps separate audio: http://dj9wk94416cg5.cloudfront.net/sintel2/sintel.mpd
-    * [DASH-IF test vectors](http://dashif.org/test-vectors/) (not all working)
+    * [DASH-IF test vectors](http://dashif.org/test-vectors/) (not all working, [evaluation protocol](DASH-IF-test-vectors.md))
     * Akamai live stream: http://24x7dash-i.akamaihd.net/dash/live/900080/elemental/dash.mpd
     * [IRT reference clips](http://av-standard.irt.de/wiki/index.php/Referenzclips) (not yet tested)
 
