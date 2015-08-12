@@ -31,6 +31,7 @@ Features
 Changelog
 ---------
 
+* _v1.4.0_: DASH MPD parser improved and compatibility enhanced, MediaPlayer API improvements and minor changes, error reporting improved, increased responsivity of demo app
 * v1.3.3: zooming fixed
 * v1.3.2: compile and target SDK updated to 22, added to JCenter repository
 * v1.3.1: support for separate audio and video sources added, lint error fix
@@ -81,11 +82,11 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.3.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.3.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.3.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.3.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.4.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.4.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.4.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.4.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.4.0'
     }
 
 #### Local Maven repository ####
@@ -100,11 +101,11 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.3.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.3.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.3.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.3.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.3.3-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.4.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.4.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.4.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.4.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.4.0-SNAPSHOT'
     }
 
 
