@@ -193,7 +193,7 @@ Tested and confirmed working on:
 
 The DASH support in this library is currently limited to the most common use cases. It supports
 video and audio, and switching between multiple representations thereof (bitrates and resolutions). Segments
-must be divided into separate files or explicit byte ranges and defined in either a SegmentTemplate or
+must be divided into separate files or explicit byte ranges and defined in a SegmentTemplate or
 SegmentList. The player can also display live streams (dynamic mode), but this is just a simple hack to
 demonstrate the ability.
 
@@ -201,6 +201,15 @@ Currently not supported are single-segment representations, audio-only MPDs, mul
 plays back the first period), segment index box parsing (sidx), dynamic MPD updates, and encryption.
 The supported codecs are limited by their support through the Android MediaCodec.
 
+There are two main cases when DASH fails:
+
+* At MPD parsing time, when the parser detects an unsupported feature and throws an exception, or when
+it crashes because of unexpected data. This is indicated in the demo app by a red error message and greyed
+out video view buttons.
+* At video view / media player initialization time, because segments cannot be downloaded, the
+MediaExtractor fails reading a stream (usually because of unsupported container features), or a stream
+uses a codec not supported by Android's MediaCodec. The demo app indicates this by an error toast
+message and disabled playback controls.
 
 Online Streaming Test URLs
 --------------------------
