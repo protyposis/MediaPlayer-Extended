@@ -350,9 +350,9 @@ public class DashParser {
 
                                 // media segments
                                 long time = current.t;
-                                for (int j = segmentTemplate.startNumber; j < repeat + 1; j++) {
+                                for (int number = segmentTemplate.startNumber; number < repeat + 1; number++) {
                                     String processedMediaUrl = processMediaUrl(
-                                            segmentTemplate.media, representation.id, null, representation.bandwidth, time);
+                                            segmentTemplate.media, representation.id, number, representation.bandwidth, time);
                                     representation.segments.add(new Segment(processedMediaUrl));
                                     time += current.d;
                                 }
