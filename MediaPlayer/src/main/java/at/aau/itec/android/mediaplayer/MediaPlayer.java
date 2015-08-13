@@ -234,7 +234,7 @@ public class MediaPlayer {
          * then interferes the seeking procedure, the seek stops prematurely and a wrong waiting time
          * gets calculated. */
 
-        Log.d(TAG, "onSeek");
+        Log.d(TAG, "seekTo " + usec);
         if (mOnSeekListener != null) {
             mOnSeekListener.onSeek(MediaPlayer.this);
         }
@@ -478,7 +478,19 @@ public class MediaPlayer {
                     }
 
                     // For a seek, first prepare by seeking the media extractor and flushing the codec.
-                    if (mSeekPrepare) {
+                    /* This needs to be in a loop, because the seek inside this block can take some
+                     * time, meanwhile another seek can be issued. The following seek can update the seek
+                     * target while the video extractor is still seeking, which can turn into a problem
+                     * with DASH when the second target is not within the first requested segment - in
+                     * which case the seek cannot find the new target in the old segment. By checking
+                     * if a seek needs to be prepared after the video extractor seek has finished (which
+                     * means another seek hat been issued), it can be run again and again while new
+                     * seek targets come in, until the target finally stays the same during a seek.
+                     */
+                    while (mSeekPrepare) {
+                        mSeekPrepare = false;
+                        mSeeking = true;
+
                         Log.d(TAG, "seeking to:                 " + mSeekTargetTime);
                         Log.d(TAG, "frame current position:     " + mCurrentPosition);
                         Log.d(TAG, "extractor current position: " + mVideoExtractor.getSampleTime());
@@ -488,6 +500,11 @@ public class MediaPlayer {
 
                         Log.d(TAG, "extractor new position:     " + mVideoExtractor.getSampleTime());
 
+                        if(mSeekPrepare) {
+                            // Another seek has been issued in the meantime, repeat this block
+                            continue;
+                        }
+
                         mVideoCodec.flush();
                         if (mAudioFormat != null) mAudioCodec.flush();
 
@@ -495,9 +512,6 @@ public class MediaPlayer {
                             reinitCodecs();
                             mRepresentationChanged = true;
                         }
-
-                        mSeekPrepare = false;
-                        mSeeking = true;
 
                         if(mSeekMode == SeekMode.FAST_EXACT) {
                             /* Check if the seek target time after the seek is the same as before the
