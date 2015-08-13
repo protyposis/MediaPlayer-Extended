@@ -747,6 +747,8 @@ public class MediaPlayer {
                         // NOTE: this is the format of the raw video output, not the video format as specified by the container
                         MediaFormat oformat = mVideoCodec.getOutputFormat();
                         Log.d(TAG, "output format has changed to " + oformat);
+                    } else if (res == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                        Log.d(TAG, "dequeueOutputBuffer timed out");
                     }
                 }
             } catch (InterruptedException e) {
