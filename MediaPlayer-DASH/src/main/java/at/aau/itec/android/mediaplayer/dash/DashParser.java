@@ -205,7 +205,7 @@ public class DashParser {
                         baseUrl = extendUrl(baseUrl, parser.nextText());
                         Log.d(TAG, "base url: " + baseUrl);
                     } else if(tagName.equals("AdaptationSet")) {
-                        currentPeriod.adaptationSets.add(readAdaptationSet(mpd, baseUrl, parser));
+                        currentPeriod.adaptationSets.add(readAdaptationSet(mpd, currentPeriod, baseUrl, parser));
                     }
                 } else if(type == XmlPullParser.END_TAG) {
                     String tagName = parser.getName();
@@ -226,7 +226,7 @@ public class DashParser {
         }
     }
 
-    private AdaptationSet readAdaptationSet(MPD mpd, Uri baseUrl, XmlPullParser parser)
+    private AdaptationSet readAdaptationSet(MPD mpd, Period period, Uri baseUrl, XmlPullParser parser)
             throws XmlPullParserException, IOException, DashParserException {
         AdaptationSet adaptationSet = new AdaptationSet();
 
@@ -247,7 +247,7 @@ public class DashParser {
                     segmentTemplate = readSegmentTemplate(parser, baseUrl, null);
                 } else if(tagName.equals("Representation")) {
                     adaptationSet.representations.add(readRepresentation(
-                            mpd, adaptationSet, baseUrl, parser, segmentTemplate));
+                            mpd, period, adaptationSet, baseUrl, parser, segmentTemplate));
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 String tagName = parser.getName();
@@ -260,8 +260,9 @@ public class DashParser {
         throw new DashParserException("invalid state");
     }
 
-    private Representation readRepresentation(MPD mpd, AdaptationSet adaptationSet, Uri baseUrl,
-                                              XmlPullParser parser, SegmentTemplate segmentTemplate)
+    private Representation readRepresentation(MPD mpd, Period period, AdaptationSet adaptationSet,
+                                              Uri baseUrl, XmlPullParser parser,
+                                              SegmentTemplate segmentTemplate)
             throws XmlPullParserException, IOException, DashParserException {
         Representation representation = new Representation();
 
@@ -385,6 +386,9 @@ public class DashParser {
                                  * currently are in the live stream. */
                                 // TODO sync local time with server time (from http date header)?
                                 long availabilityDeltaTimeUs = (now.getTime() - mpd.availabilityStartTime.getTime()) * 1000;
+
+                                // shift by the period start
+                                availabilityDeltaTimeUs -= period.startUs;
 
                                 // shift by the presentationTimeStamp
                                 availabilityDeltaTimeUs -= segmentTemplate.presentationTimeOffsetUs;
