@@ -390,7 +390,7 @@ public class DashParser {
                                 // shift by the period start
                                 availabilityDeltaTimeUs -= period.startUs;
 
-                                // shift by the presentationTimeStamp
+                                // shift by the presentationTimeOffset
                                 availabilityDeltaTimeUs -= segmentTemplate.presentationTimeOffsetUs;
 
                                 // go back in time by the buffering period (else the segments to be buffered are not available yet)
