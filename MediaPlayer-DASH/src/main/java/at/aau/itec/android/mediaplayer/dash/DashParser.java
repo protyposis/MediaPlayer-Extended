@@ -163,6 +163,7 @@ public class DashParser {
             parser.setInput(in, null);
 
             MPD mpd = new MPD();
+            Period currentPeriod = null;
 
             int type = 0;
             while((type = parser.next()) >= 0) {
@@ -183,28 +184,36 @@ public class DashParser {
 
                             String date = getAttributeValue(parser, "availabilityStartTime");
                             try {
-                                if(date.length() == 19) {
+                                if (date.length() == 19) {
                                     date = date + "Z";
                                 }
                                 mpd.availabilityStartTime = ISO8601UTC.parse(date.replace("Z", "+00:00"));
                             } catch (ParseException e) {
                                 Log.e(TAG, "unable to parse date: " + date);
                             }
+                        } else { // type == static
+                            mpd.mediaPresentationDurationUs = getAttributeValueTime(parser, "mediaPresentationDuration");
                         }
-                         else { // type == static
-                             mpd.mediaPresentationDurationUs = getAttributeValueTime(parser, "mediaPresentationDuration");
-                         }
                         mpd.minBufferTimeUs = getAttributeValueTime(parser, "minBufferTime");
+                    } else if(tagName.equals("Period")) {
+                        currentPeriod = new Period();
+                        currentPeriod.id = getAttributeValue(parser, "id");
+                        currentPeriod.startUs = getAttributeValueTime(parser, "start");
+                        currentPeriod.durationUs = getAttributeValueTime(parser, "duration");
+                        currentPeriod.bitstreamSwitching = getAttributeValueBoolean(parser, "bitstreamSwitching");
                     } else if(tagName.equals("BaseURL")) {
                         baseUrl = extendUrl(baseUrl, parser.nextText());
                         Log.d(TAG, "base url: " + baseUrl);
                     } else if(tagName.equals("AdaptationSet")) {
-                        mpd.adaptationSets.add(readAdaptationSet(mpd, baseUrl, parser));
+                        currentPeriod.adaptationSets.add(readAdaptationSet(mpd, baseUrl, parser));
                     }
                 } else if(type == XmlPullParser.END_TAG) {
                     String tagName = parser.getName();
                     if(tagName.equals("MPD")) {
                         break;
+                    } else if(tagName.equals("Period")) {
+                        mpd.periods.add(currentPeriod);
+                        currentPeriod = null;
                     }
                 }
             }
@@ -596,7 +605,7 @@ public class DashParser {
     }
 
     private static long getAttributeValueTime(XmlPullParser parser, String name) {
-        return parseTime(getAttributeValue(parser, name));
+        return parseTime(getAttributeValue(parser, name, "PT0S"));
     }
 
     private static long getAttributeValueTime(XmlPullParser parser, String name, String defValue) {
@@ -612,6 +621,11 @@ public class DashParser {
         }
 
         return 0;
+    }
+
+    private static boolean getAttributeValueBoolean(XmlPullParser parser, String name) {
+        String value = getAttributeValue(parser, name, "false");
+        return value.equals("true");
     }
 
     /**

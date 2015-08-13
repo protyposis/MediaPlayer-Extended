@@ -35,10 +35,10 @@ public class MPD {
     long suggestedPresentationDelayUs;
     long maxSegmentDurationUs;
     long minBufferTimeUs;
-    List<AdaptationSet> adaptationSets;
+    List<Period> periods;
 
     MPD() {
-        adaptationSets = new ArrayList<AdaptationSet>();
+        periods = new ArrayList<Period>();
     }
 
     public long getMediaPresentationDurationUs() {
@@ -49,31 +49,15 @@ public class MPD {
         return minBufferTimeUs;
     }
 
-    public List<AdaptationSet> getAdaptationSets() {
-        return adaptationSets;
+    public List<Period> getPeriods() {
+        return periods;
     }
 
-    public AdaptationSet getFirstSetOfType(String mime) {
-        for(AdaptationSet as : adaptationSets) {
-            if(as.mimeType != null && as.mimeType.startsWith(mime)) {
-                return as;
-            } else {
-                for(Representation r : as.representations) {
-                    if(r.mimeType.startsWith(mime)) {
-                        return as;
-                    }
-                }
-            }
+    public Period getFirstPeriod() {
+        if(!periods.isEmpty()) {
+            return periods.get(0);
         }
         return null;
-    }
-
-    public AdaptationSet getFirstVideoSet() {
-        return getFirstSetOfType("video/");
-    }
-
-    public AdaptationSet getFirstAudioSet() {
-        return getFirstSetOfType("audio/");
     }
 
     @Override
