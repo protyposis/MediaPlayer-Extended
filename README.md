@@ -31,7 +31,8 @@ Features
 Changelog
 ---------
 
-* _v1.4.0_: DASH MPD parser improved and compatibility enhanced, MediaPlayer API improvements and minor changes, error reporting improved, increased responsivity of demo app
+* v1.4.1: hotfix for exact seeking in segmented DASH streams
+* __v1.4.0__: DASH MPD parser improved and compatibility enhanced, MediaPlayer API improvements and minor changes, error reporting improved, increased responsivity of demo app
 * v1.3.3: zooming fixed
 * v1.3.2: compile and target SDK updated to 22, added to JCenter repository
 * v1.3.1: support for separate audio and video sources added, lint error fix
