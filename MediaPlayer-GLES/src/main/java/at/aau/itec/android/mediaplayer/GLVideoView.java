@@ -233,6 +233,14 @@ public class GLVideoView extends GLTextureView implements
         mPlayer.seekTo(pos);
     }
 
+    public MediaPlayer.SeekMode getSeekMode() {
+        return mPlayer.getSeekMode();
+    }
+
+    public void setSeekMode(MediaPlayer.SeekMode seekMode) {
+        mPlayer.setSeekMode(seekMode);
+    }
+
     @Override
     public boolean isPlaying() {
         return mPlayer != null && mPlayer.isPlaying();
