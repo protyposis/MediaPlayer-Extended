@@ -276,6 +276,11 @@ public class MediaPlayer {
         if(mPlaybackThread != null) {
             mIsStopping = true;
             mPlaybackThread.interrupt();
+            try {
+                mPlaybackThread.join();
+            } catch (InterruptedException e) {
+                Log.e(TAG, "error waiting for playback thread to die", e);
+            }
             mPlaybackThread = null;
         }
         stayAwake(false);

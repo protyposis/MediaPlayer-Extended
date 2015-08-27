@@ -193,6 +193,11 @@ public class GLVideoView extends GLTextureView implements
         stayAwake(false);
     }
 
+    public void stopPlayback() {
+        mPlayer.stop();
+        stayAwake(false);
+    }
+
     public void setPlaybackSpeed(float speed) {
         mPlayer.setPlaybackSpeed(speed);
     }

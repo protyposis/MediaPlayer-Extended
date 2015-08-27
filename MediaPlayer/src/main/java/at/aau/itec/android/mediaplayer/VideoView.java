@@ -275,6 +275,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         mPlayer.pause();
     }
 
+    public void stopPlayback() {
+        mPlayer.stop();
+    }
+
     public void setPlaybackSpeed(float speed) {
         mPlayer.setPlaybackSpeed(speed);
     }
