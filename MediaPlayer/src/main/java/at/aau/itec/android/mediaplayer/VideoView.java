@@ -124,6 +124,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             return;
         }
 
+        release();
+
         mPlayer = new MediaPlayer();
         mPlayer.setDisplay(mSurfaceHolder);
         mPlayer.setScreenOnWhilePlaying(true);

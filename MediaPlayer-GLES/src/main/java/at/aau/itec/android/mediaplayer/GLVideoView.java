@@ -113,6 +113,8 @@ public class GLVideoView extends GLTextureView implements
             return;
         }
 
+        release();
+
         mPlayer = new MediaPlayer();
         mPlayer.setSurface(mVideoSurface);
         mPlayer.setOnPreparedListener(mPreparedListener);
