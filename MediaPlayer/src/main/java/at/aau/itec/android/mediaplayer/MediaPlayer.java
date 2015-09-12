@@ -934,6 +934,8 @@ public class MediaPlayer {
                 MediaFormat format = mAudioCodec.getOutputFormat();
                 Log.d(TAG, "audio output format has changed to " + format);
                 mAudioPlayback.init(format);
+            } else if (output == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                Log.d(TAG, "audio dequeueOutputBuffer timed out");
             }
         }
 
