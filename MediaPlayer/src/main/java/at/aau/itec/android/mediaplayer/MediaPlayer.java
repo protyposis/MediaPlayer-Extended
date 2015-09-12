@@ -227,7 +227,7 @@ public class MediaPlayer {
         this.mSeekMode = seekMode;
     }
 
-    public void seekTo(long usec) {
+    private void seekToInternal(long usec) {
         /* A seek needs to be performed in the decoding thread to execute commands in the correct
          * order. Otherwise it can happen that, after a seek in the media decoder, seeking procedure
          * starts, then a frame is decoded, and then the codec is flushed; the PTS of the decoded frame
@@ -235,9 +235,6 @@ public class MediaPlayer {
          * gets calculated. */
 
         Log.d(TAG, "seekTo " + usec);
-        if (mOnSeekListener != null) {
-            mOnSeekListener.onSeek(MediaPlayer.this);
-        }
 
         // inform the decoder thread of an upcoming seek
         mSeekPrepare = true;
@@ -248,6 +245,14 @@ public class MediaPlayer {
             mPlaybackThread.play();
             mPlaybackThread.pause();
         }
+    }
+
+    public void seekTo(long usec) {
+        if (mOnSeekListener != null) {
+            mOnSeekListener.onSeek(MediaPlayer.this);
+        }
+
+        seekToInternal(usec);
     }
 
     public void seekTo(int msec) {
@@ -618,7 +623,7 @@ public class MediaPlayer {
                                      */
                                     Log.d(TAG, "exact seek: repeat seek for previous frame at " + lastPTS);
                                     render = false;
-                                    seekTo(lastPTS);
+                                    seekToInternal(lastPTS);
                                 } else {
                                     if(presentationTimeMs == seekTargetTimeMs) {
                                         Log.d(TAG, "exact seek match!");
@@ -755,7 +760,7 @@ public class MediaPlayer {
 
                                 // if no seek command but a start command arrived, seek to the start
                                 if(!mSeeking && !mSeekPrepare) {
-                                    seekTo(0);
+                                    seekToInternal(0);
                                 }
                             }
                         }
