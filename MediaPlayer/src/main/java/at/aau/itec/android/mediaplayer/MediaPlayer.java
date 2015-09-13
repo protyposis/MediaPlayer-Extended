@@ -391,7 +391,7 @@ public class MediaPlayer {
 
     private class PlaybackThread extends Thread {
 
-        private final long mTimeOutUs = 5000;
+        private final long mTimeOutUs = 500000;
 
         private ByteBuffer[] mVideoCodecInputBuffers;
         private ByteBuffer[] mVideoCodecOutputBuffers;
@@ -685,8 +685,12 @@ public class MediaPlayer {
                             }
 
                             // slow down playback, if necessary, to keep frame rate
-                            if (waitingTime > 5000) {
+                            if (!preparing && waitingTime > 5000) {
                                 // sleep until it's time to render the next frame
+                                // TODO find better alternative to sleep
+                                // The sleep takes much longer than expected, leading to playback
+                                // jitter, and depending on the structure of a container and the
+                                // data sequence, dropouts in the audio playback stream.
                                 Thread.sleep(waitingTime / 1000);
                             } else if(!preparing && waitingTime < 0) {
                                 // we weed to catch up time by skipping rendering of this frame
