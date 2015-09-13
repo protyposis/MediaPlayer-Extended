@@ -515,6 +515,10 @@ public class MediaPlayer {
                             continue;
                         }
 
+                        mVideoInputEos = false;
+                        mVideoOutputEos = false;
+                        mAudioInputEos = false;
+                        mAudioOutputEos = false;
                         mVideoCodec.flush();
                         if (mAudioFormat != null) mAudioCodec.flush();
 
