@@ -101,6 +101,7 @@ public class MediaPlayer {
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
     private boolean mIsStopping;
+    private boolean mLooping;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -272,6 +273,20 @@ public class MediaPlayer {
 
     public boolean isPlaying() {
         return mPlaybackThread != null && !mPlaybackThread.isPaused();
+    }
+
+    /**
+     * @see android.media.MediaPlayer#setLooping(boolean)
+     */
+    public void setLooping(boolean looping) {
+        mLooping = looping;
+    }
+
+    /**
+     * @see android.media.MediaPlayer#isLooping()
+     */
+    public boolean isLooping() {
+        return mLooping;
     }
 
     public void stop() {
@@ -600,7 +615,7 @@ public class MediaPlayer {
                          * command arrives, the thread stays sleeping until the player is
                          * stopped.
                          */
-                        mPaused = true;
+                        mPaused = !mLooping;
                         synchronized (this) {
                             if (mAudioPlayback != null) mAudioPlayback.pause();
                             while (mPaused) {
@@ -610,7 +625,8 @@ public class MediaPlayer {
 
                             // if no seek command but a start command arrived, seek to the start
                             if (!mSeekPrepare) {
-                                mDecoder.seekTo(SeekMode.FAST, 0);
+                                videoFrameInfo = mDecoder.seekTo(SeekMode.FAST, 0);
+                                mDecoder.releaseFrame(videoFrameInfo, true);
                             }
                         }
                     }
