@@ -457,6 +457,10 @@ public class MediaPlayer {
                 // Initialize the time base with the first PTS that must not necessarily be 0
                 mTimeBase.startAt(mVideoMinPTS);
 
+                // Start the audio playback in case playback is requested to start immediately,
+                // else it will just get paused again in the upcoming pausing block
+                if (mAudioPlayback != null) mAudioPlayback.play();
+
                 // Run decoder loop
                 while ((videoFrameInfo = mDecoder.decodeFrame(false)) != null) { // Decode frame
                     // Handle pausing
