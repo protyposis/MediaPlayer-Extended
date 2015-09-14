@@ -463,10 +463,12 @@ public class MediaPlayer {
     private class PlaybackThread extends Thread {
 
         private boolean mPaused;
+        private boolean mRenderingStarted;
 
         private PlaybackThread() {
             super(TAG);
             mPaused = true;
+            mRenderingStarted = true;
         }
 
         public void pause() {
@@ -487,22 +489,7 @@ public class MediaPlayer {
         @Override
         public void run() {
             try {
-                // We decode the first frame and render it to the surface
-                // If a seek has already been issued, decode the frame at the seek target as first frame
-                Decoder.VideoFrameInfo videoFrameInfo = null;
-                if(mSeekPrepare) {
-                    videoFrameInfo = mDecoder.seekTo(mSeekMode, mSeekTargetTime);
-                } else {
-                    videoFrameInfo = mDecoder.decodeFrame(false);
-                }
-                mDecoder.releaseFrame(videoFrameInfo, true);
-
-                // When the first frame is rendered, video rendering has started
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                        MEDIA_INFO_VIDEO_RENDERING_START, 0));
-
-                // Initialize the time base with the first PTS that must not necessarily be 0
-                mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
+                Decoder.VideoFrameInfo videoFrameInfo;
 
                 // Start the audio playback in case playback is requested to start immediately,
                 // else it will just get paused again in the upcoming pausing block
@@ -630,6 +617,13 @@ public class MediaPlayer {
                     // Release the current frame and render it to the surface
                     boolean videoOutputEos = videoFrameInfo.endOfStream;
                     mDecoder.releaseFrame(videoFrameInfo, true); // render frame
+
+                    // When the first frame is rendered, video rendering has started and the event triggered
+                    if(mRenderingStarted) {
+                        mRenderingStarted = false;
+                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                                MEDIA_INFO_VIDEO_RENDERING_START, 0));
+                    }
 
                     // Handle EOS
                     if (videoOutputEos) {

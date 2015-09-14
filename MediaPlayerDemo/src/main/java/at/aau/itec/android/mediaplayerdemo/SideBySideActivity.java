@@ -69,15 +69,21 @@ public class SideBySideActivity extends Activity {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                mAndroidVideoView.setVideoURI(mVideoUri);
-                mItecVideoView.setVideoURI(mVideoUri);
-
                 mAndroidVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                     @Override
                     public void onPrepared(MediaPlayer mp) {
                         mAndroidVideoView.seekTo(0); // display first frame
                     }
                 });
+                mItecVideoView.setOnPreparedListener(new at.aau.itec.android.mediaplayer.MediaPlayer.OnPreparedListener() {
+                    @Override
+                    public void onPrepared(at.aau.itec.android.mediaplayer.MediaPlayer mp) {
+                        mItecVideoView.seekTo(0); // display first frame
+                    }
+                });
+
+                mAndroidVideoView.setVideoURI(mVideoUri);
+                mItecVideoView.setVideoURI(mVideoUri);
             }
         }, 1000);
     }

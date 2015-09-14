@@ -82,7 +82,10 @@ public class VideoViewActivity extends Activity {
             public void onPrepared(MediaPlayer vp) {
                 if (position > 0) {
                     mVideoView.seekTo(position);
+                } else {
+                    mVideoView.seekTo(0); // display first frame
                 }
+
                 if (playback) {
                     mVideoView.start();
                 }

@@ -44,6 +44,7 @@ public class GLVideoView extends GLTextureView implements
     private MediaSource mSource;
     private MediaPlayer mPlayer;
     private Surface mVideoSurface;
+    private int mSeekWhenPrepared;
 
     private MediaPlayer.OnPreparedListener mOnPreparedListener;
     private MediaPlayer.OnSeekListener mOnSeekListener;
@@ -70,7 +71,7 @@ public class GLVideoView extends GLTextureView implements
 
     public void setVideoSource(MediaSource source) {
         mSource = source;
-//        mSeekWhenPrepared = 0;
+        mSeekWhenPrepared = 0;
         openVideo();
         requestLayout();
         invalidate();
@@ -232,8 +233,13 @@ public class GLVideoView extends GLTextureView implements
     }
 
     @Override
-    public void seekTo(int pos) {
-        mPlayer.seekTo(pos);
+    public void seekTo(int msec) {
+        if(mPlayer != null) {
+            mPlayer.seekTo(msec);
+            mSeekWhenPrepared = 0;
+        } else {
+            mSeekWhenPrepared = msec;
+        }
     }
 
     public MediaPlayer.SeekMode getSeekMode() {
@@ -291,6 +297,11 @@ public class GLVideoView extends GLTextureView implements
         public void onPrepared(MediaPlayer mp) {
             if(mOnPreparedListener != null) {
                 mOnPreparedListener.onPrepared(mp);
+            }
+
+            int seekToPosition = mSeekWhenPrepared;  // mSeekWhenPrepared may be changed after seekTo() call
+            if (seekToPosition != 0) {
+                seekTo(seekToPosition);
             }
         }
     };
