@@ -448,7 +448,8 @@ public class MediaPlayer {
                 mTimeBase.startAt(mVideoMinPTS);
 
                 // Run decoder loop
-                while ((videoFrameInfo = decoder.decodeFrame(false)) != null) {
+                while ((videoFrameInfo = decoder.decodeFrame(false)) != null) { // Decode frame
+                    // Handle pausing
                     if (mPaused && !mSeekPrepare) {
                         if (audioPlayback != null) audioPlayback.pause();
                         synchronized (this) {
@@ -493,9 +494,13 @@ public class MediaPlayer {
                         }
                     }
 
+                    // Update the current position of the player
                     mCurrentPosition = videoFrameInfo.presentationTimeUs;
+
+                    // Calculate waiting time until the next frame's PTS
                     long waitingTime = mTimeBase.getOffsetFrom(videoFrameInfo.presentationTimeUs);
 
+                    // Sync video to audio
                     if (audioPlayback != null) {
                         long audioOffsetUs = audioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
 //                        Log.d(TAG, "VideoPTS=" + mCurrentPosition
@@ -525,11 +530,12 @@ public class MediaPlayer {
                         // data sequence, dropouts in the audio playback stream.
                         Thread.sleep(waitingTime / 1000);
                     } else if (waitingTime < 0) {
-                        // we weed to catch up time by skipping rendering of this frame
+                        // we need to catch up time by skipping rendering of this frame
                         // this doesn't gain enough time if playback speed is too high and decoder at full load
                         // TODO improve fast forward mode
-                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
+                        Log.d(TAG, "LAGGING " + waitingTime);
+                        //mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        //        MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
                     }
 
@@ -540,9 +546,11 @@ public class MediaPlayer {
                                 videoFrameInfo.width, videoFrameInfo.height));
                     }
 
+                    // Release the current frame and render it to the surface
                     boolean videoOutputEos = videoFrameInfo.endOfStream;
-                    decoder.releaseFrame(videoFrameInfo, true); // render picture
+                    decoder.releaseFrame(videoFrameInfo, true); // render frame
 
+                    // Handle EOS
                     if (videoOutputEos) {
                         mEventHandler.sendEmptyMessage(MEDIA_PLAYBACK_COMPLETE);
 
