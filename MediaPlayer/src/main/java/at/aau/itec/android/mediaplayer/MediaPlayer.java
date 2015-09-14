@@ -446,16 +446,22 @@ public class MediaPlayer {
                         mDecoder.getVideoWidth(), mDecoder.getVideoHeight()));
 
                 // Then we decode the first frame and render it to the surface
-                Decoder.VideoFrameInfo videoFrameInfo = mDecoder.decodeFrame(false);
+                // If a seek has already been issued, decode the frame at the seek target as first frame
+                Decoder.VideoFrameInfo videoFrameInfo = null;
+                if(mSeekPrepare) {
+                    videoFrameInfo = mDecoder.seekTo(mSeekMode, mSeekTargetTime);
+                } else {
+                    videoFrameInfo = mDecoder.decodeFrame(false);
+                }
                 mDecoder.releaseFrame(videoFrameInfo, true);
 
                 // When the first frame is rendered, the media is prepared and video rendering has started
-                mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
+                mEventHandler.sendEmptyMessage(MEDIA_PREPARED); // TODO call much earlier, even before this thread is started (after missing prepareAsync)
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                         MEDIA_INFO_VIDEO_RENDERING_START, 0));
 
                 // Initialize the time base with the first PTS that must not necessarily be 0
-                mTimeBase.startAt(mVideoMinPTS);
+                mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
 
                 // Start the audio playback in case playback is requested to start immediately,
                 // else it will just get paused again in the upcoming pausing block
