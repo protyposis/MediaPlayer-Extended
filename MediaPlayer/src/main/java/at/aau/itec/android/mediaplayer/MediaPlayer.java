@@ -491,10 +491,6 @@ public class MediaPlayer {
             try {
                 Decoder.VideoFrameInfo videoFrameInfo;
 
-                // Start the audio playback in case playback is requested to start immediately,
-                // else it will just get paused again in the upcoming pausing block
-                if (mAudioPlayback != null) mAudioPlayback.play();
-
                 // Run decoder loop
                 while ((videoFrameInfo = mDecoder.decodeFrame(false)) != null) { // Decode frame
                     // Handle pausing
@@ -506,9 +502,15 @@ public class MediaPlayer {
                             }
                         }
 
-                        if (mAudioPlayback != null) mAudioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
+                    }
+
+                    // Start audio playback iff audio playback is stopped and video playback is running
+                    // In all other cases audio playback must be avoided, because even activating it
+                    // for just a moment leads to some samples being played back on some devices.
+                    if(mAudioPlayback != null && !mAudioPlayback.isPlaying() && !mPaused && !mSeekPrepare) {
+                        mAudioPlayback.play();
                     }
 
                     // When we are in buffering mode, and a frame has been decoded, the buffer is
@@ -531,7 +533,7 @@ public class MediaPlayer {
 
                         // Throw away the current frame and clear the audio cache
                         mDecoder.releaseFrame(videoFrameInfo, false);
-                        if(mAudioPlayback != null ) mAudioPlayback.flush();
+                        if(mAudioPlayback != null) mAudioPlayback.pause(true);
 
                         // Seek to the target time
                         videoFrameInfo = mDecoder.seekTo(mSeekMode, mSeekTargetTime);

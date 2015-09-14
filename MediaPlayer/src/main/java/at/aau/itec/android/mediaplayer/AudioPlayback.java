@@ -207,7 +207,7 @@ class AudioPlayback {
         }
     }
 
-    private boolean isPlaying() {
+    public boolean isPlaying() {
         return mAudioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING;
     }
 
