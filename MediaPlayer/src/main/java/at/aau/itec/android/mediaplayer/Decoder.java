@@ -489,25 +489,15 @@ class Decoder {
     }
 
     public VideoFrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
-        boolean mSeekPrepare = false;
-        boolean mSeeking = true;
-        long mCurrentPosition = -1;
-        long mSeekTargetTime = seekTargetTimeUs;
-
-        Log.d(TAG, "seeking to:                 " + mSeekTargetTime);
-        Log.d(TAG, "frame current position:     " + mCurrentPosition);
+        Log.d(TAG, "seeking to:                 " + seekTargetTimeUs);
         Log.d(TAG, "extractor current position: " + mVideoExtractor.getSampleTime());
 
-        mVideoExtractor.seekTo(mSeekTargetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-        mCurrentPosition = mSeekTargetTime;
+        mVideoExtractor.seekTo(seekTargetTimeUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
 
         Log.d(TAG, "extractor new position:     " + mVideoExtractor.getSampleTime());
 
-        if(mSeekPrepare) {
-            // Another seek has been issued in the meantime, repeat this block
-            //continue;
-            // TODO add seek cancellation possibility
-        }
+        // TODO add seek cancellation possibility
+        // e.g. by returning an object with a cancel method and checking the flag at fitting places within this method
 
         mVideoInputEos = false;
         mVideoOutputEos = false;
@@ -521,19 +511,26 @@ class Decoder {
             mRepresentationChanged = true;
         }
 
+        /* Android API compatibility:
+         * Use millisecond precision to stay compatible with VideoView API that works
+         * in millisecond precision only. Else, exact seek matches are missed if frames
+         * are positioned at fractions of a millisecond. */
+        long presentationTimeMs = -1;
+        long seekTargetTimeMs = seekTargetTimeUs / 1000;
+
         VideoFrameInfo vfi = null;
 
         if(seekMode == MediaPlayer.SeekMode.FAST) {
             vfi = decodeFrame(true);
-            Log.d(TAG, "fast seek to " + mSeekTargetTime + " arrived at " + vfi.presentationTimeUs);
+            Log.d(TAG, "fast seek to " + seekTargetTimeUs + " arrived at " + vfi.presentationTimeUs);
         }
         else if (seekMode == MediaPlayer.SeekMode.FAST_EXACT) {
-            fastSeek(mSeekTargetTime);
+            fastSeek(seekTargetTimeUs);
 
             vfi = decodeFrame(true);
-            Log.d(TAG, "fast_exact seek to " + mSeekTargetTime + " arrived at " + vfi.presentationTimeUs);
+            Log.d(TAG, "fast_exact seek to " + seekTargetTimeUs + " arrived at " + vfi.presentationTimeUs);
 
-            if(vfi.presentationTimeUs < mSeekTargetTime) {
+            if(vfi.presentationTimeUs < seekTargetTimeUs) {
                 Log.d(TAG, "presentation is behind...");
             }
 
@@ -560,15 +557,11 @@ class Decoder {
              * frame and re-seek to the now known exact PTS of the desired frame.
              * See EXACT mode handling below.
              */
-            vfi = decodeFrame(true);
             int frameSkipCount = 0;
             long lastPTS = -1;
-            /* Android API compatibility:
-             * Use millisecond precision to stay compatible with VideoView API that works
-             * in millisecond precision only. Else, exact seek matches are missed if frames
-             * are positioned at fractions of a millisecond. */
-            long presentationTimeMs = vfi.presentationTimeUs / 1000;
-            long seekTargetTimeMs = mSeekTargetTime / 1000;
+
+            vfi = decodeFrame(true);
+            presentationTimeMs = vfi.presentationTimeUs / 1000;
 
             while(presentationTimeMs < seekTargetTimeMs) {
                 if(frameSkipCount == 0) {
@@ -610,9 +603,6 @@ class Decoder {
                 return seekTo(seekMode, lastPTS);
             }
         }
-
-        long presentationTimeMs = vfi.presentationTimeUs / 1000;
-        long seekTargetTimeMs = mSeekTargetTime / 1000;
 
         if(presentationTimeMs == seekTargetTimeMs) {
             Log.d(TAG, "exact seek match!");
