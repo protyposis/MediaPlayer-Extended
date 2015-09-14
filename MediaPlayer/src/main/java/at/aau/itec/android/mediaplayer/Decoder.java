@@ -432,7 +432,7 @@ class Decoder {
                     vfi.height = getVideoHeight();
                 }
 
-                Log.d(TAG, "PTS " + vfi.presentationTimeUs);
+                //Log.d(TAG, "PTS " + vfi.presentationTimeUs);
 
                 // Buffer some audio from separate source...
                 if (mAudioFormat != null & mAudioExtractor != mVideoExtractor && !videoOnly) {
@@ -486,5 +486,142 @@ class Decoder {
             mAudioCodec.release();
         }
         Log.d(TAG, "decoder released");
+    }
+
+    public VideoFrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
+        boolean mSeekPrepare = false;
+        boolean mSeeking = true;
+        long mCurrentPosition = -1;
+        long mSeekTargetTime = seekTargetTimeUs;
+
+        Log.d(TAG, "seeking to:                 " + mSeekTargetTime);
+        Log.d(TAG, "frame current position:     " + mCurrentPosition);
+        Log.d(TAG, "extractor current position: " + mVideoExtractor.getSampleTime());
+
+        mVideoExtractor.seekTo(mSeekTargetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+        mCurrentPosition = mSeekTargetTime;
+
+        Log.d(TAG, "extractor new position:     " + mVideoExtractor.getSampleTime());
+
+        if(mSeekPrepare) {
+            // Another seek has been issued in the meantime, repeat this block
+            //continue;
+            // TODO add seek cancellation possibility
+        }
+
+        mVideoInputEos = false;
+        mVideoOutputEos = false;
+        mAudioInputEos = false;
+        mAudioOutputEos = false;
+        mVideoCodec.flush();
+        if (mAudioFormat != null) mAudioCodec.flush();
+
+        if(mVideoExtractor.hasTrackFormatChanged()) {
+            reinitCodecs();
+            mRepresentationChanged = true;
+        }
+
+        VideoFrameInfo vfi = null;
+
+        if(seekMode == MediaPlayer.SeekMode.FAST) {
+            vfi = decodeFrame(true);
+            Log.d(TAG, "fast seek to " + mSeekTargetTime + " arrived at " + vfi.presentationTimeUs);
+        }
+        else if (seekMode == MediaPlayer.SeekMode.FAST_EXACT) {
+            fastSeek(mSeekTargetTime);
+
+            vfi = decodeFrame(true);
+            Log.d(TAG, "fast_exact seek to " + mSeekTargetTime + " arrived at " + vfi.presentationTimeUs);
+
+            if(vfi.presentationTimeUs < mSeekTargetTime) {
+                Log.d(TAG, "presentation is behind...");
+            }
+
+            return vfi;
+        }
+        else if (seekMode == MediaPlayer.SeekMode.PRECISE || seekMode == MediaPlayer.SeekMode.EXACT) {
+            /* NOTE
+             * This code seeks one frame too far, except if the seek time equals the
+             * frame PTS:
+             * (F1.....)(F2.....)(F3.....) ... (Fn.....)
+             * A frame is shown for an interval, e.g. (1/fps seconds). Now if the seek
+             * target time is somewhere in frame 2's interval, we end up with frame 3
+             * because we need to decode it to know if the seek target time lies in
+             * frame 2's interval (because we don't know the frame rate of the video,
+             * and neither if it's a fixed frame rate or a variable one - even when
+             * deriving it from the PTS series we cannot be sure about it). This means
+             * we always end up one frame too far, because the MediaCodec does not allow
+             * to go back, except when starting at a sync frame.
+             *
+             * Solution for fixed frame rate could be to subtract the frame interval
+             * time (1/fps secs) from the seek target time.
+             *
+             * Solution for variable frame rate and unknown frame rate: go back to sync
+             * frame and re-seek to the now known exact PTS of the desired frame.
+             * See EXACT mode handling below.
+             */
+            vfi = decodeFrame(true);
+            int frameSkipCount = 0;
+            long lastPTS = -1;
+            /* Android API compatibility:
+             * Use millisecond precision to stay compatible with VideoView API that works
+             * in millisecond precision only. Else, exact seek matches are missed if frames
+             * are positioned at fractions of a millisecond. */
+            long presentationTimeMs = vfi.presentationTimeUs / 1000;
+            long seekTargetTimeMs = mSeekTargetTime / 1000;
+
+            while(presentationTimeMs < seekTargetTimeMs) {
+                if(frameSkipCount == 0) {
+                    Log.d(TAG, "skipping frames...");
+                }
+                frameSkipCount++;
+
+                if(mVideoOutputEos) {
+                    /* When the end of stream is reached while seeking, the seek target
+                     * time is set to the last frame's PTS, else the seek skips the last
+                     * frame which then does not get rendered, and it might end up in a
+                     * loop trying to reach the unreachable target time. */
+                    seekTargetTimeUs = vfi.presentationTimeUs;
+                    seekTargetTimeMs = seekTargetTimeUs / 1000;
+                }
+
+                lastPTS = vfi.presentationTimeUs;
+                releaseFrame(vfi, false);
+
+                vfi = decodeFrame(true);
+                presentationTimeMs = vfi.presentationTimeUs / 1000;
+            }
+
+            Log.d(TAG, "frame new position:         " + vfi.presentationTimeUs);
+            Log.d(TAG, "seeking finished, skipped " + frameSkipCount + " frames");
+
+            if(seekMode == MediaPlayer.SeekMode.EXACT && presentationTimeMs > seekTargetTimeMs) {
+                /* If the current frame's PTS it after the seek target time, we're
+                 * one frame too far into the stream. This is because we do not know
+                 * the frame rate of the video and therefore can't decide for a frame
+                 * if its interval covers the seek target time of if there's already
+                 * another frame coming. We know after the next frame has been
+                 * decoded though if we're too far into the stream, and if so, and if
+                 * EXACT mode is desired, we need to take the previous frame's PTS
+                 * and repeat the seek with that PTS to arrive at the desired frame.
+                 */
+                Log.d(TAG, "exact seek: repeat seek for previous frame at " + lastPTS);
+                releaseFrame(vfi, false);
+                return seekTo(seekMode, lastPTS);
+            }
+        }
+
+        long presentationTimeMs = vfi.presentationTimeUs / 1000;
+        long seekTargetTimeMs = mSeekTargetTime / 1000;
+
+        if(presentationTimeMs == seekTargetTimeMs) {
+            Log.d(TAG, "exact seek match!");
+        }
+
+        if (mAudioExtractor != null && mAudioExtractor != mVideoExtractor) {
+            mAudioExtractor.seekTo(mVideoInfo.presentationTimeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+        }
+
+        return vfi;
     }
 }

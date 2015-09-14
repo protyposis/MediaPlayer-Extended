@@ -84,7 +84,6 @@ public class MediaPlayer {
 
     private PlaybackThread mPlaybackThread;
     private long mCurrentPosition;
-    private boolean mSeeking;
     private long mSeekTargetTime;
     private boolean mSeekPrepare;
     private int mBufferPercentage;
@@ -359,7 +358,7 @@ public class MediaPlayer {
         /* During a seek, return the temporary seek target time; otherwise a seek bar doesn't
          * update to the selected seek position until the seek is finished (which can take a
          * while in exact mode). */
-        return (int)((mSeekPrepare || mSeeking ? mSeekTargetTime : mCurrentPosition)/1000);
+        return (int)((mSeekPrepare ? mSeekTargetTime : mCurrentPosition)/1000);
     }
 
     public int getBufferPercentage() {
@@ -450,10 +449,10 @@ public class MediaPlayer {
 
                 // Run decoder loop
                 while ((videoFrameInfo = decoder.decodeFrame(false)) != null) {
-                    if (mPaused) {
+                    if (mPaused && !mSeekPrepare) {
                         if (audioPlayback != null) audioPlayback.pause();
                         synchronized (this) {
-                            while (mPaused) {
+                            while (mPaused && !mSeekPrepare) {
                                 this.wait();
                             }
                         }
@@ -461,6 +460,37 @@ public class MediaPlayer {
                         if (audioPlayback != null) audioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
+                    }
+
+                    // Seeking:
+                    // Do the seek in a while loop, in case a new seek is issued while this one is
+                    // being processed.
+                    while(mSeekPrepare) {
+                        mSeekPrepare = false;
+
+                        // Temporarily set the current position to the target seek position,
+                        // so a video slider stays at the targeted position (and does not skip back and forth)
+                        mCurrentPosition = mSeekTargetTime;
+
+                        // Throw away the current frame and clear the audio cache
+                        decoder.releaseFrame(videoFrameInfo, false);
+                        if(audioPlayback != null ) audioPlayback.flush();
+
+                        // Seek to the target time
+                        videoFrameInfo = decoder.seekTo(mSeekMode, mSeekTargetTime);
+
+                        // Reset time to keep frame rate constant
+                        // (otherwise it's too fast on back seeks and waits for the PTS time on fw seeks)
+                        mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
+
+                        // Set the final seek position as the current position
+                        // (the final seek position may be off the initial target seek position)
+                        mCurrentPosition = videoFrameInfo.presentationTimeUs;
+
+                        if(!mSeekPrepare) {
+                            // Notify of finished seek operation, but only if no new seek is queued
+                            mEventHandler.sendEmptyMessage(MEDIA_SEEK_COMPLETE);
+                        }
                     }
 
                     mCurrentPosition = videoFrameInfo.presentationTimeUs;
@@ -531,8 +561,8 @@ public class MediaPlayer {
                             if (audioPlayback != null) audioPlayback.play();
 
                             // if no seek command but a start command arrived, seek to the start
-                            if (!mSeeking && !mSeekPrepare) {
-                                //seekToInternal(0);
+                            if (!mSeekPrepare) {
+                                seekToInternal(0);
                             }
                         }
                     }
