@@ -562,7 +562,7 @@ public class MediaPlayer {
 
                             // if no seek command but a start command arrived, seek to the start
                             if (!mSeekPrepare) {
-                                seekToInternal(0);
+                                decoder.seekTo(SeekMode.FAST, 0);
                             }
                         }
                     }
