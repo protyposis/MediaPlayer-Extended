@@ -57,6 +57,10 @@ class Decoder {
         }
     }
 
+    interface OnDecoderEventListener {
+        void onBuffering(Decoder decoder);
+    }
+
     private static final String TAG = Decoder.class.getSimpleName();
 
     private static final long TIMEOUT_US = 5000;
@@ -85,7 +89,6 @@ class Decoder {
     private boolean mVideoOutputEos;
     private boolean mAudioInputEos;
     private boolean mAudioOutputEos;
-    private boolean mBuffering;
     private List<VideoFrameInfo> mEmptyVideoFrameInfos;
 
     /* Flag notifying that the representation has changed in the extractor and needs to be passed
@@ -95,8 +98,11 @@ class Decoder {
      * be carried out. */
     private boolean mRepresentationChanged;
 
+    private OnDecoderEventListener mOnDecoderEventListener;
+
     public Decoder(MediaExtractor videoExtractor, int videoTrackIndex, Surface videoSurface,
-                   MediaExtractor audioExtractor, int audioTrackIndex, AudioPlayback audioPlayback)
+                   MediaExtractor audioExtractor, int audioTrackIndex, AudioPlayback audioPlayback,
+                   OnDecoderEventListener listener)
             throws IllegalStateException, IOException
     {
         if(videoExtractor == null || videoTrackIndex == INDEX_NONE) {
@@ -114,6 +120,8 @@ class Decoder {
         mAudioExtractor = audioExtractor;
         mAudioTrackIndex = audioTrackIndex;
         mAudioPlayback = audioPlayback;
+
+        mOnDecoderEventListener = listener;
 
         if(audioTrackIndex != INDEX_NONE) {
             if(mAudioExtractor == null) {
@@ -159,10 +167,9 @@ class Decoder {
 
             if(sampleSize == 0) {
                 if(mVideoExtractor.getCachedDuration() == 0) {
-                    mBuffering = true;
-//                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-//                            MEDIA_INFO_BUFFERING_START, 0));
-                    // TODO notify of buffering
+                    if(mOnDecoderEventListener != null) {
+                        mOnDecoderEventListener.onBuffering(this);
+                    }
                 }
                 if(mVideoExtractor.hasTrackFormatChanged()) {
                     /* The mRepresentationChanging flag and BUFFER_FLAG_END_OF_STREAM flag together
@@ -221,10 +228,9 @@ class Decoder {
                 sampleSize = 0;
             } else if(sampleSize == 0) {
                 if(extractor.getCachedDuration() == 0) {
-                    mBuffering = true;
-//                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-//                            MEDIA_INFO_BUFFERING_START, 0));
-                    // TODO notify of buffering
+                    if(mOnDecoderEventListener != null) {
+                        mOnDecoderEventListener.onBuffering(this);
+                    }
                 }
             } else {
                 presentationTimeUs = extractor.getSampleTime();

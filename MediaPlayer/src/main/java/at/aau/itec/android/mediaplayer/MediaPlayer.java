@@ -391,6 +391,7 @@ public class MediaPlayer {
     private class PlaybackThread extends Thread {
 
         private boolean mPaused;
+        private boolean mBuffering;
 
         private PlaybackThread() {
             super(TAG);
@@ -424,8 +425,18 @@ public class MediaPlayer {
                     audioPlayback.setAudioSessionId(mAudioSessionId);
                 }
 
+                Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
+                    @Override
+                    public void onBuffering(Decoder decoder) {
+                        mBuffering = true;
+                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                                MEDIA_INFO_BUFFERING_START, 0));
+                    }
+                };
+
                 decoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
-                        mAudioExtractor, mAudioTrackIndex, audioPlayback);
+                        mAudioExtractor, mAudioTrackIndex, audioPlayback,
+                        decoderEventListener);
 
                 if (audioPlayback != null) {
                     mAudioSessionId = audioPlayback.getAudioSessionId();
@@ -461,6 +472,14 @@ public class MediaPlayer {
                         if (audioPlayback != null) audioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
+                    }
+
+                    // When we are in buffering mode, and a frame has been decoded, the buffer is
+                    // obviously refilled so we can send the buffering end message
+                    if(mBuffering) {
+                        mBuffering = false;
+                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                                MEDIA_INFO_BUFFERING_END, 0));
                     }
 
                     // Seeking:
@@ -521,6 +540,18 @@ public class MediaPlayer {
                         audioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
                     }
 
+                    /* If this is an online stream, notify the client of the buffer fill level.
+                     * The cached duration from the MediaExtractor returns the cached time from
+                     * the current position onwards, but the Android MediaPlayer returns the
+                     * total time consisting fo the current playback point and the length of
+                     * the prefetched data.
+                     */
+                    long cachedDuration = mVideoExtractor.getCachedDuration();
+                    if(cachedDuration != -1) {
+                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
+                                (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
+                    }
+
                     // slow down playback, if necessary, to keep frame rate
                     if (waitingTime > 5000) {
                         // sleep until it's time to render the next frame
@@ -534,8 +565,8 @@ public class MediaPlayer {
                         // this doesn't gain enough time if playback speed is too high and decoder at full load
                         // TODO improve fast forward mode
                         Log.d(TAG, "LAGGING " + waitingTime);
-                        //mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                        //        MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
+                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                                MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
                     }
 
