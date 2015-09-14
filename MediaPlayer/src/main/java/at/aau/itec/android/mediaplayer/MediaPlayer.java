@@ -26,13 +26,11 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 
 /**
@@ -390,12 +388,17 @@ public class MediaPlayer {
 
     private class PlaybackThread extends Thread {
 
+        private AudioPlayback mAudioPlayback;
+        private Decoder mDecoder;
         private boolean mPaused;
         private boolean mBuffering;
 
         private PlaybackThread() {
             super(TAG);
+            mAudioPlayback = null;
+            mDecoder = null;
             mPaused = true;
+            mBuffering = false;
         }
 
         public void pause() {
@@ -415,14 +418,10 @@ public class MediaPlayer {
 
         @Override
         public void run() {
-            AudioPlayback audioPlayback = null;
-            Decoder decoder = null;
-
             try {
-
                 if (mAudioFormat != null) {
-                    audioPlayback = new AudioPlayback();
-                    audioPlayback.setAudioSessionId(mAudioSessionId);
+                    mAudioPlayback = new AudioPlayback();
+                    mAudioPlayback.setAudioSessionId(mAudioSessionId);
                 }
 
                 Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
@@ -434,21 +433,21 @@ public class MediaPlayer {
                     }
                 };
 
-                decoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
-                        mAudioExtractor, mAudioTrackIndex, audioPlayback,
+                mDecoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
+                        mAudioExtractor, mAudioTrackIndex, mAudioPlayback,
                         decoderEventListener);
 
-                if (audioPlayback != null) {
-                    mAudioSessionId = audioPlayback.getAudioSessionId();
+                if (mAudioPlayback != null) {
+                    mAudioSessionId = mAudioPlayback.getAudioSessionId();
                 }
 
                 // After the decoder is initialized, we know the video size
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                        decoder.getVideoWidth(), decoder.getVideoHeight()));
+                        mDecoder.getVideoWidth(), mDecoder.getVideoHeight()));
 
                 // Then we decode the first frame and render it to the surface
-                Decoder.VideoFrameInfo videoFrameInfo = decoder.decodeFrame(false);
-                decoder.releaseFrame(videoFrameInfo, true);
+                Decoder.VideoFrameInfo videoFrameInfo = mDecoder.decodeFrame(false);
+                mDecoder.releaseFrame(videoFrameInfo, true);
 
                 // When the first frame is rendered, the media is prepared and video rendering has started
                 mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
@@ -459,17 +458,17 @@ public class MediaPlayer {
                 mTimeBase.startAt(mVideoMinPTS);
 
                 // Run decoder loop
-                while ((videoFrameInfo = decoder.decodeFrame(false)) != null) { // Decode frame
+                while ((videoFrameInfo = mDecoder.decodeFrame(false)) != null) { // Decode frame
                     // Handle pausing
                     if (mPaused && !mSeekPrepare) {
-                        if (audioPlayback != null) audioPlayback.pause();
+                        if (mAudioPlayback != null) mAudioPlayback.pause();
                         synchronized (this) {
                             while (mPaused && !mSeekPrepare) {
                                 this.wait();
                             }
                         }
 
-                        if (audioPlayback != null) audioPlayback.play();
+                        if (mAudioPlayback != null) mAudioPlayback.play();
                         // reset time (otherwise playback tries to "catch up" time after a pause)
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
                     }
@@ -493,11 +492,11 @@ public class MediaPlayer {
                         mCurrentPosition = mSeekTargetTime;
 
                         // Throw away the current frame and clear the audio cache
-                        decoder.releaseFrame(videoFrameInfo, false);
-                        if(audioPlayback != null ) audioPlayback.flush();
+                        mDecoder.releaseFrame(videoFrameInfo, false);
+                        if(mAudioPlayback != null ) mAudioPlayback.flush();
 
                         // Seek to the target time
-                        videoFrameInfo = decoder.seekTo(mSeekMode, mSeekTargetTime);
+                        videoFrameInfo = mDecoder.seekTo(mSeekMode, mSeekTargetTime);
 
                         // Reset time to keep frame rate constant
                         // (otherwise it's too fast on back seeks and waits for the PTS time on fw seeks)
@@ -520,10 +519,10 @@ public class MediaPlayer {
                     long waitingTime = mTimeBase.getOffsetFrom(videoFrameInfo.presentationTimeUs);
 
                     // Sync video to audio
-                    if (audioPlayback != null) {
-                        long audioOffsetUs = audioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
+                    if (mAudioPlayback != null) {
+                        long audioOffsetUs = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
 //                        Log.d(TAG, "VideoPTS=" + mCurrentPosition
-//                                + " AudioPTS=" + audioPlayback.getLastPresentationTimeUs()
+//                                + " AudioPTS=" + mAudioPlayback.getLastPresentationTimeUs()
 //                                + " offset=" + audioOffsetUs);
                         /* Synchronize the video frame PTS to the audio PTS by slowly adjusting
                          * the video frame waiting time towards a better synchronization.
@@ -537,7 +536,7 @@ public class MediaPlayer {
                             waitingTime += audioOffsetCorrectionUs;
                         }
 
-                        audioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
+                        mAudioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
                     }
 
                     /* If this is an online stream, notify the client of the buffer fill level.
@@ -579,7 +578,7 @@ public class MediaPlayer {
 
                     // Release the current frame and render it to the surface
                     boolean videoOutputEos = videoFrameInfo.endOfStream;
-                    decoder.releaseFrame(videoFrameInfo, true); // render frame
+                    mDecoder.releaseFrame(videoFrameInfo, true); // render frame
 
                     // Handle EOS
                     if (videoOutputEos) {
@@ -593,15 +592,15 @@ public class MediaPlayer {
                          */
                         mPaused = true;
                         synchronized (this) {
-                            if (audioPlayback != null) audioPlayback.pause();
+                            if (mAudioPlayback != null) mAudioPlayback.pause();
                             while (mPaused) {
                                 this.wait();
                             }
-                            if (audioPlayback != null) audioPlayback.play();
+                            if (mAudioPlayback != null) mAudioPlayback.play();
 
                             // if no seek command but a start command arrived, seek to the start
                             if (!mSeekPrepare) {
-                                decoder.seekTo(SeekMode.FAST, 0);
+                                mDecoder.seekTo(SeekMode.FAST, 0);
                             }
                         }
                     }
@@ -627,8 +626,8 @@ public class MediaPlayer {
                         MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
             }
 
-            if(decoder != null) decoder.release();
-            if(audioPlayback != null) audioPlayback.stopAndRelease();
+            if(mDecoder != null) mDecoder.release();
+            if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
             if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
                 mAudioExtractor.release();
             }
