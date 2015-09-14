@@ -23,6 +23,7 @@ import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -103,6 +104,10 @@ public class MediaPlayer {
     private boolean mIsStopping;
     private boolean mLooping;
 
+    private AudioPlayback mAudioPlayback;
+    private Decoder mDecoder;
+    private boolean mBuffering;
+
     public MediaPlayer() {
         mPlaybackThread = null;
         mEventHandler = new EventHandler();
@@ -157,9 +162,6 @@ public class MediaPlayer {
                 if (mSurface == null) {
                     Log.i(TAG, "no video output surface specified");
                 }
-
-                mPlaybackThread = new PlaybackThread();
-                mPlaybackThread.start();
             }
         }
     }
@@ -180,6 +182,63 @@ public class MediaPlayer {
     @Deprecated
     public void setDataSource(Context context, Uri uri) throws IOException {
         setDataSource(context, uri, null);
+    }
+
+    /**
+     * @see android.media.MediaPlayer#prepare()
+     */
+    public void prepare() throws IOException, IllegalStateException {
+        if (mAudioFormat != null) {
+            mAudioPlayback = new AudioPlayback();
+            mAudioPlayback.setAudioSessionId(mAudioSessionId);
+        }
+
+        Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
+            @Override
+            public void onBuffering(Decoder decoder) {
+                mBuffering = true;
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        MEDIA_INFO_BUFFERING_START, 0));
+            }
+        };
+
+        mDecoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
+                mAudioExtractor, mAudioTrackIndex, mAudioPlayback,
+                decoderEventListener);
+
+        if (mAudioPlayback != null) {
+            mAudioSessionId = mAudioPlayback.getAudioSessionId();
+        }
+
+        // After the decoder is initialized, we know the video size
+        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
+                mDecoder.getVideoWidth(), mDecoder.getVideoHeight()));
+
+        mPlaybackThread = new PlaybackThread();
+        mPlaybackThread.start();
+    }
+
+    /**
+     * @see android.media.MediaPlayer#prepareAsync()
+     */
+    public void prepareAsync() throws IllegalStateException {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    prepare();
+
+                    // This event is only triggered after a successful async prepare (not after the sync prepare!)
+                    mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
+                } catch (IOException e) {
+                    Log.e(TAG, "prepareAsync error", e);
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                            MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
+                }
+
+                return null;
+            }
+        }.execute();
     }
 
     /**
@@ -403,17 +462,11 @@ public class MediaPlayer {
 
     private class PlaybackThread extends Thread {
 
-        private AudioPlayback mAudioPlayback;
-        private Decoder mDecoder;
         private boolean mPaused;
-        private boolean mBuffering;
 
         private PlaybackThread() {
             super(TAG);
-            mAudioPlayback = null;
-            mDecoder = null;
             mPaused = true;
-            mBuffering = false;
         }
 
         public void pause() {
@@ -434,33 +487,7 @@ public class MediaPlayer {
         @Override
         public void run() {
             try {
-                if (mAudioFormat != null) {
-                    mAudioPlayback = new AudioPlayback();
-                    mAudioPlayback.setAudioSessionId(mAudioSessionId);
-                }
-
-                Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
-                    @Override
-                    public void onBuffering(Decoder decoder) {
-                        mBuffering = true;
-                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                MEDIA_INFO_BUFFERING_START, 0));
-                    }
-                };
-
-                mDecoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
-                        mAudioExtractor, mAudioTrackIndex, mAudioPlayback,
-                        decoderEventListener);
-
-                if (mAudioPlayback != null) {
-                    mAudioSessionId = mAudioPlayback.getAudioSessionId();
-                }
-
-                // After the decoder is initialized, we know the video size
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                        mDecoder.getVideoWidth(), mDecoder.getVideoHeight()));
-
-                // Then we decode the first frame and render it to the surface
+                // We decode the first frame and render it to the surface
                 // If a seek has already been issued, decode the frame at the seek target as first frame
                 Decoder.VideoFrameInfo videoFrameInfo = null;
                 if(mSeekPrepare) {
@@ -470,8 +497,7 @@ public class MediaPlayer {
                 }
                 mDecoder.releaseFrame(videoFrameInfo, true);
 
-                // When the first frame is rendered, the media is prepared and video rendering has started
-                mEventHandler.sendEmptyMessage(MEDIA_PREPARED); // TODO call much earlier, even before this thread is started (after missing prepareAsync)
+                // When the first frame is rendered, video rendering has started
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                         MEDIA_INFO_VIDEO_RENDERING_START, 0));
 

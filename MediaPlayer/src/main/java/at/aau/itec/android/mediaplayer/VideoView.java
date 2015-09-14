@@ -147,6 +147,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             protected Void doInBackground(Void... params) {
                 try {
                     mPlayer.setDataSource(mSource);
+                    mPlayer.prepareAsync();
                     Log.d(TAG, "video opened");
                 } catch (IOException e) {
                     Log.e(TAG, "video open failed", e);
@@ -363,8 +364,6 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mp) {
-            mSizeChangedListener.onVideoSizeChanged(mp, mp.getVideoWidth(), mp.getVideoHeight());
-
             if(mOnPreparedListener != null) {
                 mOnPreparedListener.onPrepared(mp);
             }

@@ -134,6 +134,7 @@ public class GLVideoView extends GLTextureView implements
             protected Void doInBackground(Void... params) {
                 try {
                     mPlayer.setDataSource(mSource);
+                    mPlayer.prepareAsync();
                     Log.d(TAG, "video opened");
                 } catch (IOException e) {
                     Log.e(TAG, "video open failed", e);
@@ -288,8 +289,6 @@ public class GLVideoView extends GLTextureView implements
             new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mp) {
-            mSizeChangedListener.onVideoSizeChanged(mp, mp.getVideoWidth(), mp.getVideoHeight());
-
             if(mOnPreparedListener != null) {
                 mOnPreparedListener.onPrepared(mp);
             }
