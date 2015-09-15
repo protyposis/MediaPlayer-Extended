@@ -464,7 +464,7 @@ public class MediaPlayer {
         private static final int PLAYBACK_PAUSE = 2;
         private static final int PLAYBACK_LOOP = 3;
         private static final int PLAYBACK_SEEK = 4;
-        private static final int PLAYBACK_DESTROY = 5;
+        private static final int PLAYBACK_RELEASE = 5;
 
         private boolean mPaused;
         private Decoder.VideoFrameInfo mVideoFrameInfo;
@@ -508,8 +508,14 @@ public class MediaPlayer {
         }
 
         public void release() {
+            // Set this flag so the loop does not schedule next loop iteration
             mPaused = true;
-            mHandler.sendEmptyMessage(PLAYBACK_DESTROY);
+
+            // Remove other events waiting in line to make the destroy happen faster
+            mEventHandler.removeMessages(PLAYBACK_SEEK);
+            mEventHandler.removeMessages(PLAYBACK_LOOP);
+
+            mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
         }
 
         public boolean quitSafely() {
@@ -517,9 +523,9 @@ public class MediaPlayer {
                 // quitSafely not existing below API 18, workaround is needed
                 if(isAlive()) {
                     synchronized (this) {
-                        while (mHandler.hasMessages(PLAYBACK_DESTROY)) {
+                        while (mHandler.hasMessages(PLAYBACK_RELEASE)) {
                             try {
-                                // wait for #destroyInternal to finish and notify
+                                // wait for #releaseInternal to finish and notify
                                 wait();
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
@@ -550,8 +556,8 @@ public class MediaPlayer {
                     case PLAYBACK_SEEK:
                         seekInternal((Long) msg.obj);
                         return true;
-                    case PLAYBACK_DESTROY:
-                        destroyInternal();
+                    case PLAYBACK_RELEASE:
+                        releaseInternal();
                         return true;
                     default:
                         Log.d(TAG, "unknown/invalid message");
@@ -571,7 +577,7 @@ public class MediaPlayer {
                         MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
             }
 
-            destroyInternal();
+            releaseInternal();
 
             return true;
         }
@@ -754,8 +760,12 @@ public class MediaPlayer {
             }
         }
 
-        private void destroyInternal() {
+        private void releaseInternal() {
             mPaused = true;
+
+            // make sure no other events run afterwards
+            mEventHandler.removeMessages(PLAYBACK_SEEK);
+            mEventHandler.removeMessages(PLAYBACK_LOOP);
 
             if(mDecoder != null) mDecoder.release();
             if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
