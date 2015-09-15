@@ -608,18 +608,30 @@ class Decoder {
             Log.d(TAG, "seeking finished, skipped " + frameSkipCount + " frames");
 
             if(seekMode == MediaPlayer.SeekMode.EXACT && presentationTimeMs > seekTargetTimeMs) {
-                /* If the current frame's PTS it after the seek target time, we're
-                 * one frame too far into the stream. This is because we do not know
-                 * the frame rate of the video and therefore can't decide for a frame
-                 * if its interval covers the seek target time of if there's already
-                 * another frame coming. We know after the next frame has been
-                 * decoded though if we're too far into the stream, and if so, and if
-                 * EXACT mode is desired, we need to take the previous frame's PTS
-                 * and repeat the seek with that PTS to arrive at the desired frame.
-                 */
-                Log.d(TAG, "exact seek: repeat seek for previous frame at " + lastPTS);
-                releaseFrame(vfi, false);
-                return seekTo(seekMode, lastPTS);
+                if(frameSkipCount > 0) {
+                    // In a single stream, the initiating seek always seeks before or directly
+                    // to the requested frame, and this case never happens. With DASH, when the seek
+                    // target is very near a segment border, it can happen that a wrong segment
+                    // (the following one) is determined as target seek segment, which means the
+                    // target of the initiating seek is too far, and we cannot go back either because
+                    // it is the first frame of the segment
+                    // TODO avoid this case by fixing DASH seek (fix segment calculation or reissue
+                    // seek to previous segment when this case is detected)
+                    Log.w(TAG, "this should never happen");
+                } else {
+                    /* If the current frame's PTS it after the seek target time, we're
+                     * one frame too far into the stream. This is because we do not know
+                     * the frame rate of the video and therefore can't decide for a frame
+                     * if its interval covers the seek target time of if there's already
+                     * another frame coming. We know after the next frame has been
+                     * decoded though if we're too far into the stream, and if so, and if
+                     * EXACT mode is desired, we need to take the previous frame's PTS
+                     * and repeat the seek with that PTS to arrive at the desired frame.
+                     */
+                    Log.d(TAG, "exact seek: repeat seek for previous frame at " + lastPTS);
+                    releaseFrame(vfi, false);
+                    return seekTo(seekMode, lastPTS);
+                }
             }
         }
 
