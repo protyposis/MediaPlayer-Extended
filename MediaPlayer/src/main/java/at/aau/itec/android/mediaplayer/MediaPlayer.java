@@ -24,6 +24,7 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -491,6 +492,11 @@ public class MediaPlayer {
             try {
                 Decoder.VideoFrameInfo videoFrameInfo;
 
+                // Usage of timed outputBufferRelease on API 21+
+                // TODO rewrite decoder loop to get rid of busy waiting in API 21 render mode
+                // NOTE API 21 render mode disabled for now
+                boolean renderModeApi21 = Build.VERSION.SDK_INT >= 21 && false;
+
                 // Run decoder loop
                 while ((videoFrameInfo = mDecoder.decodeFrame(false)) != null) { // Decode frame
                     // Handle pausing
@@ -592,14 +598,14 @@ public class MediaPlayer {
                     }
 
                     // slow down playback, if necessary, to keep frame rate
-                    if (waitingTime > 5000) {
+                    if (waitingTime > 5000 && !renderModeApi21) {
                         // sleep until it's time to render the next frame
                         // TODO find better alternative to sleep
                         // The sleep takes much longer than expected, leading to playback
                         // jitter, and depending on the structure of a container and the
                         // data sequence, dropouts in the audio playback stream.
                         Thread.sleep(waitingTime / 1000);
-                    } else if (waitingTime < 0) {
+                    } else if (waitingTime < -1000) {
                         // we need to catch up time by skipping rendering of this frame
                         // this doesn't gain enough time if playback speed is too high and decoder at full load
                         // TODO improve fast forward mode
@@ -607,6 +613,7 @@ public class MediaPlayer {
                         mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                                 MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
                         mTimeBase.startAt(videoFrameInfo.presentationTimeUs);
+
                     }
 
                     /* Defer the video size changed message until the first frame of the new
@@ -618,7 +625,11 @@ public class MediaPlayer {
 
                     // Release the current frame and render it to the surface
                     boolean videoOutputEos = videoFrameInfo.endOfStream;
-                    mDecoder.releaseFrame(videoFrameInfo, true); // render frame
+                    if(!renderModeApi21) {
+                        mDecoder.releaseFrame(videoFrameInfo, true); // render frame
+                    } else {
+                        mDecoder.releaseFrameTimed(videoFrameInfo, waitingTime);
+                    }
 
                     // When the first frame is rendered, video rendering has started and the event triggered
                     if(mRenderingStarted) {

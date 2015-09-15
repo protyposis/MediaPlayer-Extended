@@ -19,6 +19,7 @@
 
 package at.aau.itec.android.mediaplayer;
 
+import android.annotation.TargetApi;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.SystemClock;
@@ -476,6 +477,18 @@ class Decoder {
      */
     public void releaseFrame(VideoFrameInfo videoFrameInfo, boolean render) {
         mVideoCodec.releaseOutputBuffer(videoFrameInfo.buffer, render); // render picture
+
+        videoFrameInfo.clear();
+        mEmptyVideoFrameInfos.add(videoFrameInfo);
+    }
+
+    /**
+     * Releases all data belonging to a frame and optionally renders it to the configured surface.
+     */
+    @TargetApi(21)
+    public void releaseFrameTimed(VideoFrameInfo videoFrameInfo, long renderOffsetUs) {
+        long renderTimestampNs = System.nanoTime() + (renderOffsetUs * 1000);
+        mVideoCodec.releaseOutputBuffer(videoFrameInfo.buffer, renderTimestampNs); // render picture
 
         videoFrameInfo.clear();
         mEmptyVideoFrameInfos.add(videoFrameInfo);
