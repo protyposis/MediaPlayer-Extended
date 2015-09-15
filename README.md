@@ -192,6 +192,7 @@ Tested and confirmed working on:
 * ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs)
 * Samsung Galaxy SII (Android 4.1.2, ARM Mali-400MP4)
 * Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP4)
+* Samsung Galaxy Note 4 (Android 5.0.1, Snapdragon version with Adreno 420)
 
 ### DASH ###
 
