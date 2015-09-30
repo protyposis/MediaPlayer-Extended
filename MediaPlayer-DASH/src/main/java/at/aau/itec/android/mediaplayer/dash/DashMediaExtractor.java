@@ -541,7 +541,9 @@ class DashMediaExtractor extends MediaExtractor {
             }
 
             Movie mp4Segment = new Movie();
-            mp4Segment.addTrack(new Mp4TrackImpl(null, baseIsoFile.getMovieBox().getBoxes(TrackBox.class).get(0), fragment));
+            for(TrackBox trackBox : baseIsoFile.getMovieBox().getBoxes(TrackBox.class)) {
+                mp4Segment.addTrack(new Mp4TrackImpl(null, trackBox, fragment));
+            }
             Container mp4SegmentContainer = mMp4Builder.build(mp4Segment);
             FileOutputStream fos = new FileOutputStream(segmentFile, false);
             mp4SegmentContainer.writeContainer(fos.getChannel());
