@@ -286,6 +286,7 @@ public class MediaPlayer {
             } catch (InterruptedException e) {
                 Log.e(TAG, "error waiting for playback thread to die", e);
             }
+            mEventHandler.removeCallbacksAndMessages(null);
             mPlaybackThread = null;
         }
         stayAwake(false);
