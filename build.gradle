@@ -25,8 +25,8 @@ ext {
     packageBase = 'at.aau.itec.android'
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
-    libraryVersionCode = 7
-    libraryVersionName = '1.4.3'
+    libraryVersionCode = 8
+    libraryVersionName = '2.0.0'
     librarySnaphotEnabled = true
 
     libraryVersionString = {
