@@ -60,15 +60,21 @@ class AudioPlayback {
 
     /**
      * Initializes or reinitializes the audio track with the supplied format for playback
-     * while keeping the playstate.
+     * while keeping the playstate. Keeps the current configuration and skips reinitialization
+     * if the new format is the same as the current format.
      */
     public void init(MediaFormat format) {
         Log.d(TAG, "init");
-        mAudioFormat = format;
 
         boolean playing = false;
 
         if(isInitialized()) {
+            if(!checkIfReinitializationRequired(format)) {
+                // Set new format that equals the old one (in case we compare references somewhere)
+                mAudioFormat = format;
+                return;
+            }
+
             playing = isPlaying();
             pause();
             stopAndRelease(false);
@@ -78,6 +84,8 @@ class AudioPlayback {
             mAudioThread.setPaused(true);
             mAudioThread.start();
         }
+
+        mAudioFormat = format;
 
         int channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
         int bytesPerSample = 2;
@@ -96,6 +104,12 @@ class AudioPlayback {
         if(playing) {
             play();
         }
+    }
+
+    private boolean checkIfReinitializationRequired(MediaFormat newFormat) {
+        return mAudioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT) != newFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                || mAudioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE) != newFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                || !mAudioFormat.getString(MediaFormat.KEY_MIME).equals(newFormat.getString(MediaFormat.KEY_MIME));
     }
 
     /**
@@ -207,7 +221,7 @@ class AudioPlayback {
         }
     }
 
-    private boolean isPlaying() {
+    public boolean isPlaying() {
         return mAudioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING;
     }
 

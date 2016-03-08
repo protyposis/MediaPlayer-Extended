@@ -88,7 +88,10 @@ public class GLVideoViewActivity extends Activity {
             public void onPrepared(MediaPlayer vp) {
                 if (position > 0) {
                     mGLVideoView.seekTo(position);
+                } else {
+                    mGLVideoView.seekTo(0); // display first frame
                 }
+
                 if (playback) {
                     mGLVideoView.start();
                 }

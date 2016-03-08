@@ -23,16 +23,13 @@ import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Message;
-import android.os.PowerManager;
-import android.os.SystemClock;
+import android.os.*;
+import android.os.Process;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 
 /**
@@ -82,11 +79,11 @@ public class MediaPlayer {
     private MediaCodec mAudioCodec;
     private int mAudioSessionId;
 
-    private PlaybackThread mPlaybackThread;
+    private PlaybackThread2 mPlaybackThread;
+    private Handler mHandler;
     private long mCurrentPosition;
-    private boolean mSeeking;
     private long mSeekTargetTime;
-    private boolean mSeekPrepare;
+    private boolean mSeeking;
     private int mBufferPercentage;
     private TimeBase mTimeBase;
 
@@ -104,6 +101,11 @@ public class MediaPlayer {
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
     private boolean mIsStopping;
+    private boolean mLooping;
+
+    private AudioPlayback mAudioPlayback;
+    private Decoder mDecoder;
+    private boolean mBuffering;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -159,9 +161,6 @@ public class MediaPlayer {
                 if (mSurface == null) {
                     Log.i(TAG, "no video output surface specified");
                 }
-
-                mPlaybackThread = new PlaybackThread();
-                mPlaybackThread.start();
             }
         }
     }
@@ -182,6 +181,77 @@ public class MediaPlayer {
     @Deprecated
     public void setDataSource(Context context, Uri uri) throws IOException {
         setDataSource(context, uri, null);
+    }
+
+    /**
+     * @see android.media.MediaPlayer#prepare()
+     */
+    public void prepare() throws IOException, IllegalStateException {
+        if (mAudioFormat != null) {
+            mAudioPlayback = new AudioPlayback();
+            mAudioPlayback.setAudioSessionId(mAudioSessionId);
+        }
+
+        Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
+            @Override
+            public void onBuffering(Decoder decoder) {
+                mBuffering = true;
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        MEDIA_INFO_BUFFERING_START, 0));
+            }
+        };
+
+        mDecoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
+                mAudioExtractor, mAudioTrackIndex, mAudioPlayback,
+                decoderEventListener);
+
+        if (mAudioPlayback != null) {
+            mAudioSessionId = mAudioPlayback.getAudioSessionId();
+        }
+
+        // After the decoder is initialized, we know the video size
+        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
+                mDecoder.getVideoWidth(), mDecoder.getVideoHeight()));
+
+        // Decode the first frame to initialize the decoder, and seek back to the start
+        // This is necessary on some platforms, else a seek directly after initialization will fail
+        // TODO find out which API versions need this workaround (not required on API 22)
+        if(Build.VERSION.SDK_INT < 22) {
+            Decoder.VideoFrameInfo vfi = mDecoder.decodeFrame(false);
+            mDecoder.releaseFrame(vfi, false);
+            if (mAudioPlayback != null) mAudioPlayback.pause(true);
+            mDecoder.seekTo(SeekMode.FAST, 0);
+        }
+
+        // Create the playback loop handler thread
+        mPlaybackThread = new PlaybackThread2();
+        mPlaybackThread.start();
+
+        // Create the handler that will process the messages on the handler thread
+        mHandler = new Handler(mPlaybackThread.getLooper(), mPlaybackThread);
+    }
+
+    /**
+     * @see android.media.MediaPlayer#prepareAsync()
+     */
+    public void prepareAsync() throws IllegalStateException {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    prepare();
+
+                    // This event is only triggered after a successful async prepare (not after the sync prepare!)
+                    mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
+                } catch (IOException e) {
+                    Log.e(TAG, "prepareAsync error", e);
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                            MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
+                }
+
+                return null;
+            }
+        }.execute();
     }
 
     /**
@@ -227,7 +297,7 @@ public class MediaPlayer {
         this.mSeekMode = seekMode;
     }
 
-    private void seekToInternal(long usec) {
+    public void seekTo(long usec) {
         /* A seek needs to be performed in the decoding thread to execute commands in the correct
          * order. Otherwise it can happen that, after a seek in the media decoder, seeking procedure
          * starts, then a frame is decoded, and then the codec is flushed; the PTS of the decoded frame
@@ -236,23 +306,13 @@ public class MediaPlayer {
 
         Log.d(TAG, "seekTo " + usec);
 
-        // inform the decoder thread of an upcoming seek
-        mSeekPrepare = true;
-        mSeekTargetTime = Math.max(mVideoMinPTS, usec);
-
-        // if the decoder is paused, wake it up for the seek
-        if(mPlaybackThread.isPaused()) {
-            mPlaybackThread.play();
-            mPlaybackThread.pause();
-        }
-    }
-
-    public void seekTo(long usec) {
         if (mOnSeekListener != null) {
             mOnSeekListener.onSeek(MediaPlayer.this);
         }
 
-        seekToInternal(usec);
+        mSeeking = true;
+        mSeekTargetTime = Math.max(mVideoMinPTS, usec);
+        mPlaybackThread.seekTo(mSeekTargetTime);
     }
 
     public void seekTo(int msec) {
@@ -277,15 +337,24 @@ public class MediaPlayer {
         return mPlaybackThread != null && !mPlaybackThread.isPaused();
     }
 
+    /**
+     * @see android.media.MediaPlayer#setLooping(boolean)
+     */
+    public void setLooping(boolean looping) {
+        mLooping = looping;
+    }
+
+    /**
+     * @see android.media.MediaPlayer#isLooping()
+     */
+    public boolean isLooping() {
+        return mLooping;
+    }
+
     public void stop() {
         if(mPlaybackThread != null) {
-            mIsStopping = true;
-            mPlaybackThread.interrupt();
-            try {
-                mPlaybackThread.join();
-            } catch (InterruptedException e) {
-                Log.e(TAG, "error waiting for playback thread to die", e);
-            }
+            mPlaybackThread.release();
+            mPlaybackThread.quitSafely();
             mPlaybackThread = null;
         }
         stayAwake(false);
@@ -359,7 +428,7 @@ public class MediaPlayer {
         /* During a seek, return the temporary seek target time; otherwise a seek bar doesn't
          * update to the selected seek position until the seek is finished (which can take a
          * while in exact mode). */
-        return (int)((mSeekPrepare || mSeeking ? mSeekTargetTime : mCurrentPosition)/1000);
+        return (int)((mSeeking ? mSeekTargetTime : mCurrentPosition)/1000);
     }
 
     public int getBufferPercentage() {
@@ -389,411 +458,115 @@ public class MediaPlayer {
         return mAudioSessionId;
     }
 
-    private class PlaybackThread extends Thread {
+    private class PlaybackThread2 extends HandlerThread implements Handler.Callback {
 
-        private final long mTimeOutUs = 500000;
+        private static final int PLAYBACK_PLAY = 1;
+        private static final int PLAYBACK_PAUSE = 2;
+        private static final int PLAYBACK_LOOP = 3;
+        private static final int PLAYBACK_SEEK = 4;
+        private static final int PLAYBACK_RELEASE = 5;
 
-        private ByteBuffer[] mVideoCodecInputBuffers;
-        private ByteBuffer[] mVideoCodecOutputBuffers;
-        private ByteBuffer[] mAudioCodecInputBuffers;
-        private ByteBuffer[] mAudioCodecOutputBuffers;
-        private MediaCodec.BufferInfo mVideoInfo;
-        private MediaCodec.BufferInfo mAudioInfo;
         private boolean mPaused;
-        private boolean mVideoInputEos;
-        private boolean mVideoOutputEos;
-        private boolean mAudioInputEos;
-        private boolean mAudioOutputEos;
-        private boolean mBuffering;
-        private AudioPlayback mAudioPlayback;
+        private Decoder.VideoFrameInfo mVideoFrameInfo;
+        private boolean mRenderModeApi21; // Usage of timed outputBufferRelease on API 21+
+        private boolean mRenderingStarted; // Flag to know if decoding the first frame
+        private long mLastPTS;
+        private boolean mEOS; // Flag telling if we reached the EOS
 
-        /* Flag notifying that the representation has changed in the extractor and needs to be passed
-         * to the decoder. This transition state is only needed in playback, not when seeking. */
-        private boolean mRepresentationChanging;
-        /* Flag notifying that the decoder has changed to a new representation, post-actions need to
-         * be carried out. */
-        private boolean mRepresentationChanged;
+        public PlaybackThread2() {
+            // Give this thread a high priority for more precise event timing
+            super(TAG + "#" + PlaybackThread2.class.getSimpleName(), Process.THREAD_PRIORITY_AUDIO);
 
-        private PlaybackThread() {
-            super(TAG);
+            // Init fields
             mPaused = true;
+            mRenderModeApi21 = Build.VERSION.SDK_INT >= 21;
+            mRenderingStarted = true;
+            mLastPTS = -1;
+            mEOS = false;
+        }
+
+        public void play() {
+            mHandler.sendEmptyMessage(PLAYBACK_PLAY);
+            mPaused = false;
         }
 
         public void pause() {
             mPaused = true;
-        }
-
-        public void play() {
-            mPaused = false;
-            synchronized (this) {
-                notify();
-            }
+            mHandler.sendEmptyMessage(PLAYBACK_PAUSE);
         }
 
         public boolean isPaused() {
             return mPaused;
         }
 
-        @Override
-        public void run() {
-            try {
-                mVideoCodec = MediaCodec.createDecoderByType(mVideoFormat.getString(MediaFormat.KEY_MIME));
-                mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
-                mVideoCodec.start();
-                mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
-                mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-                mVideoInfo = new MediaCodec.BufferInfo();
-                mVideoInputEos = false;
-                mVideoOutputEos = false;
+        public void seekTo(long usec) {
+            // When multiple seek requests come in, e.g. when a user slides the finger on a
+            // seek bar in the UI, we don't want to process all of them and can therefore remove
+            // all requests from the queue and only keep the most recent one.
+            mHandler.removeMessages(PLAYBACK_SEEK); // remove any previous requests
+            mHandler.obtainMessage(PLAYBACK_SEEK, usec).sendToTarget();
+        }
 
-                if(mAudioFormat != null) {
-                    mAudioCodec = MediaCodec.createDecoderByType(mAudioFormat.getString(MediaFormat.KEY_MIME));
-                    mAudioCodec.configure(mAudioFormat, null, null, 0);
-                    mAudioCodec.start();
-                    mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
-                    mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-                    mAudioInfo = new MediaCodec.BufferInfo();
-                    mAudioInputEos = false;
-                    mAudioOutputEos = false;
+        public void release() {
+            // Set this flag so the loop does not schedule next loop iteration
+            mPaused = true;
 
-                    mAudioPlayback = new AudioPlayback();
-                    mAudioPlayback.setAudioSessionId(mAudioSessionId);
-                    mAudioPlayback.init(mAudioFormat);
-                    mAudioSessionId = mAudioPlayback.getAudioSessionId();
+            // Remove other events waiting in line to make the destroy happen faster
+            mEventHandler.removeMessages(PLAYBACK_SEEK);
+            mEventHandler.removeMessages(PLAYBACK_LOOP);
+
+            mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
+        }
+
+        public boolean quitSafely() {
+            if(Build.VERSION.SDK_INT < 18) {
+                // quitSafely not existing below API 18, workaround is needed
+                if(isAlive()) {
+                    synchronized (this) {
+                        while (mHandler.hasMessages(PLAYBACK_RELEASE)) {
+                            try {
+                                // wait for #releaseInternal to finish and notify
+                                wait();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    }
+                    return true;
                 }
+                return false;
+            } else {
+                return super.quitSafely();
+            }
+        }
 
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                        getVideoWidth(), getVideoHeight()));
-
-                mBuffering = false;
-                boolean preparing = true; // used on startup to process stream until the first frame
-                int frameSkipCount = 0;
-                long lastPTS = 0;
-
-                // Initialize the time base with the first PTS that must not necessarily be 0
-                mTimeBase.startAt(mVideoMinPTS);
-
-                while (!mVideoOutputEos) {
-                    if (mPaused && !mSeekPrepare && !mSeeking && !preparing) {
-                        if(mAudioPlayback != null) mAudioPlayback.pause();
-                        synchronized (this) {
-                            while (mPaused && !mSeekPrepare && !mSeeking) {
-                                this.wait();
-                            }
-                        }
-
-                        if(mAudioPlayback != null) mAudioPlayback.play();
-                        // reset time (otherwise playback tries to "catch up" time after a pause)
-                        mTimeBase.startAt(mVideoInfo.presentationTimeUs);
-                    }
-
-                    // For a seek, first prepare by seeking the media extractor and flushing the codec.
-                    /* This needs to be in a loop, because the seek inside this block can take some
-                     * time, meanwhile another seek can be issued. The following seek can update the seek
-                     * target while the video extractor is still seeking, which can turn into a problem
-                     * with DASH when the second target is not within the first requested segment - in
-                     * which case the seek cannot find the new target in the old segment. By checking
-                     * if a seek needs to be prepared after the video extractor seek has finished (which
-                     * means another seek hat been issued), it can be run again and again while new
-                     * seek targets come in, until the target finally stays the same during a seek.
-                     */
-                    while (mSeekPrepare) {
-                        mSeekPrepare = false;
-                        mSeeking = true;
-
-                        Log.d(TAG, "seeking to:                 " + mSeekTargetTime);
-                        Log.d(TAG, "frame current position:     " + mCurrentPosition);
-                        Log.d(TAG, "extractor current position: " + mVideoExtractor.getSampleTime());
-
-                        mVideoExtractor.seekTo(mSeekTargetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-                        mCurrentPosition = mSeekTargetTime;
-
-                        Log.d(TAG, "extractor new position:     " + mVideoExtractor.getSampleTime());
-
-                        if(mSeekPrepare) {
-                            // Another seek has been issued in the meantime, repeat this block
-                            continue;
-                        }
-
-                        mVideoInputEos = false;
-                        mVideoOutputEos = false;
-                        mAudioInputEos = false;
-                        mAudioOutputEos = false;
-                        mVideoCodec.flush();
-                        if (mAudioFormat != null) mAudioCodec.flush();
-
-                        if(mVideoExtractor.hasTrackFormatChanged()) {
-                            reinitCodecs();
-                            mRepresentationChanged = true;
-                        }
-
-                        if(mSeekMode == SeekMode.FAST_EXACT) {
-                            /* Check if the seek target time after the seek is the same as before the
-                             * seek. If not, a new seek has been issued in the meantime; the current
-                             * one must be discarded and a new seek with the new target time started.
-                             */
-                            long in;
-                            long out;
-                            do {
-                                in = mSeekTargetTime;
-                                out = fastSeek(in);
-                            } while (in != mSeekTargetTime);
-                            mSeekTargetTime = out;
-                            mSeekPrepare = false;
-                        }
-                    }
-
-                    if (!mVideoInputEos && !mRepresentationChanging) {
-                        queueMediaSampleToCodec(mSeeking);
-                    }
-                    lastPTS = mVideoInfo.presentationTimeUs;
-                    int res = mVideoCodec.dequeueOutputBuffer(mVideoInfo, mTimeOutUs);
-                    mVideoOutputEos = res >= 0 && (mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
-
-                    if(mVideoOutputEos && mRepresentationChanging) {
-                        /* Here, the video output is not really at its end, it's just the end of the
-                         * current representation segment, and the codec needs to be reconfigured to
-                         * the following representation format to carry on.
-                         */
-
-                        reinitCodecs();
-
-                        mVideoOutputEos = false;
-                        mRepresentationChanging = false;
-                        mRepresentationChanged = true;
-                    }
-                    else if (res >= 0) {
-                        int outputBufIndex = res;
-                        boolean render = true;
-                        //ByteBuffer buf = codecOutputBuffers[outputBufIndex];
-
-                        //Log.d(TAG, "pts=" + info.presentationTimeUs);
-
-                        if (mSeeking) {
-                            if(mVideoOutputEos) {
-                                /* When the end of stream is reached while seeking, the seek target
-                                 * time is set to the last frame's PTS, else the seek skips the last
-                                 * frame which then does not get rendered, and it might end up in a
-                                 * loop trying to reach the unreachable target time. */
-                                mSeekTargetTime = mVideoInfo.presentationTimeUs;
-                            }
-                            /* NOTE
-                             * This code seeks one frame too far, except if the seek time equals the
-                             * frame PTS:
-                             * (F1.....)(F2.....)(F3.....) ... (Fn.....)
-                             * A frame is shown for an interval, e.g. (1/fps seconds). Now if the seek
-                             * target time is somewhere in frame 2's interval, we end up with frame 3
-                             * because we need to decode it to know if the seek target time lies in
-                             * frame 2's interval (because we don't know the frame rate of the video,
-                             * and neither if it's a fixed frame rate or a variable one - even when
-                             * deriving it from the PTS series we cannot be sure about it). This means
-                             * we always end up one frame too far, because the MediaCodec does not allow
-                             * to go back, except when starting at a sync frame.
-                             *
-                             * Solution for fixed frame rate could be to subtract the frame interval
-                             * time (1/fps secs) from the seek target time.
-                             *
-                             * Solution for variable frame rate and unknown frame rate: go back to sync
-                             * frame and re-seek to the now known exact PTS of the desired frame.
-                             * See EXACT mode handling below.
-                             */
-                            /* Android API compatibility:
-                             * Use millisecond precision to stay compatible with VideoView API that works
-                             * in millisecond precision only. Else, exact seek matches are missed if frames
-                             * are positioned at fractions of a millisecond. */
-                            long presentationTimeMs = mVideoInfo.presentationTimeUs / 1000;
-                            long seekTargetTimeMs = mSeekTargetTime / 1000;
-                            if ((mSeekMode == SeekMode.PRECISE || mSeekMode == SeekMode.EXACT) && presentationTimeMs < seekTargetTimeMs) {
-                                // this is not yet the aimed time so we skip rendering of this frame
-                                render = false;
-                                if(frameSkipCount == 0) {
-                                    Log.d(TAG, "skipping frames...");
-                                }
-                                frameSkipCount++;
-                            } else {
-                                Log.d(TAG, "frame new position:         " + mVideoInfo.presentationTimeUs);
-                                Log.d(TAG, "seeking finished, skipped " + frameSkipCount + " frames");
-                                frameSkipCount = 0;
-
-                                if(mSeekMode == SeekMode.EXACT && presentationTimeMs > seekTargetTimeMs) {
-                                    /* If the current frame's PTS it after the seek target time, we're
-                                     * one frame too far into the stream. This is because we do not know
-                                     * the frame rate of the video and therefore can't decide for a frame
-                                     * if its interval covers the seek target time of if there's already
-                                     * another frame coming. We know after the next frame has been
-                                     * decoded though if we're too far into the stream, and if so, and if
-                                     * EXACT mode is desired, we need to take the previous frame's PTS
-                                     * and repeat the seek with that PTS to arrive at the desired frame.
-                                     */
-                                    Log.d(TAG, "exact seek: repeat seek for previous frame at " + lastPTS);
-                                    render = false;
-                                    seekToInternal(lastPTS);
-                                } else {
-                                    if(presentationTimeMs == seekTargetTimeMs) {
-                                        Log.d(TAG, "exact seek match!");
-                                    }
-
-                                    if(mSeekMode == SeekMode.FAST_EXACT && mVideoInfo.presentationTimeUs < mSeekTargetTime) {
-                                        // this should only ever happen in fastseek mode, else it FFWs in fast mode
-                                        Log.d(TAG, "presentation is behind, another try...");
-                                    } else {
-                                        // reset time to keep frame rate constant (otherwise it's too fast on back seeks and waits for the PTS time on fw seeks)
-                                        mTimeBase.startAt(mVideoInfo.presentationTimeUs);
-                                        mCurrentPosition = mVideoInfo.presentationTimeUs;
-                                        mSeeking = false;
-                                        if(mAudioExtractor != null) {
-                                            mAudioExtractor.seekTo(mVideoInfo.presentationTimeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
-                                            mAudioPlayback.flush();
-                                        }
-                                        mEventHandler.sendEmptyMessage(MEDIA_SEEK_COMPLETE);
-                                    }
-                                }
-                            }
-                        } else {
-                            mCurrentPosition = mVideoInfo.presentationTimeUs;
-
-                            long waitingTime = mTimeBase.getOffsetFrom(mVideoInfo.presentationTimeUs);
-
-                            if(mAudioFormat != null) {
-                                long audioOffsetUs = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
-//                                Log.d(TAG, "VideoPTS=" + mCurrentPosition
-//                                        + " AudioPTS=" + mAudioPlayback.getLastPresentationTimeUs()
-//                                        + " offset=" + audioOffsetUs);
-                                /* Synchronize the video frame PTS to the audio PTS by slowly adjusting
-                                 * the video frame waiting time towards a better synchronization.
-                                 * Directly correcting the video waiting time by the audio offset
-                                 * introduces too much jitter and leads to juddering video playback.
-                                 */
-                                long audioOffsetCorrectionUs = 10000;
-                                if (audioOffsetUs > audioOffsetCorrectionUs) {
-                                    waitingTime -= audioOffsetCorrectionUs;
-                                } else if(audioOffsetUs < -audioOffsetCorrectionUs) {
-                                    waitingTime += audioOffsetCorrectionUs;
-                                }
-
-                                mAudioPlayback.setPlaybackSpeed((float)mTimeBase.getSpeed());
-                            }
-
-                            //Log.d(TAG, "waiting time = " + waitingTime);
-
-                            /* If this is an online stream, notify the client of the buffer fill level.
-                             * The cached duration from the MediaExtractor returns the cached time from
-                             * the current position onwards, but the Android mediaPlayer returns the
-                             * total time consisting fo the current playback point and the length of
-                             * the prefetched data.
-                             */
-                            long cachedDuration = mVideoExtractor.getCachedDuration();
-                            if(cachedDuration != -1) {
-                                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
-                                        (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
-                            }
-
-                            // slow down playback, if necessary, to keep frame rate
-                            if (!preparing && waitingTime > 5000) {
-                                // sleep until it's time to render the next frame
-                                // TODO find better alternative to sleep
-                                // The sleep takes much longer than expected, leading to playback
-                                // jitter, and depending on the structure of a container and the
-                                // data sequence, dropouts in the audio playback stream.
-                                Thread.sleep(waitingTime / 1000);
-                            } else if(!preparing && waitingTime < 0) {
-                                // we weed to catch up time by skipping rendering of this frame
-                                // this doesn't gain enough time if playback speed is too high and decoder at full load
-                                // TODO improve fast forward mode
-                                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                        MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
-                                mTimeBase.startAt(mVideoInfo.presentationTimeUs);
-                            }
-                        }
-
-                        if(mBuffering) {
-                            mBuffering = false;
-                            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                    MEDIA_INFO_BUFFERING_END, 0));
-                        }
-
-                        /* Defer the video size changed message until the first frame of the new
-                         * size is being rendered. */
-                        if(mRepresentationChanged && render) {
-                            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                                    getVideoWidth(), getVideoHeight()));
-                            mRepresentationChanged = false;
-                        }
-
-                        mVideoCodec.releaseOutputBuffer(outputBufIndex, render); // render picture
-
-                        if (mAudioFormat != null & mAudioExtractor != null && !mSeeking && !mPaused) {
-                            // TODO rewrite; this is just a quick and dirty hack
-                            long start = SystemClock.elapsedRealtime();
-                            while (mAudioPlayback.getBufferTimeUs() < 100000) {
-                                if (queueAudioSampleToCodec(mAudioExtractor)) {
-                                    decodeAudioSample();
-                                } else {
-                                    break;
-                                }
-                            }
-                            //Log.d(TAG, "audio stream decode time " + (SystemClock.elapsedRealtime() - start));
-                        }
-
-                        if (preparing) {
-                            mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
-                            preparing = false;
-                            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                    MEDIA_INFO_VIDEO_RENDERING_START, 0));
-                        }
-
-                        if (mVideoOutputEos) {
-                            Log.d(TAG, "EOS video output");
-                            mEventHandler.sendEmptyMessage(MEDIA_PLAYBACK_COMPLETE);
-
-                            /* When playback reached the end of the stream and the last frame is
-                             * displayed, we go into paused state instead of finishing the thread
-                             * and wait until a new start or seek command is arriving. If no
-                             * command arrives, the thread stays sleeping until the player is
-                             * stopped.
-                             */
-                            mPaused = true;
-                            synchronized (this) {
-                                if(mAudioPlayback != null) mAudioPlayback.pause();
-                                while (mPaused && !mSeeking && !mSeekPrepare) {
-                                    this.wait();
-                                }
-                                if(mAudioPlayback != null) mAudioPlayback.play();
-
-                                // reset these flags so playback can continue
-                                mVideoInputEos = false;
-                                mVideoOutputEos = false;
-                                mAudioInputEos = false;
-                                mAudioOutputEos = false;
-
-                                // if no seek command but a start command arrived, seek to the start
-                                if(!mSeeking && !mSeekPrepare) {
-                                    seekToInternal(0);
-                                }
-                            }
-                        }
-                    } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-                        Log.d(TAG, "output buffers have changed.");
-                    } else if (res == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        // NOTE: this is the format of the raw video output, not the video format as specified by the container
-                        MediaFormat oformat = mVideoCodec.getOutputFormat();
-                        Log.d(TAG, "output format has changed to " + oformat);
-                    } else if (res == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        Log.d(TAG, "dequeueOutputBuffer timed out");
-                    }
+        @Override
+        public boolean handleMessage(Message msg) {
+            try {
+                switch (msg.what) {
+                    case PLAYBACK_PLAY:
+                        playInternal();
+                        return true;
+                    case PLAYBACK_PAUSE:
+                        pauseInternal();
+                        return true;
+                    case PLAYBACK_LOOP:
+                        loopInternal();
+                        return true;
+                    case PLAYBACK_SEEK:
+                        seekInternal((Long) msg.obj);
+                        return true;
+                    case PLAYBACK_RELEASE:
+                        releaseInternal();
+                        return true;
+                    default:
+                        Log.d(TAG, "unknown/invalid message");
+                        return false;
                 }
             } catch (InterruptedException e) {
-                Log.d(TAG, "decoder interrupted");
-                interrupt();
-                if(mIsStopping) {
-                    // An intentional stop does not trigger an error message
-                    mIsStopping = false;
-                } else {
-                    // Unexpected interruption, send error message
-                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
-                            MEDIA_ERROR_UNKNOWN, 0));
-                }
+                Log.d(TAG, "decoder interrupted", e);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                        MEDIA_ERROR_UNKNOWN, 0));
             } catch (IllegalStateException e) {
                 Log.e(TAG, "decoder error, too many instances?", e);
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
@@ -804,245 +577,207 @@ public class MediaPlayer {
                         MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
             }
 
+            releaseInternal();
+
+            return true;
+        }
+
+        private void playInternal() throws IOException, InterruptedException {
+            if(mEOS) {
+                mEOS = false;
+                mCurrentPosition = 0;
+                seekInternal(0);
+            }
+
+            // reset time (otherwise playback tries to "catch up" time after a pause)
+            mTimeBase.startAt(mLastPTS);
+
+            // Start audio playback
+            if(mAudioPlayback != null) {
+                mAudioPlayback.play();
+            }
+
+            mHandler.removeMessages(PLAYBACK_LOOP);
+            loopInternal();
+        }
+
+        private void pauseInternal() {
+            mHandler.removeMessages(PLAYBACK_LOOP); // removes remaining loop requests (required when EOS is reached)
+            if (mAudioPlayback != null) mAudioPlayback.pause();
+        }
+
+        private void loopInternal() throws IOException, InterruptedException {
+            if(mVideoFrameInfo == null) {
+                mVideoFrameInfo = mDecoder.decodeFrame(false);
+                mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
+                loopInternal();
+            }
+
+            // When we are in buffering mode, and a frame has been decoded, the buffer is
+            // obviously refilled so we can send the buffering end message
+            if(mBuffering) {
+                mBuffering = false;
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        MEDIA_INFO_BUFFERING_END, 0));
+            }
+
+            // Update the current position of the player
+            mCurrentPosition = mVideoFrameInfo.presentationTimeUs;
+
+            // Calculate waiting time until the next frame's PTS
+            long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
+
+            // Sync video to audio
+            if (mAudioPlayback != null) {
+                long audioOffsetUs = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
+//                Log.d(TAG, "VideoPTS=" + mCurrentPosition
+//                        + " AudioPTS=" + mAudioPlayback.getLastPresentationTimeUs()
+//                        + " offset=" + audioOffsetUs);
+                // Synchronize the video frame PTS to the audio PTS by slowly adjusting
+                // the video frame waiting time towards a better synchronization.
+                // Directly correcting the video waiting time by the audio offset
+                // introduces too much jitter and leads to juddering video playback.
+                long audioOffsetCorrectionUs = 10000;
+                if (audioOffsetUs > audioOffsetCorrectionUs) {
+                    waitingTime -= audioOffsetCorrectionUs;
+                } else if (audioOffsetUs < -audioOffsetCorrectionUs) {
+                    waitingTime += audioOffsetCorrectionUs;
+                }
+
+                mAudioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
+            }
+
+            // If this is an online stream, notify the client of the buffer fill level.
+            // The cached duration from the MediaExtractor returns the cached time from
+            // the current position onwards, but the Android MediaPlayer returns the
+            // total time consisting fo the current playback point and the length of
+            // the prefetched data.
+            long cachedDuration = mVideoExtractor.getCachedDuration();
+            if(cachedDuration != -1) {
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
+                        (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
+            }
+
+            // slow down playback, if necessary, to keep frame rate
+            if (waitingTime > 5000 && !mRenderModeApi21) {
+                // Sleep until it's time to render the next frame
+                // NOTE:
+                // The sleep is very unreliable on some devices with extreme jitter and much longer
+                // sleeping times than expected (e.g. Nexus 4), leading to a bad playback quality.
+                // Works perfectly on other devices though (e.g. Galaxy S2). From API 21, this sleep
+                // is not necessary any more.
+                Thread.sleep(waitingTime / 1000);
+            } else if (waitingTime < -1000) {
+                // we need to catch up time by skipping rendering of this frame
+                // this doesn't gain enough time if playback speed is too high and decoder at full load
+                // TODO improve fast forward mode
+                Log.d(TAG, "LAGGING " + waitingTime);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
+                mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
+            }
+
+            // Defer the video size changed message until the first frame of the new size is being rendered
+            if (mVideoFrameInfo.representationChanged) {
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
+                        mVideoFrameInfo.width, mVideoFrameInfo.height));
+            }
+
+            // Release the current frame and render it to the surface
+            mEOS = mVideoFrameInfo.endOfStream;
+            mLastPTS = mVideoFrameInfo.presentationTimeUs;
+            if(!mRenderModeApi21) {
+                mDecoder.releaseFrame(mVideoFrameInfo, true); // render frame
+            } else {
+                mDecoder.releaseFrameTimed(mVideoFrameInfo, waitingTime); // deferred rendering on API 21+
+            }
+            mVideoFrameInfo = null;
+
+            // When the first frame is rendered, video rendering has started and the event triggered
+            if(mRenderingStarted) {
+                mRenderingStarted = false;
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        MEDIA_INFO_VIDEO_RENDERING_START, 0));
+            }
+
+            // Handle EOS
+            if (mEOS) {
+                mEventHandler.sendEmptyMessage(MEDIA_PLAYBACK_COMPLETE);
+
+                // If looping is on, seek back to the start...
+                if(mLooping) {
+                    mVideoFrameInfo = mDecoder.seekTo(SeekMode.FAST, 0);
+                    mLastPTS = mVideoFrameInfo.presentationTimeUs;
+                }
+                // ... else just pause playback and wait for next command
+                else {
+                    mPaused = true;
+                    pauseInternal();
+                }
+            } else {
+                // Get next frame
+                mVideoFrameInfo = mDecoder.decodeFrame(false);
+            }
+
+            if(!mPaused) {
+                // Sleep for some time and then continue processing the loop
+                // This replaces the very unreliable and jittery Thread.sleep in the old decoder thread
+                mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 10);
+            }
+        }
+
+        private void seekInternal(long usec) throws IOException, InterruptedException {
+            // Clear the audio cache
+            if(mAudioPlayback != null) mAudioPlayback.pause(true);
+
+            // Seek to the target time
+            mVideoFrameInfo = mDecoder.seekTo(mSeekMode, usec);
+
+            // Reset time to keep frame rate constant
+            // (otherwise it's too fast on back seeks and waits for the PTS time on fw seeks)
+            mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
+
+            // Check if another seek has been issued in the meantime
+            boolean newSeekWaiting = mHandler.hasMessages(PLAYBACK_SEEK);
+
+            // Render seek target frame (if no new seek is waiting to be processed)
+            mLastPTS = mVideoFrameInfo.presentationTimeUs;
+            mDecoder.releaseFrame(mVideoFrameInfo, !newSeekWaiting);
+            mVideoFrameInfo = null;
+
+            // When there are no more seek requests in the queue, notify of finished seek operation
+            if(!newSeekWaiting) {
+                // Set the final seek position as the current position
+                // (the final seek position may be off the initial target seek position)
+                mCurrentPosition = mLastPTS;
+                mSeeking = false;
+
+                mEventHandler.sendEmptyMessage(MEDIA_SEEK_COMPLETE);
+
+                if(!mPaused) {
+                    playInternal();
+                }
+            }
+        }
+
+        private void releaseInternal() {
+            mPaused = true;
+
+            // make sure no other events run afterwards
+            mEventHandler.removeMessages(PLAYBACK_SEEK);
+            mEventHandler.removeMessages(PLAYBACK_LOOP);
+
+            if(mDecoder != null) mDecoder.release();
             if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
-            mVideoCodec.stop();
-            mVideoCodec.release();
-            if(mAudioFormat != null) {
-                mAudioCodec.stop();
-                mAudioCodec.release();
+            if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
+                mAudioExtractor.release();
             }
             mVideoExtractor.release();
+            Log.d(TAG, "PlaybackThread destroyed");
 
-            Log.d(TAG, "decoder released");
-        }
-
-        private boolean queueVideoSampleToCodec() {
-            /* NOTE the track index checks only for debugging
-             * when enabled, they prevent the EOS detection and handling below */
-//            int trackIndex = mVideoExtractor.getSampleTrackIndex();
-//            if(trackIndex == -1) {
-//                throw new IllegalStateException("EOS");
-//            }
-//            if(trackIndex != mVideoTrackIndex) {
-//                throw new IllegalStateException("wrong track index: " + trackIndex);
-//            }
-            boolean sampleQueued = false;
-            int inputBufIndex = mVideoCodec.dequeueInputBuffer(mTimeOutUs);
-            if (inputBufIndex >= 0) {
-                ByteBuffer inputBuffer = mVideoCodecInputBuffers[inputBufIndex];
-                int sampleSize = mVideoExtractor.readSampleData(inputBuffer, 0);
-                long presentationTimeUs = 0;
-
-                if(sampleSize == 0) {
-                    if(mVideoExtractor.getCachedDuration() == 0) {
-                        mBuffering = true;
-                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                MEDIA_INFO_BUFFERING_START, 0));
-                    }
-                    if(mVideoExtractor.hasTrackFormatChanged()) {
-                        /* The mRepresentationChanging flag and BUFFER_FLAG_END_OF_STREAM flag together
-                         * notify the decoding loop that the representation changes and the codec
-                         * needs to be reconfigured.
-                         */
-                        mRepresentationChanging = true;
-                        mVideoCodec.queueInputBuffer(inputBufIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-                    }
-                } else {
-                    if (sampleSize < 0) {
-                        Log.d(TAG, "EOS video input");
-                        mVideoInputEos = true;
-                        sampleSize = 0;
-                    } else {
-                        presentationTimeUs = mVideoExtractor.getSampleTime();
-                        sampleQueued = true;
-                    }
-
-                    mVideoCodec.queueInputBuffer(
-                            inputBufIndex,
-                            0,
-                            sampleSize,
-                            presentationTimeUs,
-                            mVideoInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
-
-                    if (!mVideoInputEos) {
-                        mVideoExtractor.advance();
-                    }
-                }
+            synchronized (this) {
+                notify();
             }
-            return sampleQueued;
-        }
-
-        private boolean queueAudioSampleToCodec(MediaExtractor extractor) {
-            if(mAudioCodec == null) {
-                throw new IllegalStateException("no audio track configured");
-            }
-            /* NOTE the track index checks only for debugging
-             * when enabled, they prevent the EOS detection and handling below */
-//            int trackIndex = extractor.getSampleTrackIndex();
-//            if(trackIndex == -1) {
-//                throw new IllegalStateException("EOS");
-//            }
-//            if(trackIndex != mAudioTrackIndex) {
-//                throw new IllegalStateException("wrong track index: " + trackIndex);
-//            }
-            boolean sampleQueued = false;
-            int inputBufIndex = mAudioCodec.dequeueInputBuffer(mTimeOutUs);
-            if (inputBufIndex >= 0) {
-                ByteBuffer inputBuffer = mAudioCodecInputBuffers[inputBufIndex];
-                int sampleSize = extractor.readSampleData(inputBuffer, 0);
-                long presentationTimeUs = 0;
-                if (sampleSize < 0) {
-                    Log.d(TAG, "EOS audio input");
-                    mAudioInputEos = true;
-                    sampleSize = 0;
-                } else if(sampleSize == 0) {
-                    if(extractor.getCachedDuration() == 0) {
-                        mBuffering = true;
-                        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                                MEDIA_INFO_BUFFERING_START, 0));
-                    }
-                } else {
-                    presentationTimeUs = extractor.getSampleTime();
-                    sampleQueued = true;
-                }
-                mAudioCodec.queueInputBuffer(
-                        inputBufIndex,
-                        0,
-                        sampleSize,
-                        presentationTimeUs,
-                        mAudioInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
-                if (!mAudioInputEos) {
-                    extractor.advance();
-                }
-            }
-            return sampleQueued;
-        }
-
-        private void decodeAudioSample() {
-            int output = mAudioCodec.dequeueOutputBuffer(mAudioInfo, mTimeOutUs);
-            if (output >= 0) {
-                // http://bigflake.com/mediacodec/#q11
-                ByteBuffer outputData = mAudioCodecOutputBuffers[output];
-                if (mAudioInfo.size != 0) {
-                    outputData.position(mAudioInfo.offset);
-                    outputData.limit(mAudioInfo.offset + mAudioInfo.size);
-                    //Log.d(TAG, "raw audio data bytes: " + mVideoInfo.size);
-                }
-                mAudioPlayback.write(outputData, mAudioInfo.presentationTimeUs);
-                mAudioCodec.releaseOutputBuffer(output, false);
-
-                if ((mAudioInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    mAudioOutputEos = true;
-                    Log.d(TAG, "EOS audio output");
-                }
-            } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                Log.d(TAG, "audio output buffers have changed.");
-                mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-            } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                MediaFormat format = mAudioCodec.getOutputFormat();
-                Log.d(TAG, "audio output format has changed to " + format);
-                mAudioPlayback.init(format);
-            } else if (output == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                Log.d(TAG, "audio dequeueOutputBuffer timed out");
-            }
-        }
-
-        private boolean queueMediaSampleToCodec(boolean videoOnly) {
-            boolean result = false;
-            if(mAudioCodec != null) {
-                if (videoOnly) {
-                    /* VideoOnly mode skips audio samples, e.g. while doing a seek operation. */
-                    int trackIndex;
-                    while ((trackIndex = mVideoExtractor.getSampleTrackIndex()) != -1 && trackIndex != mVideoTrackIndex && !mVideoInputEos) {
-                        mVideoExtractor.advance();
-                    }
-                } else {
-                    while (mAudioExtractor == null && mVideoExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
-                        result = queueAudioSampleToCodec(mVideoExtractor);
-                        decodeAudioSample();
-                    }
-                }
-            }
-            if(!mVideoInputEos) {
-                result = queueVideoSampleToCodec();
-            }
-            return result;
-        }
-
-        private long fastSeek(long targetTime) throws IOException {
-            mVideoCodec.flush();
-            if(mAudioFormat != null) mAudioCodec.flush();
-            mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-
-            if(mVideoExtractor.getSampleTime() == targetTime) {
-                Log.d(TAG, "skip fastseek, already there");
-                return targetTime;
-            }
-
-            // 1. Queue first sample which should be the sync/I frame
-            queueMediaSampleToCodec(true);
-
-            // 2. Then, fast forward to target frame
-                            /* 2.1 Search for the best candidate frame, which is the one whose
-                             *     right/positive/future distance is minimized
-                             */
-            mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-
-                            /* Specifies how many frames we continue to check after the first candidate,
-                             * to account for DTS picture reordering (this value is arbitrarily chosen) */
-            int maxFrameLookahead = 20;
-
-            long candidatePTS = 0;
-            long candidateDistance = Long.MAX_VALUE;
-            int lookaheadCount = 0;
-
-            while (mVideoExtractor.advance() && lookaheadCount < maxFrameLookahead) {
-                long distance = targetTime - mVideoExtractor.getSampleTime();
-                if (distance >= 0 && distance < candidateDistance) {
-                    candidateDistance = distance;
-                    candidatePTS = mVideoExtractor.getSampleTime();
-                    //Log.d(TAG, "candidate " + candidatePTS + " d=" + candidateDistance);
-                }
-                if (distance < 0) {
-                    lookaheadCount++;
-                }
-            }
-            targetTime = candidatePTS; // set best candidate frame as exact seek target
-
-            // 2.2 Fast forward to chosen candidate frame
-            mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-            while (mVideoExtractor.getSampleTime() != targetTime) {
-                mVideoExtractor.advance();
-            }
-            Log.d(TAG, "exact fastseek match:       " + mVideoExtractor.getSampleTime());
-
-            return targetTime;
-        }
-
-        /**
-         * Restarts the codecs with a new format, e.g. after a representation change.
-         */
-        private void reinitCodecs() {
-            long t1 = SystemClock.elapsedRealtime();
-
-            // Get new video format and restart video codec with this format
-            mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
-
-            mVideoCodec.stop();
-            mVideoCodec.configure(mVideoFormat, mSurface, null, 0);
-            mVideoCodec.start();
-            mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
-            mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-
-            if(mAudioFormat != null) {
-                mAudioCodec.stop();
-                mAudioCodec.configure(mAudioFormat, null, null, 0);
-                mAudioCodec.start();
-                mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
-                mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-            }
-
-            Log.d(TAG, "reinitCodecs " + (SystemClock.elapsedRealtime() - t1) + "ms");
         }
     }
 
