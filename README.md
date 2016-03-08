@@ -30,7 +30,11 @@ Features
 
 Changelog
 ---------
-
+* __v2.0.0__: API changed, improved Android API compatibility, improved decoder
+  * smoother playback with less CPU time
+  * add prepare()/prepareAsync() to MediaPlayer (similar to Android MediaPlayer, breaking change from v1, needs to be called after setting the datasource)
+  * first frame not rendered automatically anymore (similar to Android MediaPlayer)
+  * add looping functionality (setLooping/isLooping) to MediaPlayer (similar to Android MediaPlayer)
 * v1.4.3: bugfixes for re-setting a data source on a video view, OnSeekListener called from wrong thread, and infinite loop when seeking from end of stream (fixes GitHub issues #8 and #9)
 * v1.4.2: add stopPlayback() and seek mode getters/setters to (GL)VideoView
 * v1.4.1: hotfix for exact seeking in segmented DASH streams
@@ -85,11 +89,11 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.4.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.4.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.4.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.4.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.4.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:2.0.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:2.0.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:2.0.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:2.0.0'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:2.0.0'
     }
 
 #### Local Maven repository ####
@@ -104,11 +108,11 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:1.4.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:1.4.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:1.4.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:1.4.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:1.4.3-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:2.0.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:2.0.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:2.0.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:2.0.0-SNAPSHOT'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:2.0.0-SNAPSHOT'
     }
 
 
