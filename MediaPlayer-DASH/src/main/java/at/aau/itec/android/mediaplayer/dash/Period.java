@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Mario Guggenberger <mg@itec.aau.at>
+ * Copyright (c) 2015 Mario Guggenberger <mg@protyposis.net>
  *
  * This file is part of ITEC MediaPlayer.
  *

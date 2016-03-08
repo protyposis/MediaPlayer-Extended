@@ -242,5 +242,5 @@ These URLs have been tested and definitely work in the demo app:
 License
 -------
 
-Copyright (C) 2014, 2015 Mario Guggenberger, Institute of Information Technology, Alpen-Adria-Universität Klagenfurt <mg@itec.aau.at>.
+Copyright (C) 2014, 2015, 2016 Mario Guggenberger <mg@protyposis.net>.
 This project is released under the terms of the GNU General Public License. See `LICENSE` for details.
