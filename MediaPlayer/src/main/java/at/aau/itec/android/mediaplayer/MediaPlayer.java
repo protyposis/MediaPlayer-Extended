@@ -354,7 +354,7 @@ public class MediaPlayer {
     public void stop() {
         if(mPlaybackThread != null) {
             mPlaybackThread.release();
-            mPlaybackThread.quitSafely();
+            mPlaybackThread.quitSafelyCompat();
             mPlaybackThread = null;
         }
         stayAwake(false);
@@ -518,7 +518,7 @@ public class MediaPlayer {
             mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
         }
 
-        public boolean quitSafely() {
+        public boolean quitSafelyCompat() {
             if(Build.VERSION.SDK_INT < 18) {
                 // quitSafely not existing below API 18, workaround is needed
                 if(isAlive()) {
