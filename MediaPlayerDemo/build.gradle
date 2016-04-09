@@ -1,6 +1,6 @@
 buildscript {
     repositories {
-        maven { url 'https://maven.fabric.io/repo' }
+        maven { url 'https://maven.fabric.io/public' }
     }
 
     dependencies {
@@ -11,7 +11,7 @@ buildscript {
 apply plugin: 'com.android.application'
 
 repositories {
-    maven { url 'https://maven.fabric.io/repo' }
+    maven { url 'https://maven.fabric.io/public' }
 }
 
 android {
@@ -67,7 +67,7 @@ dependencies {
     compile project(':MediaPlayer-GLES')
     compile project(':MediaPlayer-GLES-FlowAbs')
     compile project(':MediaPlayer-GLES-QrMarker')
-    compile('com.crashlytics.sdk.android:crashlytics:2.0.1@aar') {
+    compile('com.crashlytics.sdk.android:crashlytics:2.5.5@aar') {
         transitive = true;
     }
 }

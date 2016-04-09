@@ -5,9 +5,19 @@
       <GradleProjectSettings>
         <option name="distributionType" value="LOCAL" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="C:\Program Files\Android\Android Studio\gradle\gradle-2.2.1" />
-        <option name="gradleJvm" value="1.8" />
+        <option name="gradleHome" value="C:\Program Files\Android\Android Studio\gradle\gradle-2.10" />
         <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/MediaPlayer" />
+            <option value="$PROJECT_DIR$/MediaPlayer-DASH" />
+            <option value="$PROJECT_DIR$/MediaPlayer-GLES" />
+            <option value="$PROJECT_DIR$/MediaPlayer-GLES-FlowAbs" />
+            <option value="$PROJECT_DIR$/MediaPlayer-GLES-QrMarker" />
+            <option value="$PROJECT_DIR$/MediaPlayerDemo" />
+          </set>
+        </option>
+        <option name="myModules">
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/MediaPlayer" />
