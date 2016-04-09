@@ -462,7 +462,7 @@ public class MediaPlayer {
     /**
      * This API method in the Android MediaPlayer is hidden, but may be unhidden in the future. Here
      * it can already be used.
-     * @see android.media.MediaPlayer#setVolume(float)
+     * see android.media.MediaPlayer#setVolume(float)
      */
     public void setVolume(float volume) {
         setVolume(volume, volume);
