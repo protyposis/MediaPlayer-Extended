@@ -19,10 +19,12 @@
 
 package at.aau.itec.android.mediaplayer;
 
+import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -51,6 +53,7 @@ class AudioPlayback {
     private AudioThread mAudioThread;
     private long mLastPresentationTimeUs;
     private int mAudioSessionId;
+    private float mVolumeLeft = 1, mVolumeRight = 1;
 
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
@@ -100,6 +103,7 @@ class AudioPlayback {
                 mFrameChunkSize * mPlaybackBufferSizeFactor, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM, mAudioSessionId);
         mAudioSessionId = mAudioTrack.getAudioSessionId();
+        setStereoVolume(mVolumeLeft, mVolumeRight);
 
         if(playing) {
             play();
@@ -235,6 +239,29 @@ class AudioPlayback {
         //Log.d(TAG, "audio write / chunk count " + mPlaybackBufferChunkCount);
         mLastPresentationTimeUs = presentationTimeUs;
         mAudioTrack.write(mTransferBuffer, 0, size);
+    }
+
+    /**
+     * @see android.media.AudioTrack#setStereoVolume(float, float)
+     * @deprecated deprecated in API21, prefer use of {@link #setVolume(float)}
+     */
+    public void setStereoVolume(float leftGain, float rightGain) {
+        mVolumeLeft = leftGain;
+        mVolumeRight = rightGain;
+
+        if(mAudioTrack != null) {
+            mAudioTrack.setStereoVolume(leftGain, rightGain);
+        }
+    }
+
+    /**
+     * @see android.media.AudioTrack#setVolume(float)
+     */
+    public void setVolume(float gain) {
+        //@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+        //mAudioTrack.setVolume(gain);
+
+        setStereoVolume(gain, gain);
     }
 
     /*

@@ -78,6 +78,7 @@ public class MediaPlayer {
     private long mAudioMinPTS;
     private MediaCodec mAudioCodec;
     private int mAudioSessionId;
+    private float mVolumeLeft = 1, mVolumeRight = 1;
 
     private PlaybackThread2 mPlaybackThread;
     private Handler mHandler;
@@ -189,7 +190,9 @@ public class MediaPlayer {
     public void prepare() throws IOException, IllegalStateException {
         if (mAudioFormat != null) {
             mAudioPlayback = new AudioPlayback();
+            // Initialize settings in case they have already been set before the preparation
             mAudioPlayback.setAudioSessionId(mAudioSessionId);
+            setVolume(mVolumeLeft, mVolumeRight); // sets the volume on mAudioPlayback
         }
 
         Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
@@ -442,6 +445,27 @@ public class MediaPlayer {
 
     public int getVideoHeight() {
         return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) : 0;
+    }
+
+    /**
+     * @see android.media.MediaPlayer#setVolume(float, float)
+     */
+    public void setVolume(float leftVolume, float rightVolume) {
+        mVolumeLeft = leftVolume;
+        mVolumeRight = rightVolume;
+
+        if(mAudioPlayback != null) {
+            mAudioPlayback.setStereoVolume(leftVolume, rightVolume);
+        }
+    }
+
+    /**
+     * This API method in the Android MediaPlayer is hidden, but may be unhidden in the future. Here
+     * it can already be used.
+     * @see android.media.MediaPlayer#setVolume(float)
+     */
+    public void setVolume(float volume) {
+        setVolume(volume, volume);
     }
 
     /**
