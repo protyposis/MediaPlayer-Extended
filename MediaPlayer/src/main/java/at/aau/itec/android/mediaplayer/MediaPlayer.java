@@ -635,6 +635,7 @@ public class MediaPlayer {
                 mVideoFrameInfo = mDecoder.decodeFrame(false);
                 mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
                 loopInternal();
+                return;
             }
 
             long startTime = SystemClock.elapsedRealtime();
