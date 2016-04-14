@@ -19,12 +19,10 @@
 
 package at.aau.itec.android.mediaplayer;
 
-import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -54,6 +52,13 @@ class AudioPlayback {
     private long mLastPresentationTimeUs;
     private int mAudioSessionId;
     private float mVolumeLeft = 1, mVolumeRight = 1;
+
+    /**
+     * Keeps track of the PTS of the moment when playback has started.
+     * It is required to calculate the current PTS because the playback head
+     * is reset to zero when playback is paused.
+     */
+    private long mPresentationTimeOffsetUs;
 
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
@@ -104,6 +109,7 @@ class AudioPlayback {
                 AudioTrack.MODE_STREAM, mAudioSessionId);
         mAudioSessionId = mAudioTrack.getAudioSessionId();
         setStereoVolume(mVolumeLeft, mVolumeRight);
+        mPresentationTimeOffsetUs = -1;
 
         if(playing) {
             play();
@@ -149,6 +155,10 @@ class AudioPlayback {
         if(isInitialized()) {
             mAudioThread.setPaused(true);
             mAudioTrack.pause();
+
+            // Update offset with current PTS for usage when playback continues
+            mPresentationTimeOffsetUs = getCurrentPresentationTimeUs();
+
             if(flush) {
                 flush();
             }
@@ -188,6 +198,11 @@ class AudioPlayback {
             init(mAudioFormat);
         }
 
+        if(mPresentationTimeOffsetUs == -1) {
+            // Initialize with the PTS of the first audio buffer (which isn't necessarily zero)
+            mPresentationTimeOffsetUs = presentationTimeUs;
+        }
+
         mBufferQueue.put(audioData, presentationTimeUs);
 //        Log.d(TAG, "buffer queue size " + mBufferQueue.bufferQueue.size()
 //                + " data " + mBufferQueue.mQueuedDataSize
@@ -211,6 +226,15 @@ class AudioPlayback {
     public long getBufferTimeUs() {
         return (long)((double)(mBufferQueue.mQueuedDataSize / mFrameSize)
                 / mSampleRate * 1000000d);
+    }
+
+    public long getCurrentPresentationTimeUs() {
+        // The playback head position is encoded as a uint in an int
+        long playbackHeadPosition = 0xFFFFFFFFL & mAudioTrack.getPlaybackHeadPosition();
+        // Convert frames to time
+        long playbackHeadPositionUs = (long)((double)playbackHeadPosition / mSampleRate * 1000000);
+        // Return the playback head time, offset by the start offset PTS
+        return mPresentationTimeOffsetUs + playbackHeadPositionUs;
     }
 
     public long getLastPresentationTimeUs() {
