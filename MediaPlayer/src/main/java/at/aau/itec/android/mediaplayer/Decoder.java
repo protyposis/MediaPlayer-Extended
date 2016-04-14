@@ -159,6 +159,14 @@ class Decoder {
 //        if(trackIndex != mVideoTrackIndex) {
 //            throw new IllegalStateException("wrong track index: " + trackIndex);
 //        }
+
+        // If we are not at the EOS and the current extractor track is not the video track, we
+        // return false because it is some other decoder's turn now (e.g. audio).
+        // If we are at the EOS, the next block will issue a BUFFER_FLAG_END_OF_STREAM.
+        if(mVideoExtractor.getSampleTrackIndex() != -1 && mVideoExtractor.getSampleTrackIndex() != mVideoTrackIndex) {
+            return false;
+        }
+
         boolean sampleQueued = false;
         int inputBufIndex = mVideoCodec.dequeueInputBuffer(TIMEOUT_US);
         if (inputBufIndex >= 0) {
@@ -217,6 +225,14 @@ class Decoder {
 //        if(trackIndex != mAudioTrackIndex) {
 //            throw new IllegalStateException("wrong track index: " + trackIndex);
 //        }
+
+        // If we are not at the EOS and the current extractor track is not the audio track, we
+        // return false because it is some other decoder's turn now (e.g. video).
+        // If we are at the EOS, the next block will issue a BUFFER_FLAG_END_OF_STREAM.
+        if(extractor.getSampleTrackIndex() != -1 && extractor.getSampleTrackIndex() != mAudioTrackIndex) {
+            return false;
+        }
+
         if(skip && !mAudioInputEos) {
             extractor.advance();
             return true;
@@ -476,12 +492,10 @@ class Decoder {
             // Enqueue encoded buffers into decoders
             while (!mRepresentationChanging
                     && !mVideoInputEos
-                    && mVideoExtractor.getSampleTrackIndex() == mVideoTrackIndex
                     && queueVideoSampleToCodec()) {}
             if ((mAudioFormat != null)) {
                 while ((mAudioExtractor == mVideoExtractor || mAudioPlayback.getBufferTimeUs() < 100000)
                         && !mAudioInputEos
-                        && mAudioExtractor.getSampleTrackIndex() == mAudioTrackIndex
                         && queueAudioSampleToCodec(mAudioExtractor, videoOnly)) {}
             }
 
