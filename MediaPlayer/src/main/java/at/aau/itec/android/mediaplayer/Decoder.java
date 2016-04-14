@@ -592,6 +592,12 @@ class Decoder {
                     seekTargetTimeMs = seekTargetTimeUs / 1000;
                 }
 
+                if(vfi.endOfStream) {
+                    Log.d(TAG, "end of stream reached, seeking to last frame");
+                    releaseFrame(vfi, false);
+                    return seekTo(seekMode, lastPTS);
+                }
+
                 lastPTS = vfi.presentationTimeUs;
                 releaseFrame(vfi, false);
 
