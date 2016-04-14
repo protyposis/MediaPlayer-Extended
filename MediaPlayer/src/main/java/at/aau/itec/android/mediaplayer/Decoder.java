@@ -272,10 +272,10 @@ class Decoder {
         if(skip && !mAudioInputEos) {
             if(mAudioExtractor == mVideoExtractor) {
                 // If audio and video are muxed, skipping the audio means skipping all audio frames,
-                // so we advance over the audio frame and return true so that this method is called
+                // so we advance over the audio frame and return true as long as there are frames
+                // following that have to be skipped too, so that this method is called
                 // again and skips another audio frame, etc.
-                extractor.advance();
-                return true;
+                return extractor.advance();
             } else {
                 // If the audio stream is separate, skipping the audio just means to not process the
                 // audio stream.
