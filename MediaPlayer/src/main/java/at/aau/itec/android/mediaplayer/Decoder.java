@@ -64,7 +64,7 @@ class Decoder {
 
     private static final String TAG = Decoder.class.getSimpleName();
 
-    private static final long TIMEOUT_US = 5000;
+    private static final long TIMEOUT_US = 0;
     public static final int INDEX_NONE = -1;
 
     private MediaExtractor mVideoExtractor;
@@ -204,7 +204,7 @@ class Decoder {
         return sampleQueued;
     }
 
-    private boolean queueAudioSampleToCodec(MediaExtractor extractor) {
+    private boolean queueAudioSampleToCodec(MediaExtractor extractor, boolean skip) {
         if(mAudioCodec == null) {
             throw new IllegalStateException("no audio track configured");
         }
@@ -217,6 +217,10 @@ class Decoder {
 //        if(trackIndex != mAudioTrackIndex) {
 //            throw new IllegalStateException("wrong track index: " + trackIndex);
 //        }
+        if(skip && !mAudioInputEos) {
+            extractor.advance();
+            return true;
+        }
         boolean sampleQueued = false;
         int inputBufIndex = mAudioCodec.dequeueInputBuffer(TIMEOUT_US);
         if (inputBufIndex >= 0) {
@@ -251,7 +255,9 @@ class Decoder {
         return sampleQueued;
     }
 
-    private void decodeAudioSample() {
+    private boolean dequeueDecodedAudioFrame() {
+        boolean frameDecoded = false;
+
         int output = mAudioCodec.dequeueOutputBuffer(mAudioInfo, TIMEOUT_US);
         if (output >= 0) {
             // http://bigflake.com/mediacodec/#q11
@@ -263,6 +269,7 @@ class Decoder {
             }
             mAudioPlayback.write(outputData, mAudioInfo.presentationTimeUs);
             mAudioCodec.releaseOutputBuffer(output, false);
+            frameDecoded = true;
 
             if ((mAudioInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                 mAudioOutputEos = true;
@@ -271,13 +278,17 @@ class Decoder {
         } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
             Log.d(TAG, "audio output buffers have changed.");
             mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+            frameDecoded = true;
         } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
             MediaFormat format = mAudioCodec.getOutputFormat();
             Log.d(TAG, "audio output format has changed to " + format);
+            frameDecoded = true;
             mAudioPlayback.init(format);
         } else if (output == MediaCodec.INFO_TRY_AGAIN_LATER) {
-            Log.d(TAG, "audio dequeueOutputBuffer timed out");
+            //Log.d(TAG, "audio dequeueOutputBuffer timed out");
         }
+
+        return frameDecoded;
     }
 
     private boolean queueMediaSampleToCodec(boolean videoOnly) {
@@ -291,8 +302,8 @@ class Decoder {
                 }
             } else {
                 while (mVideoExtractor == mAudioExtractor && mAudioExtractor.getSampleTrackIndex() == mAudioTrackIndex) {
-                    result = queueAudioSampleToCodec(mAudioExtractor);
-                    decodeAudioSample();
+                    result = queueAudioSampleToCodec(mAudioExtractor, false);
+                    dequeueDecodedAudioFrame();
                 }
             }
         }
@@ -397,74 +408,85 @@ class Decoder {
         return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) : 0;
     }
 
+    private VideoFrameInfo dequeueDecodedVideoFrame() {
+        int res = mVideoCodec.dequeueOutputBuffer(mVideoInfo, TIMEOUT_US);
+        mVideoOutputEos = res >= 0 && (mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
+
+        if(mVideoOutputEos && mRepresentationChanging) {
+            /* Here, the video output is not really at its end, it's just the end of the
+             * current representation segment, and the codec needs to be reconfigured to
+             * the following representation format to carry on.
+             */
+
+            reinitCodecs();
+
+            mVideoOutputEos = false;
+            mRepresentationChanging = false;
+            mRepresentationChanged = true;
+        }
+        else if (res >= 0) {
+            // Frame decoded. Fill video frame info object and return to caller...
+            //Log.d(TAG, "pts=" + info.presentationTimeUs);
+
+            VideoFrameInfo vfi = mEmptyVideoFrameInfos.get(0);
+            vfi.buffer = res;
+            vfi.presentationTimeUs = mVideoInfo.presentationTimeUs;
+            vfi.endOfStream = mVideoOutputEos;
+
+            if(mRepresentationChanged) {
+                mRepresentationChanged = false;
+                vfi.representationChanged = true;
+                vfi.width = getVideoWidth();
+                vfi.height = getVideoHeight();
+            }
+
+            //Log.d(TAG, "PTS " + vfi.presentationTimeUs);
+
+            if(vfi.endOfStream) Log.d(TAG, "EOS");
+
+            return vfi;
+        } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+            mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+            Log.d(TAG, "output buffers have changed.");
+        } else if (res == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+            // NOTE: this is the format of the raw video output, not the video format as specified by the container
+            MediaFormat oformat = mVideoCodec.getOutputFormat();
+            Log.d(TAG, "output format has changed to " + oformat);
+        } else if (res == MediaCodec.INFO_TRY_AGAIN_LATER) {
+            //Log.d(TAG, "dequeueOutputBuffer timed out");
+        }
+
+        //Log.d(TAG, "EOS NULL");
+        return null; // EOS already reached, no video frame left to return
+    }
+
     /**
      * Runs the decoder until a new frame is available. The returned VideoFrameInfo object keeps
      * metadata of the decoded frame. To render the frame to the screen and/or dismiss its data,
      * call {@link #releaseFrame(VideoFrameInfo, boolean)}.
      */
     public VideoFrameInfo decodeFrame(boolean videoOnly) {
-        while (!mVideoOutputEos) {
-            if (!mVideoInputEos && !mRepresentationChanging) {
-                queueMediaSampleToCodec(videoOnly);
+        while(!mVideoOutputEos) {
+            // Dequeue decoded frames
+            VideoFrameInfo vfi = dequeueDecodedVideoFrame();
+            if(mAudioFormat != null) {
+                while (dequeueDecodedAudioFrame()) {}
             }
 
-            int res = mVideoCodec.dequeueOutputBuffer(mVideoInfo, TIMEOUT_US);
-            mVideoOutputEos = res >= 0 && (mVideoInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
-
-            if(mVideoOutputEos && mRepresentationChanging) {
-                /* Here, the video output is not really at its end, it's just the end of the
-                 * current representation segment, and the codec needs to be reconfigured to
-                 * the following representation format to carry on.
-                 */
-
-                reinitCodecs();
-
-                mVideoOutputEos = false;
-                mRepresentationChanging = false;
-                mRepresentationChanged = true;
+            // Enqueue encoded buffers into decoders
+            while (!mRepresentationChanging
+                    && !mVideoInputEos
+                    && mVideoExtractor.getSampleTrackIndex() == mVideoTrackIndex
+                    && queueVideoSampleToCodec()) {}
+            if ((mAudioFormat != null)) {
+                while ((mAudioExtractor == mVideoExtractor || mAudioPlayback.getBufferTimeUs() < 100000)
+                        && !mAudioInputEos
+                        && mAudioExtractor.getSampleTrackIndex() == mAudioTrackIndex
+                        && queueAudioSampleToCodec(mAudioExtractor, videoOnly)) {}
             }
-            else if (res >= 0) {
-                // Frame decoded. Fill video frame info object and return to caller...
-                //Log.d(TAG, "pts=" + info.presentationTimeUs);
 
-                VideoFrameInfo vfi = mEmptyVideoFrameInfos.get(0);
-                vfi.buffer = res;
-                vfi.presentationTimeUs = mVideoInfo.presentationTimeUs;
-                vfi.endOfStream = mVideoOutputEos;
-
-                if(mRepresentationChanged) {
-                    mRepresentationChanged = false;
-                    vfi.representationChanged = true;
-                    vfi.width = getVideoWidth();
-                    vfi.height = getVideoHeight();
-                }
-
-                //Log.d(TAG, "PTS " + vfi.presentationTimeUs);
-
-                // Buffer some audio from separate source...
-                if (mAudioFormat != null & mAudioExtractor != mVideoExtractor && !videoOnly) {
-                    // TODO rewrite; this is just a quick and dirty hack
-                    while (mAudioPlayback.getBufferTimeUs() < 100000) {
-                        if (queueAudioSampleToCodec(mAudioExtractor)) {
-                            decodeAudioSample();
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                if(vfi.endOfStream) Log.d(TAG, "EOS");
-
+            if(vfi != null) {
                 return vfi;
-            } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-                Log.d(TAG, "output buffers have changed.");
-            } else if (res == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                // NOTE: this is the format of the raw video output, not the video format as specified by the container
-                MediaFormat oformat = mVideoCodec.getOutputFormat();
-                Log.d(TAG, "output format has changed to " + oformat);
-            } else if (res == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                Log.d(TAG, "dequeueOutputBuffer timed out");
             }
         }
 
