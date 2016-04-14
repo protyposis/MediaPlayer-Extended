@@ -149,6 +149,42 @@ class Decoder {
         }
     }
 
+    /**
+     * Restarts the codecs with a new format, e.g. after a representation change.
+     */
+    private void reinitCodecs() {
+        long t1 = SystemClock.elapsedRealtime();
+
+        // Get new video format and restart video codec with this format
+        mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
+
+        mVideoCodec.stop();
+        mVideoCodec.configure(mVideoFormat, mVideoSurface, null, 0);
+        mVideoCodec.start();
+        mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
+        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
+        mVideoInfo = new MediaCodec.BufferInfo();
+        mVideoInputEos = false;
+        mVideoOutputEos = false;
+
+        if(mAudioFormat != null) {
+            mAudioFormat = mAudioExtractor.getTrackFormat(mAudioTrackIndex);
+
+            mAudioCodec.stop();
+            mAudioCodec.configure(mAudioFormat, null, null, 0);
+            mAudioCodec.start();
+            mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
+            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+            mAudioInfo = new MediaCodec.BufferInfo();
+            mAudioInputEos = false;
+            mAudioOutputEos = false;
+
+            mAudioPlayback.init(mAudioFormat);
+        }
+
+        Log.d(TAG, "reinitCodecs " + (SystemClock.elapsedRealtime() - t1) + "ms");
+    }
+
     private boolean queueVideoSampleToCodec() {
         /* NOTE the track index checks only for debugging
          * when enabled, they prevent the EOS detection and handling below */
@@ -280,42 +316,6 @@ class Decoder {
         return sampleQueued;
     }
 
-    private boolean dequeueDecodedAudioFrame() {
-        boolean frameDecoded = false;
-
-        int output = mAudioCodec.dequeueOutputBuffer(mAudioInfo, TIMEOUT_US);
-        if (output >= 0) {
-            // http://bigflake.com/mediacodec/#q11
-            ByteBuffer outputData = mAudioCodecOutputBuffers[output];
-            if (mAudioInfo.size != 0) {
-                outputData.position(mAudioInfo.offset);
-                outputData.limit(mAudioInfo.offset + mAudioInfo.size);
-                //Log.d(TAG, "raw audio data bytes: " + mVideoInfo.size);
-            }
-            mAudioPlayback.write(outputData, mAudioInfo.presentationTimeUs);
-            mAudioCodec.releaseOutputBuffer(output, false);
-            frameDecoded = true;
-
-            if ((mAudioInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                mAudioOutputEos = true;
-                Log.d(TAG, "EOS audio output");
-            }
-        } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-            Log.d(TAG, "audio output buffers have changed.");
-            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-            frameDecoded = true;
-        } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-            MediaFormat format = mAudioCodec.getOutputFormat();
-            Log.d(TAG, "audio output format has changed to " + format);
-            frameDecoded = true;
-            mAudioPlayback.init(format);
-        } else if (output == MediaCodec.INFO_TRY_AGAIN_LATER) {
-            //Log.d(TAG, "audio dequeueOutputBuffer timed out");
-        }
-
-        return frameDecoded;
-    }
-
     private boolean queueMediaSampleToCodec(boolean videoOnly) {
         boolean result = false;
         if(mAudioCodec != null) {
@@ -336,101 +336,6 @@ class Decoder {
             result = queueVideoSampleToCodec();
         }
         return result;
-    }
-
-    /**
-     * Restarts the codecs with a new format, e.g. after a representation change.
-     */
-    private void reinitCodecs() {
-        long t1 = SystemClock.elapsedRealtime();
-
-        // Get new video format and restart video codec with this format
-        mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
-
-        mVideoCodec.stop();
-        mVideoCodec.configure(mVideoFormat, mVideoSurface, null, 0);
-        mVideoCodec.start();
-        mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
-        mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
-        mVideoInfo = new MediaCodec.BufferInfo();
-        mVideoInputEos = false;
-        mVideoOutputEos = false;
-
-        if(mAudioFormat != null) {
-            mAudioFormat = mAudioExtractor.getTrackFormat(mAudioTrackIndex);
-
-            mAudioCodec.stop();
-            mAudioCodec.configure(mAudioFormat, null, null, 0);
-            mAudioCodec.start();
-            mAudioCodecInputBuffers = mAudioCodec.getInputBuffers();
-            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
-            mAudioInfo = new MediaCodec.BufferInfo();
-            mAudioInputEos = false;
-            mAudioOutputEos = false;
-
-            mAudioPlayback.init(mAudioFormat);
-        }
-
-        Log.d(TAG, "reinitCodecs " + (SystemClock.elapsedRealtime() - t1) + "ms");
-    }
-
-    private long fastSeek(long targetTime) throws IOException {
-        mVideoCodec.flush();
-        if(mAudioFormat != null) mAudioCodec.flush();
-        mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-
-        if(mVideoExtractor.getSampleTime() == targetTime) {
-            Log.d(TAG, "skip fastseek, already there");
-            return targetTime;
-        }
-
-        // 1. Queue first sample which should be the sync/I frame
-        queueMediaSampleToCodec(true);
-
-        // 2. Then, fast forward to target frame
-        /* 2.1 Search for the best candidate frame, which is the one whose
-         *     right/positive/future distance is minimized
-         */
-        mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-
-        /* Specifies how many frames we continue to check after the first candidate,
-         * to account for DTS picture reordering (this value is arbitrarily chosen) */
-        int maxFrameLookahead = 20;
-
-        long candidatePTS = 0;
-        long candidateDistance = Long.MAX_VALUE;
-        int lookaheadCount = 0;
-
-        while (mVideoExtractor.advance() && lookaheadCount < maxFrameLookahead) {
-            long distance = targetTime - mVideoExtractor.getSampleTime();
-            if (distance >= 0 && distance < candidateDistance) {
-                candidateDistance = distance;
-                candidatePTS = mVideoExtractor.getSampleTime();
-                //Log.d(TAG, "candidate " + candidatePTS + " d=" + candidateDistance);
-            }
-            if (distance < 0) {
-                lookaheadCount++;
-            }
-        }
-        targetTime = candidatePTS; // set best candidate frame as exact seek target
-
-        // 2.2 Fast forward to chosen candidate frame
-        mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-        while (mVideoExtractor.getSampleTime() != targetTime) {
-            mVideoExtractor.advance();
-        }
-        Log.d(TAG, "exact fastseek match:       " + mVideoExtractor.getSampleTime());
-
-        return targetTime;
-    }
-
-    public int getVideoWidth() {
-        return mVideoFormat != null ? (int)(mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT)
-                * mVideoFormat.getFloat(MediaExtractor.MEDIA_FORMAT_EXTENSION_KEY_DAR)) : 0;
-    }
-
-    public int getVideoHeight() {
-        return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) : 0;
     }
 
     private VideoFrameInfo dequeueDecodedVideoFrame() {
@@ -485,6 +390,42 @@ class Decoder {
         return null; // EOS already reached, no video frame left to return
     }
 
+    private boolean dequeueDecodedAudioFrame() {
+        boolean frameDecoded = false;
+
+        int output = mAudioCodec.dequeueOutputBuffer(mAudioInfo, TIMEOUT_US);
+        if (output >= 0) {
+            // http://bigflake.com/mediacodec/#q11
+            ByteBuffer outputData = mAudioCodecOutputBuffers[output];
+            if (mAudioInfo.size != 0) {
+                outputData.position(mAudioInfo.offset);
+                outputData.limit(mAudioInfo.offset + mAudioInfo.size);
+                //Log.d(TAG, "raw audio data bytes: " + mVideoInfo.size);
+            }
+            mAudioPlayback.write(outputData, mAudioInfo.presentationTimeUs);
+            mAudioCodec.releaseOutputBuffer(output, false);
+            frameDecoded = true;
+
+            if ((mAudioInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                mAudioOutputEos = true;
+                Log.d(TAG, "EOS audio output");
+            }
+        } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+            Log.d(TAG, "audio output buffers have changed.");
+            mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
+            frameDecoded = true;
+        } else if (output == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+            MediaFormat format = mAudioCodec.getOutputFormat();
+            Log.d(TAG, "audio output format has changed to " + format);
+            frameDecoded = true;
+            mAudioPlayback.init(format);
+        } else if (output == MediaCodec.INFO_TRY_AGAIN_LATER) {
+            //Log.d(TAG, "audio dequeueOutputBuffer timed out");
+        }
+
+        return frameDecoded;
+    }
+
     /**
      * Runs the decoder until a new frame is available. The returned VideoFrameInfo object keeps
      * metadata of the decoded frame. To render the frame to the screen and/or dismiss its data,
@@ -515,6 +456,15 @@ class Decoder {
 
         Log.d(TAG, "EOS NULL");
         return null; // EOS already reached, no video frame left to return
+    }
+
+    public int getVideoWidth() {
+        return mVideoFormat != null ? (int)(mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT)
+                * mVideoFormat.getFloat(MediaExtractor.MEDIA_FORMAT_EXTENSION_KEY_DAR)) : 0;
+    }
+
+    public int getVideoHeight() {
+        return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) : 0;
     }
 
     /**
@@ -689,5 +639,55 @@ class Decoder {
         }
 
         return vfi;
+    }
+
+    private long fastSeek(long targetTime) throws IOException {
+        mVideoCodec.flush();
+        if(mAudioFormat != null) mAudioCodec.flush();
+        mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+
+        if(mVideoExtractor.getSampleTime() == targetTime) {
+            Log.d(TAG, "skip fastseek, already there");
+            return targetTime;
+        }
+
+        // 1. Queue first sample which should be the sync/I frame
+        queueMediaSampleToCodec(true);
+
+        // 2. Then, fast forward to target frame
+        /* 2.1 Search for the best candidate frame, which is the one whose
+         *     right/positive/future distance is minimized
+         */
+        mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+
+        /* Specifies how many frames we continue to check after the first candidate,
+         * to account for DTS picture reordering (this value is arbitrarily chosen) */
+        int maxFrameLookahead = 20;
+
+        long candidatePTS = 0;
+        long candidateDistance = Long.MAX_VALUE;
+        int lookaheadCount = 0;
+
+        while (mVideoExtractor.advance() && lookaheadCount < maxFrameLookahead) {
+            long distance = targetTime - mVideoExtractor.getSampleTime();
+            if (distance >= 0 && distance < candidateDistance) {
+                candidateDistance = distance;
+                candidatePTS = mVideoExtractor.getSampleTime();
+                //Log.d(TAG, "candidate " + candidatePTS + " d=" + candidateDistance);
+            }
+            if (distance < 0) {
+                lookaheadCount++;
+            }
+        }
+        targetTime = candidatePTS; // set best candidate frame as exact seek target
+
+        // 2.2 Fast forward to chosen candidate frame
+        mVideoExtractor.seekTo(targetTime, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+        while (mVideoExtractor.getSampleTime() != targetTime) {
+            mVideoExtractor.advance();
+        }
+        Log.d(TAG, "exact fastseek match:       " + mVideoExtractor.getSampleTime());
+
+        return targetTime;
     }
 }
