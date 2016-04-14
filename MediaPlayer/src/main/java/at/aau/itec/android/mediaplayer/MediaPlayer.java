@@ -655,9 +655,9 @@ public class MediaPlayer {
 
             // Sync video to audio
             if (mAudioPlayback != null) {
-                long audioOffsetUs = mAudioPlayback.getLastPresentationTimeUs() - mCurrentPosition;
+                long audioOffsetUs = mAudioPlayback.getCurrentPresentationTimeUs() - mCurrentPosition;
 //                Log.d(TAG, "VideoPTS=" + mCurrentPosition
-//                        + " AudioPTS=" + mAudioPlayback.getLastPresentationTimeUs()
+//                        + " AudioPTS=" + mAudioPlayback.getCurrentPresentationTimeUs()
 //                        + " offset=" + audioOffsetUs);
                 // Synchronize the video frame PTS to the audio PTS by slowly adjusting
                 // the video frame waiting time towards a better synchronization.
