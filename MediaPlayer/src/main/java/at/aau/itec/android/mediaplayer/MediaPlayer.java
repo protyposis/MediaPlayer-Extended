@@ -637,6 +637,8 @@ public class MediaPlayer {
                 loopInternal();
             }
 
+            long startTime = SystemClock.elapsedRealtime();
+
             // When we are in buffering mode, and a frame has been decoded, the buffer is
             // obviously refilled so we can send the buffering end message
             if(mBuffering) {
@@ -744,9 +746,20 @@ public class MediaPlayer {
             }
 
             if(!mPaused) {
-                // Sleep for some time and then continue processing the loop
-                // This replaces the very unreliable and jittery Thread.sleep in the old decoder thread
-                mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 10);
+                // Static delay time until the next call of the playback loop
+                long delay = 10;
+                // Calculate the duration taken for the current call
+                long duration = (SystemClock.elapsedRealtime() - startTime);
+                // Adjust the delay by the time taken
+                delay = delay - duration;
+                if(delay > 0) {
+                    // Sleep for some time and then continue processing the loop
+                    // This replaces the very unreliable and jittery Thread.sleep in the old decoder thread
+                    mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, delay);
+                } else {
+                    // The current call took too much time; there is no time left for delaying, call instantly
+                    mHandler.sendEmptyMessage(PLAYBACK_LOOP);
+                }
             }
         }
 
