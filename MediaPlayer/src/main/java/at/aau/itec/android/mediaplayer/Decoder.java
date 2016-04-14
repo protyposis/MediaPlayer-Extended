@@ -234,8 +234,17 @@ class Decoder {
         }
 
         if(skip && !mAudioInputEos) {
-            extractor.advance();
-            return true;
+            if(mAudioExtractor == mVideoExtractor) {
+                // If audio and video are muxed, skipping the audio means skipping all audio frames,
+                // so we advance over the audio frame and return true so that this method is called
+                // again and skips another audio frame, etc.
+                extractor.advance();
+                return true;
+            } else {
+                // If the audio stream is separate, skipping the audio just means to not process the
+                // audio stream.
+                return false;
+            }
         }
         boolean sampleQueued = false;
         int inputBufIndex = mAudioCodec.dequeueInputBuffer(TIMEOUT_US);
@@ -486,7 +495,7 @@ class Decoder {
             // Dequeue decoded frames
             VideoFrameInfo vfi = dequeueDecodedVideoFrame();
             if(mAudioFormat != null) {
-                while (dequeueDecodedAudioFrame()) {}
+                while (mAudioPlayback.getBufferTimeUs() < 100000 && dequeueDecodedAudioFrame()) {}
             }
 
             // Enqueue encoded buffers into decoders
