@@ -207,24 +207,24 @@ class Decoder {
         int inputBufIndex = mVideoCodec.dequeueInputBuffer(TIMEOUT_US);
         if (inputBufIndex >= 0) {
             ByteBuffer inputBuffer = mVideoCodecInputBuffers[inputBufIndex];
-            int sampleSize = mVideoExtractor.readSampleData(inputBuffer, 0);
-            long presentationTimeUs = 0;
 
-            if(sampleSize == 0) {
+            if(mVideoExtractor.hasTrackFormatChanged()) {
+                /* The mRepresentationChanging flag and BUFFER_FLAG_END_OF_STREAM flag together
+                 * notify the decoding loop that the representation changes and the codec
+                 * needs to be reconfigured.
+                 */
+                mRepresentationChanging = true;
+                mVideoCodec.queueInputBuffer(inputBufIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+
                 if(mVideoExtractor.getCachedDuration() == 0) {
                     if(mOnDecoderEventListener != null) {
                         mOnDecoderEventListener.onBuffering(this);
                     }
                 }
-                if(mVideoExtractor.hasTrackFormatChanged()) {
-                    /* The mRepresentationChanging flag and BUFFER_FLAG_END_OF_STREAM flag together
-                     * notify the decoding loop that the representation changes and the codec
-                     * needs to be reconfigured.
-                     */
-                    mRepresentationChanging = true;
-                    mVideoCodec.queueInputBuffer(inputBufIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-                }
             } else {
+                int sampleSize = mVideoExtractor.readSampleData(inputBuffer, 0);
+                long presentationTimeUs = 0;
+
                 if (sampleSize < 0) {
                     Log.d(TAG, "EOS video input");
                     mVideoInputEos = true;
