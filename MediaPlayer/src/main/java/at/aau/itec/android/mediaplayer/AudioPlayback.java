@@ -40,6 +40,8 @@ class AudioPlayback {
 
     private static final String TAG = AudioPlayback.class.getSimpleName();
 
+    public static long PTS_NOT_SET = Long.MIN_VALUE;
+
     private MediaFormat mAudioFormat;
     private AudioTrack mAudioTrack;
     private byte[] mTransferBuffer;
@@ -109,7 +111,7 @@ class AudioPlayback {
                 AudioTrack.MODE_STREAM, mAudioSessionId);
         mAudioSessionId = mAudioTrack.getAudioSessionId();
         setStereoVolume(mVolumeLeft, mVolumeRight);
-        mPresentationTimeOffsetUs = -1;
+        mPresentationTimeOffsetUs = PTS_NOT_SET;
 
         if(playing) {
             play();
@@ -178,7 +180,7 @@ class AudioPlayback {
             mBufferQueue.flush();
 
             // Reset offset so it gets updated with the current PTS when playback continues
-            mPresentationTimeOffsetUs = -1;
+            mPresentationTimeOffsetUs = PTS_NOT_SET;
 
             if(playing) {
                 mAudioTrack.play();
@@ -199,7 +201,7 @@ class AudioPlayback {
             init(mAudioFormat);
         }
 
-        if(mPresentationTimeOffsetUs == -1) {
+        if(mPresentationTimeOffsetUs == PTS_NOT_SET) {
             // Initialize with the PTS of the first audio buffer (which isn't necessarily zero)
             mPresentationTimeOffsetUs = presentationTimeUs;
         }
@@ -229,7 +231,20 @@ class AudioPlayback {
                 / mSampleRate * 1000000d);
     }
 
+    /**
+     * Returns the current PTS of the playback head or PTS_NOT_SET if the PTS cannot be reliably
+     * calculated yet.
+     * For this method to return a PTS, audio samples need to be written before ({@link #write(ByteBuffer, long)}.
+     * @return the PTS at the playback head or PTS_NOT_SET if unknown
+     */
     public long getCurrentPresentationTimeUs() {
+        // Return the PTS_NOT_SET flag when the PTS has not been initialized yet. At the start of
+        // media playback, returning the playback head alone is reliable, but later on (e.g. after a
+        // seek), a missing PTS offset leads to totally wrong values.
+        if(mPresentationTimeOffsetUs == PTS_NOT_SET) {
+            return PTS_NOT_SET;
+        }
+
         // The playback head position is encoded as a uint in an int
         long playbackHeadPosition = 0xFFFFFFFFL & mAudioTrack.getPlaybackHeadPosition();
         // Convert frames to time
