@@ -654,26 +654,6 @@ public class MediaPlayer {
             // Calculate waiting time until the next frame's PTS
             long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
 
-            // Sync video to audio
-            if (mAudioPlayback != null) {
-                long audioOffsetUs = mAudioPlayback.getCurrentPresentationTimeUs() - mCurrentPosition;
-//                Log.d(TAG, "VideoPTS=" + mCurrentPosition
-//                        + " AudioPTS=" + mAudioPlayback.getCurrentPresentationTimeUs()
-//                        + " offset=" + audioOffsetUs);
-                // Synchronize the video frame PTS to the audio PTS by slowly adjusting
-                // the video frame waiting time towards a better synchronization.
-                // Directly correcting the video waiting time by the audio offset
-                // introduces too much jitter and leads to juddering video playback.
-                long audioOffsetCorrectionUs = 10000;
-                if (audioOffsetUs > audioOffsetCorrectionUs) {
-                    waitingTime -= audioOffsetCorrectionUs;
-                } else if (audioOffsetUs < -audioOffsetCorrectionUs) {
-                    waitingTime += audioOffsetCorrectionUs;
-                }
-
-                mAudioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
-            }
-
             // If this is an online stream, notify the client of the buffer fill level.
             // The cached duration from the MediaExtractor returns the cached time from
             // the current position onwards, but the Android MediaPlayer returns the
@@ -725,6 +705,16 @@ public class MediaPlayer {
                 mRenderingStarted = false;
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                         MEDIA_INFO_VIDEO_RENDERING_START, 0));
+            }
+
+            if (mAudioPlayback != null) {
+                // Sync audio playback speed to playback speed
+                mAudioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
+
+                // Sync timebase to audio timebase
+                if(mAudioPlayback.getCurrentPresentationTimeUs() > -1) {
+                    mTimeBase.startAt(mAudioPlayback.getCurrentPresentationTimeUs());
+                }
             }
 
             // Handle EOS
