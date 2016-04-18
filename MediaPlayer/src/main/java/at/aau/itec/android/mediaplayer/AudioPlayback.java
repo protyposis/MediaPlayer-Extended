@@ -156,9 +156,6 @@ class AudioPlayback {
             mAudioThread.setPaused(true);
             mAudioTrack.pause();
 
-            // Update offset with current PTS for usage when playback continues
-            mPresentationTimeOffsetUs = getCurrentPresentationTimeUs();
-
             if(flush) {
                 flush();
             }
@@ -179,6 +176,10 @@ class AudioPlayback {
             }
             mAudioTrack.flush();
             mBufferQueue.flush();
+
+            // Reset offset so it gets updated with the current PTS when playback continues
+            mPresentationTimeOffsetUs = -1;
+
             if(playing) {
                 mAudioTrack.play();
             }
