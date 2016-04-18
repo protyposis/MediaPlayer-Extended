@@ -370,7 +370,7 @@ class Decoder {
                 vfi.height = getVideoHeight();
             }
 
-            //Log.d(TAG, "PTS " + vfi.presentationTimeUs);
+            //Log.d(TAG, "VPTS " + vfi.presentationTimeUs);
 
             if(vfi.endOfStream) Log.d(TAG, "EOS");
 
@@ -410,6 +410,8 @@ class Decoder {
                 mAudioOutputEos = true;
                 Log.d(TAG, "EOS audio output");
             }
+
+            //Log.d(TAG, "APTS " + mAudioInfo.presentationTimeUs);
         } else if (output == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
             Log.d(TAG, "audio output buffers have changed.");
             mAudioCodecOutputBuffers = mAudioCodec.getOutputBuffers();
