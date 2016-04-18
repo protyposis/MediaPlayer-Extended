@@ -711,7 +711,7 @@ public class MediaPlayer {
                 // Sync audio playback speed to playback speed
                 mAudioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
 
-                // Sync timebase to audio timebase
+                // Sync timebase to audio timebase when there is audio data available
                 if(mAudioPlayback.getCurrentPresentationTimeUs() > -1) {
                     mTimeBase.startAt(mAudioPlayback.getCurrentPresentationTimeUs());
                 }
