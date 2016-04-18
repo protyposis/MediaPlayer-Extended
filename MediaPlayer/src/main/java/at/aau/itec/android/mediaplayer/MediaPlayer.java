@@ -651,9 +651,6 @@ public class MediaPlayer {
             // Update the current position of the player
             mCurrentPosition = mVideoFrameInfo.presentationTimeUs;
 
-            // Calculate waiting time until the next frame's PTS
-            long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
-
             // If this is an online stream, notify the client of the buffer fill level.
             // The cached duration from the MediaExtractor returns the cached time from
             // the current position onwards, but the Android MediaPlayer returns the
@@ -664,6 +661,9 @@ public class MediaPlayer {
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
                         (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
             }
+
+            // Calculate waiting time until the next frame's PTS
+            long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
 
             // slow down playback, if necessary, to keep frame rate
             if (waitingTime > 5000 && !mRenderModeApi21) {
