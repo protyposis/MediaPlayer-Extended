@@ -22,6 +22,7 @@ package at.aau.itec.android.mediaplayer.dash;
 import android.content.Context;
 import android.media.MediaFormat;
 import android.os.AsyncTask;
+import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -312,6 +313,7 @@ class DashMediaExtractor extends MediaExtractor {
                 new AsyncTask<Void, Void, Void>() {
                     @Override
                     protected Void doInBackground(Void... params) {
+                        Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT);
                         try {
                             init(segmentNr);
                         } catch (Exception e) {
