@@ -809,7 +809,13 @@ public class MediaPlayer {
             mEventHandler.removeMessages(PLAYBACK_SEEK);
             mEventHandler.removeMessages(PLAYBACK_LOOP);
 
-            if(mDecoder != null) mDecoder.release();
+            if(mDecoder != null) {
+                if(mVideoFrameInfo != null) {
+                    mDecoder.releaseFrame(mVideoFrameInfo, false);
+                    mVideoFrameInfo = null;
+                }
+                mDecoder.release();
+            }
             if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
             if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
                 mAudioExtractor.release();
