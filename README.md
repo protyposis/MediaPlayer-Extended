@@ -71,6 +71,23 @@ and `GLVideoView` are equivalents of Android's `VideoView`.
 To migrate from the Android default classes to this library, just replace the imports in your Java headers. If
 there are any methods missing, fill free to open an issue on the issue tracker or submit a pull request.
 
+### MediaSource ###
+
+This library adds additional methods to set the playback source, namely
+`mediaPlayer.setDataSource(MediaSource source)` and `videoView.setVideoSource(MediaSource source)`.
+These methods expect an instance of an object implementing the `MediaSource` interface. A few common
+implementations are provided:
+
+ * `UriSource` expects an URI to a file or online resource, and also accepts two URIs for separate
+   audio and video resources.
+ * `FileSource` expects a `File` instance (e.g. `new File(String pathToFile)`), or two instances to
+   separate audio and video files.
+ * `DashSource` (in the MediaPlayer-DASH module) expects an URI to an MPD file/resource, or a custom
+   built or parsed `MPD` object instance.
+
+Additional media sources can be built by implementing the `MediaSource` interface. The advantage of this
+interface is that it provides a way to implement data sources above the file level, and that it can
+provide and sync multiple separate media sources to the same media player.
 
 ### Gradle ###
 
