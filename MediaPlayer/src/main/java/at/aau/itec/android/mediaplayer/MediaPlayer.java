@@ -503,6 +503,7 @@ public class MediaPlayer {
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
         private long mLastPTS;
         private boolean mEOS; // Flag telling if we reached the EOS
+        private double mPlaybackSpeed;
 
         public PlaybackThread2() {
             // Give this thread a high priority for more precise event timing
@@ -634,6 +635,8 @@ public class MediaPlayer {
                 mAudioPlayback.play();
             }
 
+            mPlaybackSpeed = mTimeBase.getSpeed();
+
             mHandler.removeMessages(PLAYBACK_LOOP);
             loopInternal();
         }
@@ -722,7 +725,11 @@ public class MediaPlayer {
 
             if (mAudioPlayback != null) {
                 // Sync audio playback speed to playback speed
-                mAudioPlayback.setPlaybackSpeed((float) mTimeBase.getSpeed());
+                // Change the speed on the audio playback object only if it has really changed, to avoid runtime overhead
+                if(mPlaybackSpeed != mTimeBase.getSpeed()) {
+                    mPlaybackSpeed = mTimeBase.getSpeed();
+                    mAudioPlayback.setPlaybackSpeed((float) mPlaybackSpeed);
+                }
 
                 // Sync timebase to audio timebase when there is audio data available
                 if(mAudioPlayback.getCurrentPresentationTimeUs() > AudioPlayback.PTS_NOT_SET) {
