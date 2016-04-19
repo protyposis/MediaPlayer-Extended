@@ -573,6 +573,12 @@ public class MediaPlayer {
 
         @Override
         public boolean handleMessage(Message msg) {
+            if(isInterrupted()) {
+                // Do not process the message if an interrupt has been posted from releaseInternal().
+                // Resources are already released and executing any method results in an exception.
+                return true;
+            }
+
             try {
                 switch (msg.what) {
                     case PLAYBACK_PLAY:
@@ -796,6 +802,7 @@ public class MediaPlayer {
         }
 
         private void releaseInternal() {
+            interrupt(); // post interrupt to avoid all further execution of messages/events in the queue
             mPaused = true;
 
             // make sure no other events run afterwards
