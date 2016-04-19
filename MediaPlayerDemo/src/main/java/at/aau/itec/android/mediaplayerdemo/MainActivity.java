@@ -21,6 +21,7 @@ package at.aau.itec.android.mediaplayerdemo;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -216,6 +217,19 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
             mSideBySideSeekTestButton.setEnabled(false);
         } else {
             updateUri(null); // disable buttons
+
+            // Validate content URI
+            if(uri.getScheme().equals("content")) {
+                ContentResolver cr = getContentResolver();
+                try {
+                    cr.openInputStream(uri).close();
+                } catch (Exception e) {
+                    // The content URI is invalid, probably because the file has been removed
+                    // or the system rebooted (which invalidates content URIs).
+                    return;
+                }
+            }
+
             mVideoUriText.setText("Loading...");
 
             Utils.uriToMediaSourceAsync(MainActivity.this, uri, new Utils.MediaSourceAsyncCallbackHandler() {
