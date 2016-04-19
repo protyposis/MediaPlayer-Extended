@@ -201,7 +201,7 @@ Known Issues
 
 Device specific:
 
-* MediaPlayer: Nexus 4 system freezes after playing a few videos (not limited to ITEC MediaPlayer, happens in other video players as well; workaround: disable NuPlayer in developer settings)
+* MediaPlayer: Nexus 4 system freezes or crashes after playing a few videos (not limited to ITEC MediaPlayer, happens in other video players as well; workaround: disable NuPlayer in developer settings)
 * MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off on the Nexus 7 2013 back camera (seems to be a system bug)
 * MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because shaders contain dynamic loops
 
