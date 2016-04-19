@@ -517,8 +517,8 @@ public class MediaPlayer {
         }
 
         public void play() {
-            mHandler.sendEmptyMessage(PLAYBACK_PLAY);
             mPaused = false;
+            mHandler.sendEmptyMessage(PLAYBACK_PLAY);
         }
 
         public void pause() {
