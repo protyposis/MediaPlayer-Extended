@@ -611,7 +611,7 @@ class Decoder {
             Log.d(TAG, "seeking finished, skipped " + frameSkipCount + " frames");
 
             if(seekMode == MediaPlayer.SeekMode.EXACT && presentationTimeMs > seekTargetTimeMs) {
-                if(frameSkipCount > 0) {
+                if(frameSkipCount == 0) {
                     // In a single stream, the initiating seek always seeks before or directly
                     // to the requested frame, and this case never happens. With DASH, when the seek
                     // target is very near a segment border, it can happen that a wrong segment
