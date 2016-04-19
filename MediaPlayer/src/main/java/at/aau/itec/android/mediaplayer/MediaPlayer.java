@@ -238,9 +238,18 @@ public class MediaPlayer {
      * @see android.media.MediaPlayer#prepareAsync()
      */
     public void prepareAsync() throws IllegalStateException {
-        new AsyncTask<Void, Void, Void>() {
+        /* Running prepare() in an AsyncTask leads to severe performance degradations, unless the
+         * priority of the AsyncTask is elevated from background (e.g. to default). Here we are directly
+         * using a thread to avoid the dreaded AsyncTask, because the overhead of creating this thread
+         * vs. reusing a thread from the AsyncTask's pool is negligible (it's a one time operation).
+         * It seems that threads created in a background thread have a way lower priority, no matter
+         * the priority the threads themselves are set to. This leads to a handler with delayed
+         * messages every 10ms to execute only every ~50ms, a 5x performance degradation. This affects
+         * the mediaplayer loop and possibly the audio playback thread and decoder threads too.
+         */
+        new Thread(new Runnable() {
             @Override
-            protected Void doInBackground(Void... params) {
+            public void run() {
                 try {
                     prepare();
 
@@ -251,10 +260,8 @@ public class MediaPlayer {
                     mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
                             MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
                 }
-
-                return null;
             }
-        }.execute();
+        }).start();
     }
 
     /**

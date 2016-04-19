@@ -21,7 +21,8 @@ package at.aau.itec.android.mediaplayer;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -139,31 +140,44 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         mPlayer.setOnInfoListener(mInfoListener);
         mPlayer.setOnBufferingUpdateListener(mBufferingUpdateListener);
 
+        // Create a handler for the error message in case an exceptions happens in the following thread
+        final Handler exceptionHandler = new Handler(new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg) {
+                mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+                return true;
+            }
+        });
+
         // Set the data source asynchronously as this might take a while, e.g. is data has to be
         // requested from the network/internet.
-        new AsyncTask<Void, Void, Void>() {
-            private IOException mException;
-
+        // IMPORTANT:
+        // We use a Thread instead of an AsyncTask for performance reasons, because threads started
+        // in an AsyncTask perform much worse, no matter the priority the Thread gets (unless the
+        // AsyncTask's priority is elevated before creating the Thread).
+        // See comment in MediaPlayer#prepareAsync for detailed explanation.
+        new Thread(new Runnable() {
             @Override
-            protected Void doInBackground(Void... params) {
+            public void run() {
                 try {
                     mPlayer.setDataSource(mSource);
+
+                    // Async prepare spawns another thread inside this thread which really isn't
+                    // necessary; we call this method anyway because of the events it triggers
+                    // when it fails, and to stay in sync which the Android VideoView that does
+                    // the same.
                     mPlayer.prepareAsync();
+
                     Log.d(TAG, "video opened");
                 } catch (IOException e) {
                     Log.e(TAG, "video open failed", e);
-                    mException = e;
-                }
-                return null;
-            }
 
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                if(mException != null) {
-                    mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+                    // Send message to the handler that an error occurred
+                    // (we don't need a message id as the handler only handles this single message)
+                    exceptionHandler.sendEmptyMessage(0);
                 }
             }
-        }.execute();
+        }).start();
     }
 
     /**
