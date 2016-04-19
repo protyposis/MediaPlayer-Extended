@@ -732,8 +732,9 @@ public class MediaPlayer {
                 }
 
                 // Sync timebase to audio timebase when there is audio data available
-                if(mAudioPlayback.getCurrentPresentationTimeUs() > AudioPlayback.PTS_NOT_SET) {
-                    mTimeBase.startAt(mAudioPlayback.getCurrentPresentationTimeUs());
+                long currentAudioPTS = mAudioPlayback.getCurrentPresentationTimeUs();
+                if(currentAudioPTS > AudioPlayback.PTS_NOT_SET) {
+                    mTimeBase.startAt(currentAudioPTS);
                 }
             }
 
