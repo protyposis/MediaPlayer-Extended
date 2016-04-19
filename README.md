@@ -175,7 +175,6 @@ and serves as an example on how they can be used and extended. It is available f
 Known Issues
 ------------
 
-* MediaPlayer: audio can get out of sync on slow devices
 * MediaPlayer-DASH: MPD parser is basic and only tested with the test MPDs listed below
 * MediaPlayer-DASH: representation switching can result in a short lag (this only happens with mp4/avc videos because reinitializing Android's MediaCodec takes some time; a workaround would be to prepare a second codec with a second surface, and switch them at the right frame; webm works flawlessly)
 * MediaPlayer-GLES-FlowAbs: The OrientationAlignedBilateralFilterShaderProgram / FlowAbsBilateralFilterEffect does
@@ -185,6 +184,7 @@ Known Issues
 
 Device specific:
 
+* MediaPlayer: Nexus 4 system freezes after playing a few videos (not limited to ITEC MediaPlayer, happens in other video players as well; workaround: disable NuPlayer in developer settings)
 * MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off on the Nexus 7 2013 back camera (seems to be a system bug)
 * MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because shaders contain dynamic loops
 
