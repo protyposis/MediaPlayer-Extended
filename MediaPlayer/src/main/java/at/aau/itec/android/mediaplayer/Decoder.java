@@ -160,7 +160,7 @@ class Decoder {
 
         mVideoCodec.stop();
         mVideoCodec.configure(mVideoFormat, mVideoSurface, null, 0);
-        mVideoCodec.start();
+        mVideoCodec.start(); // TODO speedup, but how? this takes a long time and introduces lags when switching DASH representations (AVC codec)
         mVideoCodecInputBuffers = mVideoCodec.getInputBuffers();
         mVideoCodecOutputBuffers = mVideoCodec.getOutputBuffers();
         mVideoInfo = new MediaCodec.BufferInfo();
