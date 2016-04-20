@@ -429,16 +429,23 @@ class Decoder {
     }
 
     /**
-     * Runs the decoder until a new frame is available. The returned VideoFrameInfo object keeps
-     * metadata of the decoded frame. To render the frame to the screen and/or dismiss its data,
-     * call {@link #releaseFrame(VideoFrameInfo, boolean)}.
+     * Runs the audio/video decoder loop, optionally until a new frame is available.
+     * The returned VideoFrameInfo object keeps metadata of the decoded frame. To render the frame
+     * to the screen and/or dismiss its data, call {@link #releaseFrame(VideoFrameInfo, boolean)}
+     * or {@link #releaseFrameTimed(VideoFrameInfo, long)}.
+     *
+     * @param videoOnly skip audio frames
+     * @param force force decoding in a loop until a frame becomes available or the EOS is reached
+     * @return a VideoFrameInfo object holding metadata of a decoded video frame or NULL if no frame has been decoded
      */
-    public VideoFrameInfo decodeFrame(boolean videoOnly) {
+    public VideoFrameInfo decodeFrame(boolean videoOnly, boolean force) {
+        //Log.d(TAG, "decodeFrame");
         while(!mVideoOutputEos) {
             // Dequeue decoded frames
             VideoFrameInfo vfi = dequeueDecodedVideoFrame();
+            //Log.d(TAG, "dequeueDecodedVideoFrame " + vfi);
             if(mAudioFormat != null) {
-                while (mAudioPlayback.getBufferTimeUs() < 100000 && dequeueDecodedAudioFrame()) {}
+                while (dequeueDecodedAudioFrame()) {}
             }
 
             // Enqueue encoded buffers into decoders
@@ -452,7 +459,13 @@ class Decoder {
             }
 
             if(vfi != null) {
+                // If a video frame has been decoded, return it
                 return vfi;
+            }
+
+            if(!force) {
+                // If we have not decoded a frame and we're not forcing decoding until a frame becomes available, return null
+                return null;
             }
         }
 
@@ -537,13 +550,13 @@ class Decoder {
         VideoFrameInfo vfi = null;
 
         if(seekMode == MediaPlayer.SeekMode.FAST) {
-            vfi = decodeFrame(true);
+            vfi = decodeFrame(true, true);
             Log.d(TAG, "fast seek to " + seekTargetTimeUs + " arrived at " + vfi.presentationTimeUs);
         }
         else if (seekMode == MediaPlayer.SeekMode.FAST_EXACT) {
             fastSeek(seekTargetTimeUs);
 
-            vfi = decodeFrame(true);
+            vfi = decodeFrame(true, true);
             Log.d(TAG, "fast_exact seek to " + seekTargetTimeUs + " arrived at " + vfi.presentationTimeUs);
 
             if(vfi.presentationTimeUs < seekTargetTimeUs) {
@@ -576,7 +589,7 @@ class Decoder {
             int frameSkipCount = 0;
             long lastPTS = -1;
 
-            vfi = decodeFrame(true);
+            vfi = decodeFrame(true, true);
             presentationTimeMs = vfi.presentationTimeUs / 1000;
 
             while(presentationTimeMs < seekTargetTimeMs) {
@@ -603,7 +616,7 @@ class Decoder {
                 lastPTS = vfi.presentationTimeUs;
                 releaseFrame(vfi, false);
 
-                vfi = decodeFrame(true);
+                vfi = decodeFrame(true, true);
                 presentationTimeMs = vfi.presentationTimeUs / 1000;
             }
 

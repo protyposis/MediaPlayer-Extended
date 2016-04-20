@@ -220,7 +220,7 @@ public class MediaPlayer {
         // This is necessary on some platforms, else a seek directly after initialization will fail
         // TODO find out which API versions need this workaround (not required on API 22)
         if(Build.VERSION.SDK_INT < 22) {
-            Decoder.VideoFrameInfo vfi = mDecoder.decodeFrame(false);
+            Decoder.VideoFrameInfo vfi = mDecoder.decodeFrame(false, true);
             mDecoder.releaseFrame(vfi, false);
             if (mAudioPlayback != null) mAudioPlayback.pause(true);
             mDecoder.seekTo(SeekMode.FAST, 0);
@@ -648,10 +648,15 @@ public class MediaPlayer {
 
         private void loopInternal() throws IOException, InterruptedException {
             if(mVideoFrameInfo == null) {
-                mVideoFrameInfo = mDecoder.decodeFrame(false);
-                mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
-                loopInternal();
-                return;
+                // This method needs a video frame to operate on. If there is no frame, we need
+                // to decode one first.
+                mVideoFrameInfo = mDecoder.decodeFrame(false, false);
+                if(mVideoFrameInfo == null) {
+                    // If the decoder didn't return a frame, we need to give it some processing time
+                    // and come back later...
+                    mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 10);
+                    return;
+                }
             }
 
             long startTime = SystemClock.elapsedRealtime();
@@ -697,7 +702,6 @@ public class MediaPlayer {
                 Log.d(TAG, "LAGGING " + waitingTime);
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                         MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
-                mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
             }
 
             // Defer the video size changed message until the first frame of the new size is being rendered
@@ -734,6 +738,7 @@ public class MediaPlayer {
                 // Sync timebase to audio timebase when there is audio data available
                 long currentAudioPTS = mAudioPlayback.getCurrentPresentationTimeUs();
                 if(currentAudioPTS > AudioPlayback.PTS_NOT_SET) {
+                    //Log.d(TAG, "sync audio/video time " + currentAudioPTS + "/" + mTimeBase.getCurrentTime());
                     mTimeBase.startAt(currentAudioPTS);
                 }
             }
@@ -754,7 +759,7 @@ public class MediaPlayer {
                 }
             } else {
                 // Get next frame
-                mVideoFrameInfo = mDecoder.decodeFrame(false);
+                mVideoFrameInfo = mDecoder.decodeFrame(false, false);
             }
 
             if(!mPaused) {
