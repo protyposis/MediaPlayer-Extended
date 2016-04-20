@@ -314,6 +314,7 @@ public class MediaPlayer {
         } else {
             mSurface = null;
         }
+        setVideoRenderTimingMode(VideoRenderTimingMode.AUTO);
         updateSurfaceScreenOn();
     }
 
@@ -326,6 +327,7 @@ public class MediaPlayer {
             Log.w(TAG, "setScreenOnWhilePlaying(true) is ineffective for Surface");
         }
         mSurfaceHolder = null;
+        setVideoRenderTimingMode(VideoRenderTimingMode.SLEEP); // the surface could be a GL texture, so we switch to sleep timing mode
         updateSurfaceScreenOn();
     }
 
@@ -532,8 +534,7 @@ public class MediaPlayer {
      * {@link android.view.SurfaceView}. It is therefore required to manually set the
      * {@link VideoRenderTimingMode#SLEEP} mode on API 21+ platforms to get timed frame rendering.
      *
-     * TODO find out how to get deferred/blocking rendering to work with a surface texture or at
-     * least how to detect the rendering target surface to set the correct mode automatically.
+     * TODO find out how to get deferred/blocking rendering to work with a surface texture
      *
      * @see VideoRenderTimingMode
      * @param mode the desired timing mode
@@ -546,6 +547,7 @@ public class MediaPlayer {
         if(mode == VideoRenderTimingMode.SURFACEVIEW_TIMESTAMP && Build.VERSION.SDK_INT < 21) {
             throw new IllegalArgumentException("this mode needs min API 21");
         }
+        Log.d(TAG, "setVideoRenderTimingMode " + mode);
         mVideoRenderTimingMode = mode;
     }
 

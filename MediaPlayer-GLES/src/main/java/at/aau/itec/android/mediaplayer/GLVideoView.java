@@ -119,7 +119,6 @@ public class GLVideoView extends GLTextureView implements
 
         mPlayer = new MediaPlayer();
         mPlayer.setSurface(mVideoSurface);
-        mPlayer.setVideoRenderTimingMode(MediaPlayer.VideoRenderTimingMode.SLEEP);
         mPlayer.setOnPreparedListener(mPreparedListener);
         mPlayer.setOnVideoSizeChangedListener(mSizeChangedListener);
         mPlayer.setOnSeekListener(mSeekListener);
