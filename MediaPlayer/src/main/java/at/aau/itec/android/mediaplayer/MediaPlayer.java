@@ -235,9 +235,9 @@ public class MediaPlayer {
             setVolume(mVolumeLeft, mVolumeRight); // sets the volume on mAudioPlayback
         }
 
-        Decoder.OnDecoderEventListener decoderEventListener = new Decoder.OnDecoderEventListener() {
+        MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
-            public void onBuffering(Decoder decoder) {
+            public void onBuffering(MediaCodecDecoder decoder) {
                 mBuffering = true;
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                         MEDIA_INFO_BUFFERING_START, 0));
@@ -253,15 +253,17 @@ public class MediaPlayer {
         }
 
         // After the decoder is initialized, we know the video size
-        mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                mDecoder.getVideoWidth(), mDecoder.getVideoHeight()));
+        if(mDecoder.getVideoDecoder() != null) {
+            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
+                    mDecoder.getVideoDecoder().getVideoWidth(), mDecoder.getVideoDecoder().getVideoHeight()));
+        }
 
         // Decode the first frame to initialize the decoder, and seek back to the start
         // This is necessary on some platforms, else a seek directly after initialization will fail
         // TODO find out which API versions need this workaround (not required on API 22)
-        if(Build.VERSION.SDK_INT < 22) {
-            Decoder.VideoFrameInfo vfi = mDecoder.decodeFrame(false, true);
-            mDecoder.releaseFrame(vfi, false);
+        if(Build.VERSION.SDK_INT < 22 && mDecoder.getVideoDecoder() != null) {
+            MediaCodecDecoder.FrameInfo vfi = mDecoder.decodeFrame(false, true);
+            mDecoder.getVideoDecoder().releaseFrame(vfi);
             if (mAudioPlayback != null) mAudioPlayback.pause(true);
             mDecoder.seekTo(SeekMode.FAST, 0);
         }
@@ -567,7 +569,7 @@ public class MediaPlayer {
         private static final int PLAYBACK_RELEASE = 5;
 
         private boolean mPaused;
-        private Decoder.VideoFrameInfo mVideoFrameInfo;
+        private MediaCodecDecoder.FrameInfo mVideoFrameInfo;
         private boolean mRenderModeApi21; // Usage of timed outputBufferRelease on API 21+
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
         private long mLastPTS;
@@ -779,16 +781,16 @@ public class MediaPlayer {
             // Defer the video size changed message until the first frame of the new size is being rendered
             if (mVideoFrameInfo.representationChanged) {
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                        mVideoFrameInfo.width, mVideoFrameInfo.height));
+                        mDecoder.getVideoDecoder().getVideoWidth(), mDecoder.getVideoDecoder().getVideoHeight()));
             }
 
             // Release the current frame and render it to the surface
             mEOS = mVideoFrameInfo.endOfStream;
             mLastPTS = mVideoFrameInfo.presentationTimeUs;
             if(!mRenderModeApi21) {
-                mDecoder.releaseFrame(mVideoFrameInfo, true); // render frame
+                mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, true); // render frame
             } else {
-                mDecoder.releaseFrameTimed(mVideoFrameInfo, waitingTime); // deferred rendering on API 21+
+                mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, waitingTime); // deferred rendering on API 21+
             }
             mVideoFrameInfo = null;
 
@@ -868,7 +870,7 @@ public class MediaPlayer {
 
             // Render seek target frame (if no new seek is waiting to be processed)
             mLastPTS = mVideoFrameInfo.presentationTimeUs;
-            mDecoder.releaseFrame(mVideoFrameInfo, !newSeekWaiting);
+            mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, !newSeekWaiting);
             mVideoFrameInfo = null;
 
             // When there are no more seek requests in the queue, notify of finished seek operation
@@ -896,7 +898,7 @@ public class MediaPlayer {
 
             if(mDecoder != null) {
                 if(mVideoFrameInfo != null) {
-                    mDecoder.releaseFrame(mVideoFrameInfo, false);
+                    mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo);
                     mVideoFrameInfo = null;
                 }
                 mDecoder.release();
