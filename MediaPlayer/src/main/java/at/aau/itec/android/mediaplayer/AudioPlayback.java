@@ -62,6 +62,12 @@ class AudioPlayback {
      */
     private long mPresentationTimeOffsetUs;
 
+    /**
+     * Hold the previous playback head position time for comparison with the current playback
+     * head position time to detect a position wrap/overflow.
+     */
+    private long mLastPlaybackHeadPositionUs;
+
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
         mFrameChunkSize = 4096; // arbitrary default chunk size
@@ -204,6 +210,7 @@ class AudioPlayback {
         if(mPresentationTimeOffsetUs == PTS_NOT_SET) {
             // Initialize with the PTS of the first audio buffer (which isn't necessarily zero)
             mPresentationTimeOffsetUs = presentationTimeUs;
+            mLastPlaybackHeadPositionUs = 0;
         }
 
         mBufferQueue.put(audioData, presentationTimeUs);
@@ -231,6 +238,13 @@ class AudioPlayback {
                 / mSampleRate * 1000000d);
     }
 
+    private long getPlaybackheadPositionUs() {
+        // The playback head position is encoded as a uint in an int
+        long playbackHeadPosition = 0xFFFFFFFFL & mAudioTrack.getPlaybackHeadPosition();
+        // Convert frames to time
+        return (long)((double)playbackHeadPosition / mSampleRate * 1000000);
+    }
+
     /**
      * Returns the current PTS of the playback head or PTS_NOT_SET if the PTS cannot be reliably
      * calculated yet.
@@ -245,10 +259,17 @@ class AudioPlayback {
             return PTS_NOT_SET;
         }
 
-        // The playback head position is encoded as a uint in an int
-        long playbackHeadPosition = 0xFFFFFFFFL & mAudioTrack.getPlaybackHeadPosition();
-        // Convert frames to time
-        long playbackHeadPositionUs = (long)((double)playbackHeadPosition / mSampleRate * 1000000);
+        long playbackHeadPositionUs = getPlaybackheadPositionUs();
+
+        // Handle playback head wrapping
+        if(playbackHeadPositionUs < mLastPlaybackHeadPositionUs) {
+            // playback head position has wrapped around it's 32bit uint value
+            Log.d(TAG, "playback head has wrapped");
+            // Add the full runtime to the PTS offset to advance it one playback head iteration
+            mPresentationTimeOffsetUs += (long)((double)0xFFFFFFFF / mSampleRate * 1000000);
+        }
+        mLastPlaybackHeadPositionUs = playbackHeadPositionUs;
+
         // Return the playback head time, offset by the start offset PTS
         return mPresentationTimeOffsetUs + playbackHeadPositionUs;
     }
