@@ -207,10 +207,33 @@ class AudioPlayback {
             init(mAudioFormat);
         }
 
+        // Special handling of the first written audio buffer after a flush (pause with flush)
         if(mPresentationTimeOffsetUs == PTS_NOT_SET) {
             // Initialize with the PTS of the first audio buffer (which isn't necessarily zero)
             mPresentationTimeOffsetUs = presentationTimeUs;
             mLastPlaybackHeadPositionUs = 0;
+
+            /** Handle playback head reset bug
+             *
+             * affected: Galaxy S2 API 16
+             * not affected: Nexus 4 API 22
+             *
+             * Sometimes the playback head does not really reset to zero in a pause. During the
+             * pause, it correctly returns zero (0), but when playback continues it sometimes
+             * continues from the previous playback head position instead of starting from zero.
+             * Since this does not always happen, this looks to be a bug in the Android framework.
+             *
+             * TODO find out if this is a reported bug
+             *
+             * To work around this issue, we subtract the playback head position time from the PTS
+             * offset to adjust the base time by the playback head time. This leads to the
+             * {@link #getCurrentPresentationTimeUs} method returning a correct value.
+             */
+            long playbackHeadPositionUs = getPlaybackheadPositionUs();
+            if(playbackHeadPositionUs > 0) {
+                mPresentationTimeOffsetUs -= playbackHeadPositionUs;
+                Log.d(TAG, "playback head not reset");
+            }
         }
 
         mBufferQueue.put(audioData, presentationTimeUs);
