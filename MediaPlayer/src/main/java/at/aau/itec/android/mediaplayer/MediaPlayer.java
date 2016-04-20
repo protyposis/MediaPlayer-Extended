@@ -754,6 +754,9 @@ public class MediaPlayer {
 
             // Calculate waiting time until the next frame's PTS
             long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
+//            Log.d(TAG, "VPTS " + mCurrentPosition
+//                    + " APTS " + mAudioPlayback.getCurrentPresentationTimeUs()
+//                    + " waitingTime " + waitingTime);
 
             // slow down playback, if necessary, to keep frame rate
             if (waitingTime > 5000 && !mRenderModeApi21) {
