@@ -61,6 +61,44 @@ public class MediaPlayer {
         FAST_EXACT
     }
 
+    /**
+     * The mode of how to delay rendering of video frames until their target PTS.
+     */
+    enum VideoRenderTimingMode {
+
+        /**
+         * Automatically chooses {@link VideoRenderTimingMode#SLEEP} for API < 21 and
+         * {@link VideoRenderTimingMode#SURFACEVIEW_TIMESTAMP} for API >= 21.
+         */
+        AUTO,
+
+        /**
+         * Defers rendering by putting the playback thread to sleep until the PTS is reached and renders
+         * frames through {@link MediaCodec#releaseOutputBuffer(int, boolean)}.
+         */
+        SLEEP,
+
+        /**
+         * Defers rendering through {@link MediaCodec#releaseOutputBuffer(int, long)} which blocks
+         * until the PTS is reached.
+         * Supported on API 21+.
+         */
+        SURFACEVIEW_TIMESTAMP;
+
+        public boolean isRenderModeApi21() {
+            switch (this) {
+                case AUTO:
+                    return Build.VERSION.SDK_INT >= 21;
+                case SLEEP:
+                    return false;
+                case SURFACEVIEW_TIMESTAMP:
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
 
     private SeekMode mSeekMode = SeekMode.EXACT;
     private Surface mSurface;
@@ -107,11 +145,13 @@ public class MediaPlayer {
     private AudioPlayback mAudioPlayback;
     private Decoder mDecoder;
     private boolean mBuffering;
+    private VideoRenderTimingMode mVideoRenderTimingMode;
 
     public MediaPlayer() {
         mPlaybackThread = null;
         mEventHandler = new EventHandler();
         mTimeBase = new TimeBase();
+        mVideoRenderTimingMode = VideoRenderTimingMode.AUTO;
     }
 
     public void setDataSource(MediaSource source) throws IOException {
@@ -483,6 +523,33 @@ public class MediaPlayer {
     }
 
     /**
+     * Sets the timing mode for video frame rendering.
+     * This only works before the calling {@link #prepare()} or {@link #prepareAsync()}.
+     *
+     * This method is only needed for the special case of rendering the video to a GL surface texture,
+     * where {@link MediaCodec#releaseOutputBuffer(int, long)} does not defer the frame rendering
+     * and thus does not block until the PTS is reached. This only seems to work correctly on a
+     * {@link android.view.SurfaceView}. It is therefore required to manually set the
+     * {@link VideoRenderTimingMode#SLEEP} mode on API 21+ platforms to get timed frame rendering.
+     *
+     * TODO find out how to get deferred/blocking rendering to work with a surface texture or at
+     * least how to detect the rendering target surface to set the correct mode automatically.
+     *
+     * @see VideoRenderTimingMode
+     * @param mode the desired timing mode
+     * @throws IllegalStateException
+     */
+    void setVideoRenderTimingMode(VideoRenderTimingMode mode) {
+        if(mPlaybackThread != null) {
+            throw new IllegalStateException();
+        }
+        if(mode == VideoRenderTimingMode.SURFACEVIEW_TIMESTAMP && Build.VERSION.SDK_INT < 21) {
+            throw new IllegalArgumentException("this mode needs min API 21");
+        }
+        mVideoRenderTimingMode = mode;
+    }
+
+    /**
      * @see android.media.MediaPlayer#getAudioSessionId()
      */
     public int getAudioSessionId() {
@@ -511,7 +578,7 @@ public class MediaPlayer {
 
             // Init fields
             mPaused = true;
-            mRenderModeApi21 = Build.VERSION.SDK_INT >= 21;
+            mRenderModeApi21 = mVideoRenderTimingMode.isRenderModeApi21();
             mRenderingStarted = true;
             mLastPTS = -1;
             mEOS = false;
