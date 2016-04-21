@@ -571,8 +571,6 @@ public class MediaPlayer {
         private MediaCodecDecoder.FrameInfo mVideoFrameInfo;
         private boolean mRenderModeApi21; // Usage of timed outputBufferRelease on API 21+
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
-        private long mLastPTS;
-        private boolean mEOS; // Flag telling if we reached the EOS
         private double mPlaybackSpeed;
 
         public PlaybackThread2() {
@@ -583,8 +581,6 @@ public class MediaPlayer {
             mPaused = true;
             mRenderModeApi21 = mVideoRenderTimingMode.isRenderModeApi21();
             mRenderingStarted = true;
-            mLastPTS = -1;
-            mEOS = false;
         }
 
         public void play() {
@@ -691,14 +687,13 @@ public class MediaPlayer {
         }
 
         private void playInternal() throws IOException, InterruptedException {
-            if(mEOS) {
-                mEOS = false;
+            if(mDecoder.isEOS()) {
                 mCurrentPosition = 0;
                 seekInternal(0);
             }
 
             // reset time (otherwise playback tries to "catch up" time after a pause)
-            mTimeBase.startAt(mLastPTS);
+            mTimeBase.startAt(mDecoder.getCurrentDecodingPTS());
 
             // Start audio playback
             if(mAudioPlayback != null) {
@@ -740,14 +735,14 @@ public class MediaPlayer {
             }
 
             // Update the current position of the player
-            mCurrentPosition = mVideoFrameInfo.presentationTimeUs;
+            mCurrentPosition = mDecoder.getCurrentDecodingPTS();
 
             // If this is an online stream, notify the client of the buffer fill level.
             // The cached duration from the MediaExtractor returns the cached time from
             // the current position onwards, but the Android MediaPlayer returns the
             // total time consisting fo the current playback point and the length of
             // the prefetched data.
-            long cachedDuration = mVideoExtractor.getCachedDuration();
+            long cachedDuration = mDecoder.getCachedDuration();
             if(cachedDuration != -1) {
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
                         (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
@@ -784,8 +779,6 @@ public class MediaPlayer {
             }
 
             // Release the current frame and render it to the surface
-            mEOS = mVideoFrameInfo.endOfStream;
-            mLastPTS = mVideoFrameInfo.presentationTimeUs;
             if(!mRenderModeApi21) {
                 mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, true); // render frame
             } else {
@@ -817,13 +810,12 @@ public class MediaPlayer {
             }
 
             // Handle EOS
-            if (mEOS) {
+            if (mDecoder.isEOS()) {
                 mEventHandler.sendEmptyMessage(MEDIA_PLAYBACK_COMPLETE);
 
                 // If looping is on, seek back to the start...
                 if(mLooping) {
                     mVideoFrameInfo = mDecoder.seekTo(SeekMode.FAST, 0);
-                    mLastPTS = mVideoFrameInfo.presentationTimeUs;
                 }
                 // ... else just pause playback and wait for next command
                 else {
@@ -868,7 +860,6 @@ public class MediaPlayer {
             boolean newSeekWaiting = mHandler.hasMessages(PLAYBACK_SEEK);
 
             // Render seek target frame (if no new seek is waiting to be processed)
-            mLastPTS = mVideoFrameInfo.presentationTimeUs;
             mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, !newSeekWaiting);
             mVideoFrameInfo = null;
 
@@ -876,7 +867,7 @@ public class MediaPlayer {
             if(!newSeekWaiting) {
                 // Set the final seek position as the current position
                 // (the final seek position may be off the initial target seek position)
-                mCurrentPosition = mLastPTS;
+                mCurrentPosition = mDecoder.getCurrentDecodingPTS();
                 mSeeking = false;
 
                 mEventHandler.sendEmptyMessage(MEDIA_SEEK_COMPLETE);

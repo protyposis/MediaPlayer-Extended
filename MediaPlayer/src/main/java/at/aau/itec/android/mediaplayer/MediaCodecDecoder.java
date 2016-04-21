@@ -60,6 +60,9 @@ abstract class MediaCodecDecoder {
 
     protected String TAG = MediaCodecDecoder.class.getSimpleName();
 
+    public static final long PTS_NONE = Long.MIN_VALUE;
+    public static final long PTS_EOS = Long.MAX_VALUE;
+
     private static final long TIMEOUT_US = 0;
     public static final int INDEX_NONE = -1;
 
@@ -91,6 +94,8 @@ abstract class MediaCodecDecoder {
      */
     private boolean mPassive;
 
+    private long mDecodingPTS;
+
     public MediaCodecDecoder(MediaExtractor extractor, boolean passive, int trackIndex,
                              OnDecoderEventListener listener)
             throws IllegalStateException, IOException
@@ -111,6 +116,8 @@ abstract class MediaCodecDecoder {
         mOnDecoderEventListener = listener;
 
         mCodec = MediaCodec.createDecoderByType(mFormat.getString(MediaFormat.KEY_MIME));
+
+        mDecodingPTS = PTS_NONE;
     }
 
     protected final MediaFormat getFormat() {
@@ -127,6 +134,10 @@ abstract class MediaCodecDecoder {
 
     protected final boolean isOutputEos() {
         return mOutputEos;
+    }
+
+    protected final boolean isPassive() {
+        return mPassive;
     }
 
     /**
@@ -249,6 +260,8 @@ abstract class MediaCodecDecoder {
                         presentationTimeUs,
                         mInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
 
+                //Log.d(TAG, "queued PTS " + presentationTimeUs);
+
                 if (!mInputEos) {
                     mExtractor.advance();
                 }
@@ -301,10 +314,13 @@ abstract class MediaCodecDecoder {
                 mRepresentationChanged = false;
                 fi.representationChanged = true;
             }
+            if(fi.endOfStream) {
+                Log.d(TAG, "EOS output");
+            } else {
+                mDecodingPTS = fi.presentationTimeUs;
+            }
 
-            //Log.d(TAG, "PTS " + vfi.presentationTimeUs);
-
-            if(fi.endOfStream) Log.d(TAG, "EOS output");
+            //Log.d(TAG, "decoded PTS " + fi.presentationTimeUs);
 
             return fi;
         } else if (res == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -320,6 +336,23 @@ abstract class MediaCodecDecoder {
 
         //Log.d(TAG, "EOS NULL");
         return null; // EOS already reached, no frame left to return
+    }
+
+    /**
+     * Returns the PTS of the current, that is, the most recently decoded frame.
+     * @return the PTS of the most recent frame
+     */
+    public long getCurrentDecodingPTS() {
+        return mDecodingPTS;
+    }
+
+    /**
+     * Returns the duration if the cached data in the extractor, or -1 if the extractor does not
+     * support or does not need caching (e.g. local files).
+     * @return the duration of the cached data or -1 if caching is not active
+     */
+    public long getCachedDuration() {
+        return mExtractor.getCachedDuration();
     }
 
     /**
@@ -389,6 +422,7 @@ abstract class MediaCodecDecoder {
      * @throws IOException
      */
     public final FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
+        mDecodingPTS = PTS_NONE;
         return seekTo(seekMode, seekTargetTimeUs, mExtractor, mCodec);
     }
 

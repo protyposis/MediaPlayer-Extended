@@ -19,15 +19,10 @@
 
 package at.aau.itec.android.mediaplayer;
 
-import android.annotation.TargetApi;
-import android.media.MediaCodec;
-import android.media.MediaFormat;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -140,5 +135,37 @@ class Decoder {
             }
         }
         return vfi;
+    }
+
+    public long getCurrentDecodingPTS() {
+        long minPTS = Long.MAX_VALUE;
+        for (MediaCodecDecoder decoder : mDecoders) {
+            long pts = decoder.getCurrentDecodingPTS();
+            if(pts != MediaCodecDecoder.PTS_NONE && minPTS > pts) {
+                minPTS = pts;
+            }
+        }
+        return minPTS;
+    }
+
+    public boolean isEOS() {
+        //return getCurrentDecodingPTS() == MediaCodecDecoder.PTS_EOS;
+        for (MediaCodecDecoder decoder : mDecoders) {
+            if(decoder.isOutputEos()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public long getCachedDuration() {
+        long minCachedDuration = -1;
+        for (MediaCodecDecoder decoder : mDecoders) {
+            long cachedDuration = decoder.getCachedDuration();
+            if(cachedDuration != -1 && minCachedDuration > cachedDuration) {
+                minCachedDuration = cachedDuration;
+            }
+        }
+        return minCachedDuration;
     }
 }
