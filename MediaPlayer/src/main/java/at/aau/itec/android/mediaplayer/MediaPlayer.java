@@ -68,7 +68,7 @@ public class MediaPlayer {
 
         /**
          * Automatically chooses {@link VideoRenderTimingMode#SLEEP} for API < 21 and
-         * {@link VideoRenderTimingMode#SURFACEVIEW_TIMESTAMP} for API >= 21.
+         * {@link VideoRenderTimingMode#SURFACEVIEW_TIMESTAMP_API21} for API >= 21.
          */
         AUTO,
 
@@ -80,10 +80,9 @@ public class MediaPlayer {
 
         /**
          * Defers rendering through {@link MediaCodec#releaseOutputBuffer(int, long)} which blocks
-         * until the PTS is reached.
-         * Supported on API 21+.
+         * until the PTS is reached. Supported on API 21+.
          */
-        SURFACEVIEW_TIMESTAMP;
+        SURFACEVIEW_TIMESTAMP_API21;
 
         public boolean isRenderModeApi21() {
             switch (this) {
@@ -91,7 +90,7 @@ public class MediaPlayer {
                     return Build.VERSION.SDK_INT >= 21;
                 case SLEEP:
                     return false;
-                case SURFACEVIEW_TIMESTAMP:
+                case SURFACEVIEW_TIMESTAMP_API21:
                     return true;
             }
 
@@ -546,7 +545,7 @@ public class MediaPlayer {
         if(mPlaybackThread != null) {
             throw new IllegalStateException();
         }
-        if(mode == VideoRenderTimingMode.SURFACEVIEW_TIMESTAMP && Build.VERSION.SDK_INT < 21) {
+        if(mode == VideoRenderTimingMode.SURFACEVIEW_TIMESTAMP_API21 && Build.VERSION.SDK_INT < 21) {
             throw new IllegalArgumentException("this mode needs min API 21");
         }
         Log.d(TAG, "setVideoRenderTimingMode " + mode);
