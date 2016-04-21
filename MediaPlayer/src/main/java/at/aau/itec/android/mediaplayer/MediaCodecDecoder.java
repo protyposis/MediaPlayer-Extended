@@ -113,26 +113,26 @@ abstract class MediaCodecDecoder {
         mCodec = MediaCodec.createDecoderByType(mFormat.getString(MediaFormat.KEY_MIME));
     }
 
-    protected MediaFormat getFormat() {
+    protected final MediaFormat getFormat() {
         return mFormat;
     }
 
-    protected MediaCodec getCodec() {
+    protected final MediaCodec getCodec() {
         return mCodec;
     }
 
-    protected boolean isInputEos() {
+    protected final boolean isInputEos() {
         return mInputEos;
     }
 
-    protected boolean isOutputEos() {
+    protected final boolean isOutputEos() {
         return mOutputEos;
     }
 
     /**
      * Restarts the codec with a new format, e.g. after a representation change.
      */
-    private void reinitCodec() {
+    protected final void reinitCodec() {
         long t1 = SystemClock.elapsedRealtime();
 
         // Get new format and restart codec with this format
@@ -163,7 +163,7 @@ abstract class MediaCodecDecoder {
     /**
      * Skips to the next sample of this decoder's track by skipping all samples belonging to other decoders.
      */
-    public void skipToNextSample() {
+    public final void skipToNextSample() {
         if(mPassive) return;
 
         int trackIndex;
@@ -172,7 +172,7 @@ abstract class MediaCodecDecoder {
         }
     }
 
-    public boolean queueSampleToCodec(boolean skip) {
+    public final boolean queueSampleToCodec(boolean skip) {
         if(mInputEos) return false;
 
         // If we are not at the EOS and the current extractor track is not the this track, we
@@ -229,7 +229,7 @@ abstract class MediaCodecDecoder {
         return sampleQueued;
     }
 
-    public FrameInfo dequeueDecodedFrame() {
+    public final FrameInfo dequeueDecodedFrame() {
         int res = mCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_US);
         mOutputEos = res >= 0 && (mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
 
@@ -293,7 +293,7 @@ abstract class MediaCodecDecoder {
         releaseFrameInfo(frameInfo);
     }
 
-    protected void releaseFrameInfo(FrameInfo frameInfo) {
+    protected final void releaseFrameInfo(FrameInfo frameInfo) {
         frameInfo.clear();
         mEmptyFrameInfos.add(frameInfo);
     }
@@ -307,7 +307,7 @@ abstract class MediaCodecDecoder {
      * @param force force decoding in a loop until a frame becomes available or the EOS is reached
      * @return a FrameInfo object holding metadata of a decoded frame or NULL if no frame has been decoded
      */
-    public FrameInfo decodeFrame(boolean skip, boolean force) {
+    public final FrameInfo decodeFrame(boolean skip, boolean force) {
         //Log.d(TAG, "decodeFrame");
         while(!mOutputEos) {
             // Dequeue decoded frames
@@ -333,7 +333,7 @@ abstract class MediaCodecDecoder {
         return null; // EOS already reached, no frame left to return
     }
 
-    public FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
+    public final FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
         return seekTo(seekMode, seekTargetTimeUs, mExtractor, mCodec);
     }
 
