@@ -223,7 +223,7 @@ abstract class MediaCodecDecoder {
                 long presentationTimeUs = 0;
 
                 if (sampleSize < 0) {
-                    Log.d(TAG, "EOS video input");
+                    Log.d(TAG, "EOS input");
                     mInputEos = true;
                     sampleSize = 0;
                 } else {
