@@ -39,7 +39,7 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
             throws IOException {
         super(extractor, passive, trackIndex, listener);
         mVideoSurface = videoSurface;
-        reconfigureCodec();
+        reinitCodec();
     }
 
     @Override

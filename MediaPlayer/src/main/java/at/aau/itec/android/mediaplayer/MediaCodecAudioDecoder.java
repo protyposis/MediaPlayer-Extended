@@ -36,7 +36,7 @@ class MediaCodecAudioDecoder extends MediaCodecDecoder {
             throws IOException {
         super(extractor, passive, trackIndex, listener);
         mAudioPlayback = audioPlayback;
-        reconfigureCodec();
+        reinitCodec();
     }
 
     @Override

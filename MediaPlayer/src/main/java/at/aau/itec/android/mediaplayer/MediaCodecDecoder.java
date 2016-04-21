@@ -160,10 +160,6 @@ abstract class MediaCodecDecoder {
         codec.configure(format, null, null, 0);
     }
 
-    protected void reconfigureCodec() {
-        reinitCodec();
-    }
-
     /**
      * Skips to the next sample of this decoder's track by skipping all samples belonging to other decoders.
      */
