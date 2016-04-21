@@ -363,9 +363,7 @@ abstract class MediaCodecDecoder {
             FrameInfo frameInfo = dequeueDecodedFrame();
 
             // Enqueue encoded buffers into decoders
-            while (!mRepresentationChanging
-                    && !mInputEos
-                    && queueSampleToCodec(skip)) {}
+            while (queueSampleToCodec(skip)) {}
 
             if(frameInfo != null) {
                 // If a frame has been decoded, return it
