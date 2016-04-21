@@ -180,6 +180,17 @@ abstract class MediaCodecDecoder {
     }
 
     /**
+     * Checks any constraints if it is a good idea to decode another frame. Returns true by default,
+     * and is meant to be overwritten by subclasses with special behavior, e.g. an audio track might
+     * limit filling of the playback buffer.
+     *
+     * @return value telling if another frame should be decoded
+     */
+    protected boolean shouldDecodeAnotherFrame() {
+        return true;
+    }
+
+    /**
      * Queues a sample from the MediaExtractor to the input of the MediaCodec. The return value
      * signals if the operation was successful and can be tried another time (return true), or if
      * there are no more input buffers available, the next sample does not belong to this decoder
@@ -190,7 +201,7 @@ abstract class MediaCodecDecoder {
      * decoder's turn or the EOS
      */
     public final boolean queueSampleToCodec(boolean skip) {
-        if(mInputEos) return false;
+        if(mInputEos || !shouldDecodeAnotherFrame()) return false;
 
         // If we are not at the EOS and the current extractor track is not the this track, we
         // return false because it is some other decoder's turn now.

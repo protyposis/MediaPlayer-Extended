@@ -46,6 +46,19 @@ class MediaCodecAudioDecoder extends MediaCodecDecoder {
     }
 
     @Override
+    protected boolean shouldDecodeAnotherFrame() {
+        // If this is an active audio track, decode and buffer only as much as this arbitrarily
+        // chosen threshold time to avoid filling up the memory with buffered audio data and
+        // requesting too much data from the network too fast (e.g. DASH segments).
+        if(!isPassive()) {
+            return mAudioPlayback.getBufferTimeUs() < 200000;
+        }
+        else {
+            return super.shouldDecodeAnotherFrame();
+        }
+    }
+
+    @Override
     public void releaseFrame(FrameInfo frameInfo) {
         mAudioPlayback.write(frameInfo.data, frameInfo.presentationTimeUs);
         getCodec().releaseOutputBuffer(frameInfo.buffer, false);
