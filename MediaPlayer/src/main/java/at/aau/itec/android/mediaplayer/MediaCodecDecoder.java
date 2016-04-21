@@ -130,7 +130,7 @@ abstract class MediaCodecDecoder {
     }
 
     /**
-     * Restarts the codec with a new format, e.g. after a representation change.
+     * Starts or restarts the codec with a new format, e.g. after a representation change.
      */
     protected final void reinitCodec() {
         long t1 = SystemClock.elapsedRealtime();
@@ -156,6 +156,13 @@ abstract class MediaCodecDecoder {
         Log.d(TAG, "reinitCodec " + (SystemClock.elapsedRealtime() - t1) + "ms");
     }
 
+    /**
+     * Configures the codec during initialization. Should be overwritten by subclasses that require
+     * a more specific configuration.
+     *
+     * @param codec the codec to configure
+     * @param format the format to configure the codec with
+     */
     protected void configureCodec(MediaCodec codec, MediaFormat format) {
         codec.configure(format, null, null, 0);
     }
@@ -172,6 +179,16 @@ abstract class MediaCodecDecoder {
         }
     }
 
+    /**
+     * Queues a sample from the MediaExtractor to the input of the MediaCodec. The return value
+     * signals if the operation was successful and can be tried another time (return true), or if
+     * there are no more input buffers available, the next sample does not belong to this decoder
+     * (if skip is false) or the input EOS is reached (return false).
+     *
+     * @param skip if true, samples belonging to foreign tracks are skipped
+     * @return true if the operation can be repeated for another sample, false if it's another
+     * decoder's turn or the EOS
+     */
     public final boolean queueSampleToCodec(boolean skip) {
         if(mInputEos) return false;
 
@@ -229,6 +246,12 @@ abstract class MediaCodecDecoder {
         return sampleQueued;
     }
 
+    /**
+     * Consumes a decoded frame from the decoder output and returns information about it.
+     *
+     * @return a FrameInfo if a frame was available; NULL if the decoder needs more input
+     * samples/decoding time or if the output EOS has been reached
+     */
     public final FrameInfo dequeueDecodedFrame() {
         int res = mCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_US);
         mOutputEos = res >= 0 && (mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
@@ -288,11 +311,26 @@ abstract class MediaCodecDecoder {
         return null; // EOS already reached, no frame left to return
     }
 
+    /**
+     * Releases a frame and all its associated resources and optionally renders it or queues it to
+     * some output (e.g. video frame to screen, audio frame to audio track).
+     * When overwritten, this method must release the output buffer through
+     * {@link MediaCodec#releaseOutputBuffer(int, boolean)} or {@link MediaCodec#releaseOutputBuffer(int, long)},
+     * and then release the frame info through {@link #releaseFrameInfo(FrameInfo)}.
+     *
+     * @param frameInfo information about the current frame
+     */
     public void releaseFrame(FrameInfo frameInfo) {
         mCodec.releaseOutputBuffer(frameInfo.buffer, false);
         releaseFrameInfo(frameInfo);
     }
 
+    /**
+     * Releases the frame info back into the decoder for later reuse. This method must always be
+     * called after handling a frame.
+     *
+     * @param frameInfo information about a frame
+     */
     protected final void releaseFrameInfo(FrameInfo frameInfo) {
         frameInfo.clear();
         mEmptyFrameInfos.add(frameInfo);
@@ -333,10 +371,24 @@ abstract class MediaCodecDecoder {
         return null; // EOS already reached, no frame left to return
     }
 
+    /**
+     * Seeks to the specified target PTS with the specified seek mode.
+     *
+     * @param seekMode the mode how the seek should be carried out
+     * @param seekTargetTimeUs the target PTS to seek to
+     * @return a video frame info from the target position
+     * @throws IOException
+     */
     public final FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
         return seekTo(seekMode, seekTargetTimeUs, mExtractor, mCodec);
     }
 
+    /**
+     * This method implements the actual seeking and can be overwritten by subclasses to implement
+     * custom seeking methods.
+     *
+     * @see #seekTo(MediaPlayer.SeekMode, long)
+     */
     protected FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs,
                                MediaExtractor extractor, MediaCodec codec) throws IOException {
         if(mPassive) {
@@ -371,7 +423,7 @@ abstract class MediaCodecDecoder {
     }
 
     /**
-     * Releases the codec. This must be called to free decoder resources when this object is no longer in use.
+     * Releases the codec and its resources. Must be called when the decoder is no longer in use.
      */
     public void release() {
         mCodec.stop();
