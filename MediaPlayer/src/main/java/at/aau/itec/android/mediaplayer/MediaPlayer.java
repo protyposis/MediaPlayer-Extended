@@ -157,8 +157,8 @@ public class MediaPlayer {
         mVideoExtractor = source.getVideoExtractor();
         mAudioExtractor = source.getAudioExtractor();
 
-        mVideoTrackIndex = -1;
-        mAudioTrackIndex = -1;
+        mVideoTrackIndex = MediaCodecDecoder.INDEX_NONE;
+        mAudioTrackIndex = MediaCodecDecoder.INDEX_NONE;
 
         for (int i = 0; i < mVideoExtractor.getTrackCount(); ++i) {
             MediaFormat format = mVideoExtractor.getTrackFormat(i);
@@ -174,10 +174,11 @@ public class MediaPlayer {
                 mAudioTrackIndex = i;
                 mAudioFormat = format;
                 mAudioMinPTS = mVideoExtractor.getSampleTime();
+                mAudioExtractor = mVideoExtractor;
             }
         }
 
-        if(mAudioExtractor != null) {
+        if(mAudioExtractor != null && mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE) {
             for (int i = 0; i < mAudioExtractor.getTrackCount(); ++i) {
                 MediaFormat format = mAudioExtractor.getTrackFormat(i);
                 Log.d(TAG, format.toString());
@@ -191,17 +192,15 @@ public class MediaPlayer {
             }
         }
 
-        if(mVideoFormat == null) {
-            throw new IOException("no video track found");
-        } else {
-            if(mAudioFormat == null) {
-                Log.i(TAG, "no audio track found");
-            }
-            if(mPlaybackThread == null) {
-                if (mSurface == null) {
-                    Log.i(TAG, "no video output surface specified");
-                }
-            }
+        if(mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE) {
+            mVideoExtractor = null;
+        }
+
+        if(mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE && mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE) {
+            throw new IOException("invalid data source, no supported stream found");
+        }
+        if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE && mPlaybackThread == null && mSurface == null) {
+            Log.i(TAG, "no video output surface specified");
         }
     }
 
@@ -260,9 +259,13 @@ public class MediaPlayer {
         // Decode the first frame to initialize the decoder, and seek back to the start
         // This is necessary on some platforms, else a seek directly after initialization will fail
         // TODO find out which API versions need this workaround (not required on API 22)
-        if(Build.VERSION.SDK_INT < 22 && mDecoder.getVideoDecoder() != null) {
-            MediaCodecDecoder.FrameInfo vfi = mDecoder.decodeFrame(false, true);
-            mDecoder.getVideoDecoder().releaseFrame(vfi);
+        if(Build.VERSION.SDK_INT < 22) {
+            if(mDecoder.getVideoDecoder() != null) {
+                MediaCodecDecoder.FrameInfo vfi = mDecoder.decodeFrame(false, true);
+                mDecoder.getVideoDecoder().releaseFrame(vfi);
+            } else {
+                mDecoder.decodeFrame(false, false);
+            }
             if (mAudioPlayback != null) mAudioPlayback.pause(true);
             mDecoder.seekTo(SeekMode.FAST, 0);
         }
@@ -474,7 +477,8 @@ public class MediaPlayer {
     }
 
     public int getDuration() {
-        return mVideoFormat != null ? (int)(mVideoFormat.getLong(MediaFormat.KEY_DURATION)/1000) : 0;
+        return mVideoFormat != null ? (int)(mVideoFormat.getLong(MediaFormat.KEY_DURATION)/1000) :
+                mAudioFormat != null && mAudioFormat.containsKey(MediaFormat.KEY_DURATION) ? (int)(mAudioFormat.getLong(MediaFormat.KEY_DURATION)/1000) : 0;
     }
 
     public int getCurrentPosition() {
@@ -715,7 +719,7 @@ public class MediaPlayer {
         }
 
         private void loopInternal() throws IOException, InterruptedException {
-            if(mVideoFrameInfo == null) {
+            if(mDecoder.getVideoDecoder() != null && mVideoFrameInfo == null) {
                 // This method needs a video frame to operate on. If there is no frame, we need
                 // to decode one first.
                 mVideoFrameInfo = mDecoder.decodeFrame(false, false);
@@ -748,17 +752,19 @@ public class MediaPlayer {
             long cachedDuration = mDecoder.getCachedDuration();
             if(cachedDuration != -1) {
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
-                        (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
+                        (int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)), 0));
             }
 
-            renderVideoFrame(mVideoFrameInfo);
-            mVideoFrameInfo = null;
+            if(mDecoder.getVideoDecoder() != null) {
+                renderVideoFrame(mVideoFrameInfo);
+                mVideoFrameInfo = null;
 
-            // When the first frame is rendered, video rendering has started and the event triggered
-            if(mRenderingStarted) {
-                mRenderingStarted = false;
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                        MEDIA_INFO_VIDEO_RENDERING_START, 0));
+                // When the first frame is rendered, video rendering has started and the event triggered
+                if (mRenderingStarted) {
+                    mRenderingStarted = false;
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                            MEDIA_INFO_VIDEO_RENDERING_START, 0));
+                }
             }
 
             if (mAudioPlayback != null) {
@@ -875,7 +881,7 @@ public class MediaPlayer {
             if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
                 mAudioExtractor.release();
             }
-            mVideoExtractor.release();
+            if(mVideoExtractor != null) mVideoExtractor.release();
             Log.d(TAG, "PlaybackThread destroyed");
 
             synchronized (this) {

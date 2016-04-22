@@ -290,6 +290,8 @@ abstract class MediaCodecDecoder {
      * samples/decoding time or if the output EOS has been reached
      */
     public final FrameInfo dequeueDecodedFrame() {
+        if(mOutputEos) return null;
+
         int res = mCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_US);
         mOutputEos = res >= 0 && (mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
 
