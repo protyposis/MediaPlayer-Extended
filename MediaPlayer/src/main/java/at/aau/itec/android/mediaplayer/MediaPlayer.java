@@ -915,7 +915,7 @@ public class MediaPlayer {
                     // This is not v-synced to the display. Not required any more on API 21+.
                     Thread.sleep(waitingTime / 1000);
                 }
-                mDecoder.getVideoDecoder().releaseFrame(videoFrameInfo, true); // render frame
+                mDecoder.getVideoDecoder().renderFrame(videoFrameInfo, 0); // render frame
             } else {
                 /** In contrast to the old rendering method through {@link MediaCodec#releaseOutputBuffer(int, boolean)}
                  * this method does not need a timing/throttling mechanism (e.g. {@link Thread#sleep(long)})
@@ -926,7 +926,7 @@ public class MediaPlayer {
                  * fails until a frame is rendered and the associated buffer returned to the codec
                  * for a new frame output.
                  */
-                mDecoder.getVideoDecoder().releaseFrame(videoFrameInfo, waitingTime); // deferred rendering on API 21+
+                mDecoder.getVideoDecoder().renderFrame(videoFrameInfo, waitingTime); // deferred rendering on API 21+
             }
         }
     }
