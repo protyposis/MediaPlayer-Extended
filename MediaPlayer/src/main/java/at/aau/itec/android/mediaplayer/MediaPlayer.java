@@ -751,53 +751,7 @@ public class MediaPlayer {
                         (int) (100d / mVideoFormat.getLong(MediaFormat.KEY_DURATION) * (mCurrentPosition + cachedDuration)), 0));
             }
 
-            // Calculate waiting time until the next frame's PTS
-            // The waiting time might be much higher that a frame's duration because timed API21
-            // rendering caches multiple released output frames before actually rendering them.
-            long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
-//            Log.d(TAG, "VPTS " + mCurrentPosition
-//                    + " APTS " + mAudioPlayback.getCurrentPresentationTimeUs()
-//                    + " waitingTime " + waitingTime);
-
-            // slow down playback, if necessary, to keep frame rate
-            if (waitingTime > 5000 && !mRenderModeApi21) {
-                // Sleep until it's time to render the next frame
-                // NOTE:
-                // The sleep is very unreliable on some devices with extreme jitter and much longer
-                // sleeping times than expected (e.g. Nexus 4), leading to a bad playback quality.
-                // Works perfectly on other devices though (e.g. Galaxy S2). From API 21, this sleep
-                // is not necessary any more.
-                Thread.sleep(waitingTime / 1000);
-            } else if (waitingTime < -1000) {
-                // we need to catch up time by skipping rendering of this frame
-                // this doesn't gain enough time if playback speed is too high and decoder at full load
-                // TODO improve fast forward mode
-                Log.d(TAG, "LAGGING " + waitingTime);
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                        MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
-            }
-
-            // Defer the video size changed message until the first frame of the new size is being rendered
-            if (mVideoFrameInfo.representationChanged) {
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                        mDecoder.getVideoDecoder().getVideoWidth(), mDecoder.getVideoDecoder().getVideoHeight()));
-            }
-
-            // Release the current frame and render it to the surface
-            if(!mRenderModeApi21) {
-                mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, true); // render frame
-            } else {
-                /** In contrast to the old rendering method through {@link MediaCodec#releaseOutputBuffer(int, boolean)}
-                 * this method does not need a timing/throttling mechanism (e.g. {@link Thread#sleep(long)})
-                 * and returns instantly, but still defers rendering internally until the given
-                 * timestamp. It does not release the buffer until the actual rendering though,
-                 * and thus times/throttles the decoding loop by keeping the buffers and not returning
-                 * them until the picture is rendered, which means that {@link MediaCodec#dequeueOutputBuffer(MediaCodec.BufferInfo, long)}
-                 * fails until a frame is rendered and the associated buffer returned to the codec
-                 * for a new frame output.
-                  */
-                mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, waitingTime); // deferred rendering on API 21+
-            }
+            renderVideoFrame(mVideoFrameInfo);
             mVideoFrameInfo = null;
 
             // When the first frame is rendered, video rendering has started and the event triggered
@@ -916,6 +870,56 @@ public class MediaPlayer {
 
             synchronized (this) {
                 notify();
+            }
+        }
+
+        private void renderVideoFrame(MediaCodecDecoder.FrameInfo videoFrameInfo) throws InterruptedException {
+            // Calculate waiting time until the next frame's PTS
+            // The waiting time might be much higher that a frame's duration because timed API21
+            // rendering caches multiple released output frames before actually rendering them.
+            long waitingTime = mTimeBase.getOffsetFrom(videoFrameInfo.presentationTimeUs);
+//            Log.d(TAG, "VPTS " + mCurrentPosition
+//                    + " APTS " + mAudioPlayback.getCurrentPresentationTimeUs()
+//                    + " waitingTime " + waitingTime);
+
+            // slow down playback, if necessary, to keep frame rate
+            if (waitingTime > 5000 && !mRenderModeApi21) {
+                // Sleep until it's time to render the next frame
+                // NOTE:
+                // The sleep is very unreliable on some devices with extreme jitter and much longer
+                // sleeping times than expected (e.g. Nexus 4), leading to a bad playback quality.
+                // Works perfectly on other devices though (e.g. Galaxy S2). From API 21, this sleep
+                // is not necessary any more.
+                Thread.sleep(waitingTime / 1000);
+            } else if (waitingTime < -1000) {
+                // we need to catch up time by skipping rendering of this frame
+                // this doesn't gain enough time if playback speed is too high and decoder at full load
+                // TODO improve fast forward mode
+                Log.d(TAG, "LAGGING " + waitingTime);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                        MEDIA_INFO_VIDEO_TRACK_LAGGING, 0));
+            }
+
+            // Defer the video size changed message until the first frame of the new size is being rendered
+            if (videoFrameInfo.representationChanged) {
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
+                        mDecoder.getVideoDecoder().getVideoWidth(), mDecoder.getVideoDecoder().getVideoHeight()));
+            }
+
+            // Release the current frame and render it to the surface
+            if(!mRenderModeApi21) {
+                mDecoder.getVideoDecoder().releaseFrame(videoFrameInfo, true); // render frame
+            } else {
+                /** In contrast to the old rendering method through {@link MediaCodec#releaseOutputBuffer(int, boolean)}
+                 * this method does not need a timing/throttling mechanism (e.g. {@link Thread#sleep(long)})
+                 * and returns instantly, but still defers rendering internally until the given
+                 * timestamp. It does not release the buffer until the actual rendering though,
+                 * and thus times/throttles the decoding loop by keeping the buffers and not returning
+                 * them until the picture is rendered, which means that {@link MediaCodec#dequeueOutputBuffer(MediaCodec.BufferInfo, long)}
+                 * fails until a frame is rendered and the associated buffer returned to the codec
+                 * for a new frame output.
+                 */
+                mDecoder.getVideoDecoder().releaseFrame(videoFrameInfo, waitingTime); // deferred rendering on API 21+
             }
         }
     }
