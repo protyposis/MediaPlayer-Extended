@@ -707,6 +707,9 @@ public class MediaPlayer {
         }
 
         private void pauseInternal() {
+            // When playback is paused in timed API21 render mode, the remaining cached frames will
+            // still be rendered, resulting in a short but noticeable pausing lag. This can be avoided
+            // by switching to the old render timing mode.
             mHandler.removeMessages(PLAYBACK_LOOP); // removes remaining loop requests (required when EOS is reached)
             if (mAudioPlayback != null) mAudioPlayback.pause();
         }
