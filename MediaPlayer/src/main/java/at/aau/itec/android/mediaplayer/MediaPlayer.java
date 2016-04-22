@@ -108,12 +108,10 @@ public class MediaPlayer {
     private int mVideoTrackIndex;
     private MediaFormat mVideoFormat;
     private long mVideoMinPTS;
-    private MediaCodec mVideoCodec;
 
     private int mAudioTrackIndex;
     private MediaFormat mAudioFormat;
     private long mAudioMinPTS;
-    private MediaCodec mAudioCodec;
     private int mAudioSessionId;
     private float mVolumeLeft = 1, mVolumeRight = 1;
 
@@ -138,7 +136,6 @@ public class MediaPlayer {
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
-    private boolean mIsStopping;
     private boolean mLooping;
 
     private AudioPlayback mAudioPlayback;
