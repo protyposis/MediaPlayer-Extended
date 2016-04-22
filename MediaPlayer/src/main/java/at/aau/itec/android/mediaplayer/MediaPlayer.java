@@ -815,6 +815,12 @@ public class MediaPlayer {
         }
 
         private void seekInternal(long usec) throws IOException, InterruptedException {
+            if(mVideoFrameInfo != null) {
+                // A decoded video frame is waiting to be rendered, dismiss it
+                mDecoder.getVideoDecoder().dismissFrame(mVideoFrameInfo);
+                mVideoFrameInfo = null;
+            }
+
             // Clear the audio cache
             if(mAudioPlayback != null) mAudioPlayback.pause(true);
 
