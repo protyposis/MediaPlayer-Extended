@@ -882,16 +882,7 @@ public class MediaPlayer {
 //                    + " APTS " + mAudioPlayback.getCurrentPresentationTimeUs()
 //                    + " waitingTime " + waitingTime);
 
-            // slow down playback, if necessary, to keep frame rate
-            if (waitingTime > 5000 && !mRenderModeApi21) {
-                // Sleep until it's time to render the next frame
-                // NOTE:
-                // The sleep is very unreliable on some devices with extreme jitter and much longer
-                // sleeping times than expected (e.g. Nexus 4), leading to a bad playback quality.
-                // Works perfectly on other devices though (e.g. Galaxy S2). From API 21, this sleep
-                // is not necessary any more.
-                Thread.sleep(waitingTime / 1000);
-            } else if (waitingTime < -1000) {
+            if (waitingTime < -1000) {
                 // we need to catch up time by skipping rendering of this frame
                 // this doesn't gain enough time if playback speed is too high and decoder at full load
                 // TODO improve fast forward mode
@@ -908,6 +899,12 @@ public class MediaPlayer {
 
             // Release the current frame and render it to the surface
             if(!mRenderModeApi21) {
+                // Slow down playback, if necessary, to keep frame rate
+                if (waitingTime > 5000) {
+                    // Sleep until it's time to render the next frame
+                    // This is not v-synced to the display. Not required any more on API 21+.
+                    Thread.sleep(waitingTime / 1000);
+                }
                 mDecoder.getVideoDecoder().releaseFrame(videoFrameInfo, true); // render frame
             } else {
                 /** In contrast to the old rendering method through {@link MediaCodec#releaseOutputBuffer(int, boolean)}
