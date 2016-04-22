@@ -71,58 +71,17 @@ public class ExternalSurfaceTexture extends Texture implements SurfaceTexture.On
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-        notifyFrameAvailability();
-    }
-
-    /**
-     * THIS DOES NOT WORK.
-     * This event handler does not execute in the same thread from which {@link android.media.MediaCodec#releaseOutputBuffer(int, long)}
-     * is called (i.e. the MediaPlayer playback thread), so sleeping here does not block the
-     * releaseOutputBuffer call like it should and like it does when rendering to a SurfaceView.
-     *
-     * Things already tried:
-     *  - Handler with sendEmptyMessageDelayed (does not block at all, so it is the wrong approach)
-     *  - Thread.sleep()
-     * Both cannot work since this is the wrong thread.
-     *
-     * TODO find a way to block releaseOutputBuffer when rendering to a GL texture
-     * @param surfaceTexture
-     */
-    private void onFrameAvailableWithTimestampDelayHandling(SurfaceTexture surfaceTexture) {
         /**
-         * Handle the associated timestamp of the video frame texture. There are 2 cases we
-         * need to take care of:
-         *
-         * 1. A call to {@link android.media.MediaCodec#releaseOutputBuffer(int, boolean)} delivers
-         *    a zero timestamp (0), and rendering must take place immediately.
-         *
-         * 2. A call to {@link android.media.MediaCodec#releaseOutputBuffer(int, long)} delivers
-         *    a nanosecond timestamp close to {@link System#nanoTime}, and rendering must be deferred
-         *    until the specified time. Rendering will only be deferred if the timestamp is within
-         *    one (1) second, and documented at the MediaCodec method, to stay compatible with the
-         *    Android API. In all other cases, the frame will be rendered immediately.
+         * Timed rendering through {@link android.media.MediaCodec#releaseOutputBuffer(int, long)}
+         * does not work with this texture. When a frame becomes available here, its buffer has
+         * already been returned to the MediaCodec and released, which means it is already available
+         * for the decoding of a following frame, which means that deferring the rendering here
+         * (through a sleep or a delayed handler message) is too late, because it does not throttle
+         * the decoding loop.
+         * This unfortunately means that timed rendering cannot be used in a GL context, and a local
+         * {@link Thread#sleep(long)} has to be used in the decoder loop instead.
          */
-        long timestamp = surfaceTexture.getTimestamp();
-
-        if (timestamp == 0) {
-            // render immediately
-            notifyFrameAvailability();
-        } else {
-            long delay = timestamp - System.nanoTime();
-
-            if (delay > 0 && delay < NANOTIME_SECOND) {
-                // The timestamp lies within the near future, defer rendering until that time
-                try {
-                    Thread.sleep(delay / 1000000, (int)(delay % 1000000));
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                notifyFrameAvailability();
-            } else {
-                // "Invalid" timestamp, also render immediately
-                notifyFrameAvailability();
-            }
-        }
+        notifyFrameAvailability();
     }
 
     private void notifyFrameAvailability() {

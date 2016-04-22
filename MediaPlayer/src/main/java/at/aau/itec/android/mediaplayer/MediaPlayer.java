@@ -749,6 +749,8 @@ public class MediaPlayer {
             }
 
             // Calculate waiting time until the next frame's PTS
+            // The waiting time might be much higher that a frame's duration because timed API21
+            // rendering caches multiple released output frames before actually rendering them.
             long waitingTime = mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs);
 //            Log.d(TAG, "VPTS " + mCurrentPosition
 //                    + " APTS " + mAudioPlayback.getCurrentPresentationTimeUs()
@@ -782,6 +784,15 @@ public class MediaPlayer {
             if(!mRenderModeApi21) {
                 mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, true); // render frame
             } else {
+                /** In contrast to the old rendering method through {@link MediaCodec#releaseOutputBuffer(int, boolean)}
+                 * this method does not need a timing/throttling mechanism (e.g. {@link Thread#sleep(long)})
+                 * and returns instantly, but still defers rendering internally until the given
+                 * timestamp. It does not release the buffer until the actual rendering though,
+                 * and thus times/throttles the decoding loop by keeping the buffers and not returning
+                 * them until the picture is rendered, which means that {@link MediaCodec#dequeueOutputBuffer(MediaCodec.BufferInfo, long)}
+                 * fails until a frame is rendered and the associated buffer returned to the codec
+                 * for a new frame output.
+                  */
                 mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, waitingTime); // deferred rendering on API 21+
             }
             mVideoFrameInfo = null;
