@@ -243,7 +243,7 @@ public class MediaPlayer {
             }
         };
 
-        mDecoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface,
+        mDecoder = new Decoder(mVideoExtractor, mVideoTrackIndex, mSurface, mVideoRenderTimingMode.isRenderModeApi21(),
                 mAudioExtractor, mAudioTrackIndex, mAudioPlayback,
                 decoderEventListener);
 
@@ -783,7 +783,8 @@ public class MediaPlayer {
 
                 // If looping is on, seek back to the start...
                 if(mLooping) {
-                    mVideoFrameInfo = mDecoder.seekTo(SeekMode.FAST, 0);
+                    mDecoder.seekTo(SeekMode.FAST, 0);
+                    mDecoder.renderFrames();
                 }
                 // ... else just pause playback and wait for next command
                 else {
@@ -818,18 +819,21 @@ public class MediaPlayer {
             if(mAudioPlayback != null) mAudioPlayback.pause(true);
 
             // Seek to the target time
-            mVideoFrameInfo = mDecoder.seekTo(mSeekMode, usec);
+            mDecoder.seekTo(mSeekMode, usec);
 
             // Reset time to keep frame rate constant
             // (otherwise it's too fast on back seeks and waits for the PTS time on fw seeks)
-            mTimeBase.startAt(mVideoFrameInfo.presentationTimeUs);
+            mTimeBase.startAt(mDecoder.getCurrentDecodingPTS());
 
             // Check if another seek has been issued in the meantime
             boolean newSeekWaiting = mHandler.hasMessages(PLAYBACK_SEEK);
 
             // Render seek target frame (if no new seek is waiting to be processed)
-            mDecoder.getVideoDecoder().releaseFrame(mVideoFrameInfo, !newSeekWaiting);
-            mVideoFrameInfo = null;
+            if(newSeekWaiting) {
+                mDecoder.dismissFrames();
+            } else {
+                mDecoder.renderFrames();
+            }
 
             // When there are no more seek requests in the queue, notify of finished seek operation
             if(!newSeekWaiting) {

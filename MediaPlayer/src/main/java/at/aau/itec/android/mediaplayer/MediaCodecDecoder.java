@@ -52,6 +52,17 @@ abstract class MediaCodecDecoder {
             endOfStream = false;
             representationChanged = false;
         }
+
+        @Override
+        public String toString() {
+            return "FrameInfo{" +
+                    "buffer=" + buffer +
+                    ", data=" + data +
+                    ", presentationTimeUs=" + presentationTimeUs +
+                    ", endOfStream=" + endOfStream +
+                    ", representationChanged=" + representationChanged +
+                    '}';
+        }
     }
 
     interface OnDecoderEventListener {
@@ -95,6 +106,8 @@ abstract class MediaCodecDecoder {
     private boolean mPassive;
 
     private long mDecodingPTS;
+
+    private FrameInfo mCurrentFrameInfo;
 
     public MediaCodecDecoder(MediaExtractor extractor, boolean passive, int trackIndex,
                              OnDecoderEventListener listener)
@@ -355,6 +368,22 @@ abstract class MediaCodecDecoder {
         return mExtractor.getCachedDuration();
     }
 
+    public void renderFrame(FrameInfo frameInfo, long offsetUs) {
+        releaseFrame(frameInfo);
+    }
+
+    public void renderFrame() {
+        if(mCurrentFrameInfo != null) renderFrame(mCurrentFrameInfo, 0);
+    }
+
+    public void dismissFrame(FrameInfo frameInfo) {
+        if(mCurrentFrameInfo != null) releaseFrame(frameInfo);
+    }
+
+    public void dismissFrame() {
+        dismissFrame(mCurrentFrameInfo);
+    }
+
     /**
      * Releases a frame and all its associated resources and optionally renders it or queues it to
      * some output (e.g. video frame to screen, audio frame to audio track).
@@ -421,9 +450,9 @@ abstract class MediaCodecDecoder {
      * @return a video frame info from the target position
      * @throws IOException
      */
-    public final FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
+    public final void seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
         mDecodingPTS = PTS_NONE;
-        return seekTo(seekMode, seekTargetTimeUs, mExtractor, mCodec);
+        mCurrentFrameInfo = seekTo(seekMode, seekTargetTimeUs, mExtractor, mCodec);
     }
 
     /**

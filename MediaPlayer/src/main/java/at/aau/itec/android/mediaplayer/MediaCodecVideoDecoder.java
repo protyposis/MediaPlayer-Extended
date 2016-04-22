@@ -19,6 +19,7 @@
 
 package at.aau.itec.android.mediaplayer;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
@@ -33,12 +34,14 @@ import java.io.IOException;
 class MediaCodecVideoDecoder extends MediaCodecDecoder {
 
     private Surface mVideoSurface;
+    private boolean mRenderModeApi21;
 
     public MediaCodecVideoDecoder(MediaExtractor extractor, boolean passive, int trackIndex,
-                                  OnDecoderEventListener listener, Surface videoSurface)
+                                  OnDecoderEventListener listener, Surface videoSurface, boolean renderModeApi21)
             throws IOException {
         super(extractor, passive, trackIndex, listener);
         mVideoSurface = videoSurface;
+        mRenderModeApi21 = renderModeApi21;
         reinitCodec();
     }
 
@@ -56,6 +59,17 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
     public int getVideoHeight() {
         MediaFormat format = getFormat();
         return format != null ? format.getInteger(MediaFormat.KEY_HEIGHT) : 0;
+    }
+
+    @SuppressLint("NewApi")
+    @Override
+    public void renderFrame(FrameInfo frameInfo, long offsetUs) {
+        //Log.d(TAG, "renderFrame: " + frameInfo);
+        if(mRenderModeApi21) {
+            releaseFrame(frameInfo, offsetUs);
+        } else {
+            releaseFrame(frameInfo, true);
+        }
     }
 
     /**
@@ -148,7 +162,7 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
                 if(frameInfo.endOfStream) {
                     Log.d(TAG, "end of stream reached, seeking to last frame");
                     releaseFrame(frameInfo, false);
-                    return seekTo(seekMode, lastPTS);
+                    return seekTo(seekMode, lastPTS, extractor, codec);
                 }
 
                 lastPTS = frameInfo.presentationTimeUs;
@@ -184,7 +198,7 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
                      */
                     Log.d(TAG, "exact seek: repeat seek for previous frame at " + lastPTS);
                     releaseFrame(frameInfo, false);
-                    return seekTo(seekMode, lastPTS);
+                    return seekTo(seekMode, lastPTS, extractor, codec);
                 }
             }
         }

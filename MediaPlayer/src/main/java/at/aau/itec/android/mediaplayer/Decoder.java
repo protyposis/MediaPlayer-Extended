@@ -37,7 +37,7 @@ class Decoder {
     private MediaCodecVideoDecoder mVideoDecoder;
     private MediaCodecAudioDecoder mAudioDecoder;
 
-    public Decoder(MediaExtractor videoExtractor, int videoTrackIndex, Surface videoSurface,
+    public Decoder(MediaExtractor videoExtractor, int videoTrackIndex, Surface videoSurface, boolean renderModeApi21,
                    MediaExtractor audioExtractor, int audioTrackIndex, AudioPlayback audioPlayback,
                    MediaCodecDecoder.OnDecoderEventListener listener)
             throws IllegalStateException, IOException
@@ -45,7 +45,7 @@ class Decoder {
         mDecoders = new ArrayList<>();
 
         if(videoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
-            mVideoDecoder = new MediaCodecVideoDecoder(videoExtractor, false, videoTrackIndex, listener, videoSurface);
+            mVideoDecoder = new MediaCodecVideoDecoder(videoExtractor, false, videoTrackIndex, listener, videoSurface, renderModeApi21);
             mDecoders.add(mVideoDecoder);
         }
 
@@ -86,7 +86,7 @@ class Decoder {
                         vfi = fi;
                         break;
                     } else {
-                        decoder.releaseFrame(fi);
+                        decoder.renderFrame(fi, 0);
                     }
                 }
 
@@ -125,16 +125,22 @@ class Decoder {
         mDecoders.clear();
     }
 
-    public MediaCodecDecoder.FrameInfo seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
-        MediaCodecDecoder.FrameInfo fi;
-        MediaCodecDecoder.FrameInfo vfi = null;
+    public void seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
         for (MediaCodecDecoder decoder : mDecoders) {
-            fi = decoder.seekTo(seekMode, seekTargetTimeUs);
-            if(decoder == mVideoDecoder) {
-                vfi = fi;
-            }
+            decoder.seekTo(seekMode, seekTargetTimeUs);
         }
-        return vfi;
+    }
+
+    public void renderFrames() {
+        for (MediaCodecDecoder decoder : mDecoders) {
+            decoder.renderFrame();
+        }
+    }
+
+    public void dismissFrames() {
+        for (MediaCodecDecoder decoder : mDecoders) {
+            decoder.dismissFrame();
+        }
     }
 
     public long getCurrentDecodingPTS() {

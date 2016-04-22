@@ -59,9 +59,8 @@ class MediaCodecAudioDecoder extends MediaCodecDecoder {
     }
 
     @Override
-    public void releaseFrame(FrameInfo frameInfo) {
+    public void renderFrame(FrameInfo frameInfo, long offsetUs) {
         mAudioPlayback.write(frameInfo.data, frameInfo.presentationTimeUs);
-        getCodec().releaseOutputBuffer(frameInfo.buffer, false);
-        releaseFrameInfo(frameInfo);
+        releaseFrame(frameInfo);
     }
 }
