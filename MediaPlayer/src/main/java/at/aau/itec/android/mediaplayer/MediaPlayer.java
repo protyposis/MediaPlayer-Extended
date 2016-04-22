@@ -117,7 +117,7 @@ public class MediaPlayer {
     private int mAudioSessionId;
     private float mVolumeLeft = 1, mVolumeRight = 1;
 
-    private PlaybackThread2 mPlaybackThread;
+    private PlaybackThread mPlaybackThread;
     private Handler mHandler;
     private long mCurrentPosition;
     private long mSeekTargetTime;
@@ -268,7 +268,7 @@ public class MediaPlayer {
         }
 
         // Create the playback loop handler thread
-        mPlaybackThread = new PlaybackThread2();
+        mPlaybackThread = new PlaybackThread();
         mPlaybackThread.start();
 
         // Create the handler that will process the messages on the handler thread
@@ -559,7 +559,7 @@ public class MediaPlayer {
         return mAudioSessionId;
     }
 
-    private class PlaybackThread2 extends HandlerThread implements Handler.Callback {
+    private class PlaybackThread extends HandlerThread implements Handler.Callback {
 
         private static final int PLAYBACK_PLAY = 1;
         private static final int PLAYBACK_PAUSE = 2;
@@ -573,9 +573,9 @@ public class MediaPlayer {
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
         private double mPlaybackSpeed;
 
-        public PlaybackThread2() {
+        public PlaybackThread() {
             // Give this thread a high priority for more precise event timing
-            super(TAG + "#" + PlaybackThread2.class.getSimpleName(), Process.THREAD_PRIORITY_AUDIO);
+            super(TAG + "#" + PlaybackThread.class.getSimpleName(), Process.THREAD_PRIORITY_AUDIO);
 
             // Init fields
             mPaused = true;
