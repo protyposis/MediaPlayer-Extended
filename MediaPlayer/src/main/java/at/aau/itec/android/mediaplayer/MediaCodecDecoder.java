@@ -370,25 +370,43 @@ abstract class MediaCodecDecoder {
         return mExtractor.getCachedDuration();
     }
 
+    /**
+     * Renders a frame at the specified offset time to some output (e.g. video frame to screen,
+     * audio frame to audio track).
+     * @param frameInfo the frame info holding the frame buffer
+     * @param offsetUs the offset from now when the frame should be rendered
+     */
     public void renderFrame(FrameInfo frameInfo, long offsetUs) {
         releaseFrame(frameInfo);
     }
 
+    /**
+     * Renders the current frame instantly.
+     * This only works if the decoder holds a current frame, e.g. after a seek.
+     * @see #renderFrame(FrameInfo, long)
+     */
     public void renderFrame() {
         if(mCurrentFrameInfo != null) renderFrame(mCurrentFrameInfo, 0);
     }
 
+    /**
+     * Dismisses a frame without rendering it.
+     * @param frameInfo the frame info holding the frame buffer to dismiss
+     */
     public void dismissFrame(FrameInfo frameInfo) {
         if(mCurrentFrameInfo != null) releaseFrame(frameInfo);
     }
 
+    /**
+     * Dismisses the current frame.
+     * This only works if the decoder holds a current frame, e.g. after a seek.
+     */
     public void dismissFrame() {
         dismissFrame(mCurrentFrameInfo);
     }
 
     /**
-     * Releases a frame and all its associated resources and optionally renders it or queues it to
-     * some output (e.g. video frame to screen, audio frame to audio track).
+     * Releases a frame and all its associated resources.
      * When overwritten, this method must release the output buffer through
      * {@link MediaCodec#releaseOutputBuffer(int, boolean)} or {@link MediaCodec#releaseOutputBuffer(int, long)},
      * and then release the frame info through {@link #releaseFrameInfo(FrameInfo)}.
@@ -445,11 +463,12 @@ abstract class MediaCodecDecoder {
     }
 
     /**
-     * Seeks to the specified target PTS with the specified seek mode.
+     * Seeks to the specified target PTS with the specified seek mode. After the seek, the decoder
+     * holds the frame from the target position which must either be rendered through {@link #renderFrame()}
+     * or dismissed through {@link #dismissFrame()}.
      *
      * @param seekMode the mode how the seek should be carried out
      * @param seekTargetTimeUs the target PTS to seek to
-     * @return a video frame info from the target position
      * @throws IOException
      */
     public final void seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
