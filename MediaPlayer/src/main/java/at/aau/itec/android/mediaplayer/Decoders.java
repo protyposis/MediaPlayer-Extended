@@ -20,7 +20,6 @@
 package at.aau.itec.android.mediaplayer;
 
 import android.util.Log;
-import android.view.Surface;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,48 +28,50 @@ import java.util.List;
 /**
  * Created by Mario on 13.09.2015.
  */
-class Decoder {
+class Decoders {
 
-    private static final String TAG = Decoder.class.getSimpleName();
+    private static final String TAG = Decoders.class.getSimpleName();
 
     private List<MediaCodecDecoder> mDecoders;
     private MediaCodecVideoDecoder mVideoDecoder;
     private MediaCodecAudioDecoder mAudioDecoder;
 
-    public Decoder(MediaExtractor videoExtractor, int videoTrackIndex, Surface videoSurface, boolean renderModeApi21,
-                   MediaExtractor audioExtractor, int audioTrackIndex, AudioPlayback audioPlayback,
-                   MediaCodecDecoder.OnDecoderEventListener listener)
-            throws IllegalStateException, IOException
-    {
+    public Decoders() {
         mDecoders = new ArrayList<>();
+    }
 
-        if(videoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
-            mVideoDecoder = new MediaCodecVideoDecoder(videoExtractor, false, videoTrackIndex, listener, videoSurface, renderModeApi21);
-            mDecoders.add(mVideoDecoder);
-        }
+    public void addDecoder(MediaCodecDecoder decoder) {
+        mDecoders.add(decoder);
 
-        if(audioTrackIndex != MediaCodecDecoder.INDEX_NONE) {
-            boolean passive = (audioExtractor == videoExtractor || audioExtractor == null);
-            mAudioDecoder = new MediaCodecAudioDecoder(audioExtractor != null ? audioExtractor : videoExtractor, passive, audioTrackIndex, listener, audioPlayback);
-            mDecoders.add(mAudioDecoder);
+        if (decoder instanceof MediaCodecVideoDecoder) {
+            mVideoDecoder = (MediaCodecVideoDecoder) decoder;
+        } else if (decoder instanceof MediaCodecAudioDecoder) {
+            mAudioDecoder = (MediaCodecAudioDecoder) decoder;
         }
+    }
+
+    public List<MediaCodecDecoder> getDecoders() {
+        return mDecoders;
     }
 
     public MediaCodecVideoDecoder getVideoDecoder() {
         return mVideoDecoder;
     }
 
+    public MediaCodecAudioDecoder getAudioDecoder() {
+        return mAudioDecoder;
+    }
+
     /**
      * Runs the audio/video decoder loop, optionally until a new frame is available.
-     * The returned rameInfo object keeps metadata of the decoded frame. To render the frame
+     * The returned frameInfo object keeps metadata of the decoded frame. To render the frame
      * to the screen and/or dismiss its data, call {@link MediaCodecVideoDecoder#releaseFrame(MediaCodecDecoder.FrameInfo, boolean)}
      * or {@link MediaCodecVideoDecoder#releaseFrame(MediaCodecDecoder.FrameInfo, long)}.
      *
-     * @param videoOnly skip audio frames
      * @param force force decoding in a loop until a frame becomes available or the EOS is reached
      * @return a VideoFrameInfo object holding metadata of a decoded video frame or NULL if no frame has been decoded
      */
-    public MediaCodecDecoder.FrameInfo decodeFrame(boolean videoOnly, boolean force) {
+    public MediaCodecDecoder.FrameInfo decodeFrame(boolean force) {
         //Log.d(TAG, "decodeFrame");
         boolean outputEos = false;
 
