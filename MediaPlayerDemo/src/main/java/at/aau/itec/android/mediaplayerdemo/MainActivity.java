@@ -91,11 +91,13 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                 Intent intent = null;
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                     intent = new Intent(Intent.ACTION_PICK);
+                    intent.setType("video/*");
                 } else {
                     intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"video/*", "audio/*"});
                 }
-                intent.setType("video/*");
                 startActivityForResult(intent, REQUEST_LOAD_VIDEO);
             }
         });
