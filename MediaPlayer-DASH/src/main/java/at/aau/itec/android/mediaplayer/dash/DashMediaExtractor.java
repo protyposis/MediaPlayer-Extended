@@ -22,6 +22,7 @@ package at.aau.itec.android.mediaplayer.dash;
 import android.content.Context;
 import android.media.MediaFormat;
 import android.os.AsyncTask;
+import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -48,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import at.aau.itec.android.mediaplayer.MediaExtractor;
@@ -104,10 +106,10 @@ class DashMediaExtractor extends MediaExtractor {
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
             mMinBufferTimeUs = Math.max(mMPD.minBufferTimeUs, 10 * 1000000L); // 10 secs min buffer time
             mCurrentSegment = -1;
-            mSelectedTracks = new ArrayList<Integer>();
-            mInitSegments = new HashMap<Representation, ByteString>(mAdaptationSet.representations.size());
-            mFutureCache = new HashMap<Integer, CachedSegment>();
-            mFutureCacheRequests = new HashMap<Integer, Call>();
+            mSelectedTracks = new ArrayList<>();
+            mInitSegments = new ConcurrentHashMap<>(mAdaptationSet.representations.size());
+            mFutureCache = new ConcurrentHashMap<>();
+            mFutureCacheRequests = new HashMap<>();
             mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
             mMp4Mode = mRepresentation.mimeType.equals("video/mp4") || mRepresentation.initSegment.media.endsWith(".mp4");
             if (mMp4Mode) {
@@ -312,6 +314,7 @@ class DashMediaExtractor extends MediaExtractor {
                 new AsyncTask<Void, Void, Void>() {
                     @Override
                     protected Void doInBackground(Void... params) {
+                        Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT);
                         try {
                             init(segmentNr);
                         } catch (Exception e) {
@@ -442,7 +445,7 @@ class DashMediaExtractor extends MediaExtractor {
     /**
      * Makes async segment requests to fill the cache up to a certain level.
      */
-    private void fillFutureCache(Representation representation) {
+    private synchronized void fillFutureCache(Representation representation) {
         int segmentsToBuffer = (int)Math.ceil((double)mMinBufferTimeUs / mRepresentation.segmentDurationUs);
         for(int i = mCurrentSegment + 1; i < Math.min(mCurrentSegment + 1 + segmentsToBuffer, mRepresentation.segments.size()); i++) {
             if(!mFutureCache.containsKey(i) && !mFutureCacheRequests.containsKey(i)) {
@@ -459,7 +462,7 @@ class DashMediaExtractor extends MediaExtractor {
     /**
      * Invalidates the cache by cancelling all pending requests and deleting all buffered segments.
      */
-    private void invalidateFutureCache() {
+    private synchronized void invalidateFutureCache() {
         // cancel and remove requests
         for(Integer segmentNumber : mFutureCacheRequests.keySet()) {
             mFutureCacheRequests.get(segmentNumber).cancel();

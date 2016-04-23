@@ -53,6 +53,7 @@
     <string name="open_source_licenses">Open Source Licenses</string>
     <string name="action_halfspeed">0.5x Speed</string>
     <string name="action_doublespeed">2.0x Speed</string>
+    <string name="action_quadspeed">4.0x Speed</string>
     <string name="action_normalspeed">1.0x Speed</string>
     <string name="action_slowspeed">0.2x Speed</string>
     <string name="feature_sidebyside_seektest">VideoView SeekMode comparison</string>

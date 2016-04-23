@@ -33,6 +33,9 @@
     <item android:id="@+id/action_doublespeed"
         android:title="@string/action_doublespeed" />
 
+    <item android:id="@+id/action_quadspeed"
+        android:title="@string/action_quadspeed" />
+
     <item android:id="@+id/action_seekcurrentposition"
         android:title="@string/action_seekcurrentposition" />
 

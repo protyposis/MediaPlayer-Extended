@@ -19,12 +19,10 @@
 
 package at.aau.itec.android.mediaplayer;
 
-import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -42,6 +40,8 @@ class AudioPlayback {
 
     private static final String TAG = AudioPlayback.class.getSimpleName();
 
+    public static long PTS_NOT_SET = Long.MIN_VALUE;
+
     private MediaFormat mAudioFormat;
     private AudioTrack mAudioTrack;
     private byte[] mTransferBuffer;
@@ -54,6 +54,19 @@ class AudioPlayback {
     private long mLastPresentationTimeUs;
     private int mAudioSessionId;
     private float mVolumeLeft = 1, mVolumeRight = 1;
+
+    /**
+     * Keeps track of the PTS of the moment when playback has started.
+     * It is required to calculate the current PTS because the playback head
+     * is reset to zero when playback is paused.
+     */
+    private long mPresentationTimeOffsetUs;
+
+    /**
+     * Hold the previous playback head position time for comparison with the current playback
+     * head position time to detect a position wrap/overflow.
+     */
+    private long mLastPlaybackHeadPositionUs;
 
     public AudioPlayback() {
         mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
@@ -104,6 +117,7 @@ class AudioPlayback {
                 AudioTrack.MODE_STREAM, mAudioSessionId);
         mAudioSessionId = mAudioTrack.getAudioSessionId();
         setStereoVolume(mVolumeLeft, mVolumeRight);
+        mPresentationTimeOffsetUs = PTS_NOT_SET;
 
         if(playing) {
             play();
@@ -149,6 +163,7 @@ class AudioPlayback {
         if(isInitialized()) {
             mAudioThread.setPaused(true);
             mAudioTrack.pause();
+
             if(flush) {
                 flush();
             }
@@ -169,6 +184,10 @@ class AudioPlayback {
             }
             mAudioTrack.flush();
             mBufferQueue.flush();
+
+            // Reset offset so it gets updated with the current PTS when playback continues
+            mPresentationTimeOffsetUs = PTS_NOT_SET;
+
             if(playing) {
                 mAudioTrack.play();
             }
@@ -186,6 +205,35 @@ class AudioPlayback {
             mFrameChunkSize = sizeInBytes;
             // re-init the audio track to accommodate buffer to new chunk size
             init(mAudioFormat);
+        }
+
+        // Special handling of the first written audio buffer after a flush (pause with flush)
+        if(mPresentationTimeOffsetUs == PTS_NOT_SET) {
+            // Initialize with the PTS of the first audio buffer (which isn't necessarily zero)
+            mPresentationTimeOffsetUs = presentationTimeUs;
+            mLastPlaybackHeadPositionUs = 0;
+
+            /** Handle playback head reset bug
+             *
+             * affected: Galaxy S2 API 16
+             * not affected: Nexus 4 API 22
+             *
+             * Sometimes the playback head does not really reset to zero in a pause. During the
+             * pause, it correctly returns zero (0), but when playback continues it sometimes
+             * continues from the previous playback head position instead of starting from zero.
+             * Since this does not always happen, this looks to be a bug in the Android framework.
+             *
+             * TODO find out if this is a reported bug
+             *
+             * To work around this issue, we subtract the playback head position time from the PTS
+             * offset to adjust the base time by the playback head time. This leads to the
+             * {@link #getCurrentPresentationTimeUs} method returning a correct value.
+             */
+            long playbackHeadPositionUs = getPlaybackheadPositionUs();
+            if(playbackHeadPositionUs > 0) {
+                mPresentationTimeOffsetUs -= playbackHeadPositionUs;
+                Log.d(TAG, "playback head not reset");
+            }
         }
 
         mBufferQueue.put(audioData, presentationTimeUs);
@@ -211,6 +259,42 @@ class AudioPlayback {
     public long getBufferTimeUs() {
         return (long)((double)(mBufferQueue.mQueuedDataSize / mFrameSize)
                 / mSampleRate * 1000000d);
+    }
+
+    private long getPlaybackheadPositionUs() {
+        // The playback head position is encoded as a uint in an int
+        long playbackHeadPosition = 0xFFFFFFFFL & mAudioTrack.getPlaybackHeadPosition();
+        // Convert frames to time
+        return (long)((double)playbackHeadPosition / mSampleRate * 1000000);
+    }
+
+    /**
+     * Returns the current PTS of the playback head or PTS_NOT_SET if the PTS cannot be reliably
+     * calculated yet.
+     * For this method to return a PTS, audio samples need to be written before ({@link #write(ByteBuffer, long)}.
+     * @return the PTS at the playback head or PTS_NOT_SET if unknown
+     */
+    public long getCurrentPresentationTimeUs() {
+        // Return the PTS_NOT_SET flag when the PTS has not been initialized yet. At the start of
+        // media playback, returning the playback head alone is reliable, but later on (e.g. after a
+        // seek), a missing PTS offset leads to totally wrong values.
+        if(mPresentationTimeOffsetUs == PTS_NOT_SET) {
+            return PTS_NOT_SET;
+        }
+
+        long playbackHeadPositionUs = getPlaybackheadPositionUs();
+
+        // Handle playback head wrapping
+        if(playbackHeadPositionUs < mLastPlaybackHeadPositionUs) {
+            // playback head position has wrapped around it's 32bit uint value
+            Log.d(TAG, "playback head has wrapped");
+            // Add the full runtime to the PTS offset to advance it one playback head iteration
+            mPresentationTimeOffsetUs += (long)((double)0xFFFFFFFF / mSampleRate * 1000000);
+        }
+        mLastPlaybackHeadPositionUs = playbackHeadPositionUs;
+
+        // Return the playback head time, offset by the start offset PTS
+        return mPresentationTimeOffsetUs + playbackHeadPositionUs;
     }
 
     public long getLastPresentationTimeUs() {

@@ -21,6 +21,7 @@ package at.aau.itec.android.mediaplayerdemo;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -90,11 +91,13 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                 Intent intent = null;
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                     intent = new Intent(Intent.ACTION_PICK);
+                    intent.setType("video/*");
                 } else {
                     intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"video/*", "audio/*"});
                 }
-                intent.setType("video/*");
                 startActivityForResult(intent, REQUEST_LOAD_VIDEO);
             }
         });
@@ -216,6 +219,19 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
             mSideBySideSeekTestButton.setEnabled(false);
         } else {
             updateUri(null); // disable buttons
+
+            // Validate content URI
+            if(uri.getScheme().equals("content")) {
+                ContentResolver cr = getContentResolver();
+                try {
+                    cr.openInputStream(uri).close();
+                } catch (Exception e) {
+                    // The content URI is invalid, probably because the file has been removed
+                    // or the system rebooted (which invalidates content URIs).
+                    return;
+                }
+            }
+
             mVideoUriText.setText("Loading...");
 
             Utils.uriToMediaSourceAsync(MainActivity.this, uri, new Utils.MediaSourceAsyncCallbackHandler() {

@@ -162,6 +162,9 @@ public class GLVideoViewActivity extends Activity {
         } else if(id == R.id.action_doublespeed) {
             mGLVideoView.setPlaybackSpeed(2.0f);
             return true;
+        } else if(id == R.id.action_quadspeed) {
+            mGLVideoView.setPlaybackSpeed(4.0f);
+            return true;
         } else if(id == R.id.action_normalspeed) {
             mGLVideoView.setPlaybackSpeed(1.0f);
             return true;

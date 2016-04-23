@@ -183,6 +183,9 @@ public class VideoViewActivity extends Activity {
         } else if(id == R.id.action_doublespeed) {
             mVideoView.setPlaybackSpeed(2.0f);
             return true;
+        } else if(id == R.id.action_quadspeed) {
+            mVideoView.setPlaybackSpeed(4.0f);
+            return true;
         } else if(id == R.id.action_normalspeed) {
             mVideoView.setPlaybackSpeed(1.0f);
             return true;

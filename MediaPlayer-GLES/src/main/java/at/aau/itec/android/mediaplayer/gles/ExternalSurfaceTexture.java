@@ -29,6 +29,8 @@ import android.view.Surface;
  */
 public class ExternalSurfaceTexture extends Texture implements SurfaceTexture.OnFrameAvailableListener {
 
+    private static final long NANOTIME_SECOND = 1000000000;
+
     private SurfaceTexture mSurfaceTexture;
     private SurfaceTexture.OnFrameAvailableListener mOnFrameAvailableListener;
     private boolean mFrameAvailable;
@@ -69,9 +71,23 @@ public class ExternalSurfaceTexture extends Texture implements SurfaceTexture.On
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+        /**
+         * Timed rendering through {@link android.media.MediaCodec#releaseOutputBuffer(int, long)}
+         * does not work with this texture. When a frame becomes available here, its buffer has
+         * already been returned to the MediaCodec and released, which means it is already available
+         * for the decoding of a following frame, which means that deferring the rendering here
+         * (through a sleep or a delayed handler message) is too late, because it does not throttle
+         * the decoding loop.
+         * This unfortunately means that timed rendering cannot be used in a GL context, and a local
+         * {@link Thread#sleep(long)} has to be used in the decoder loop instead.
+         */
+        notifyFrameAvailability();
+    }
+
+    private void notifyFrameAvailability() {
         mFrameAvailable = true;
         if(mOnFrameAvailableListener != null) {
-            mOnFrameAvailableListener.onFrameAvailable(surfaceTexture);
+            mOnFrameAvailableListener.onFrameAvailable(mSurfaceTexture);
         }
     }
 
