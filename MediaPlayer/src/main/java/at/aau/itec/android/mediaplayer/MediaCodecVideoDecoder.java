@@ -85,6 +85,15 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
      */
     @TargetApi(21)
     public void releaseFrame(FrameInfo frameInfo, long renderOffsetUs) {
+        /** In contrast to the old rendering method through {@link MediaCodec#releaseOutputBuffer(int, boolean)}
+         * this method does not need a timing/throttling mechanism (e.g. {@link Thread#sleep(long)})
+         * and returns instantly, but still defers rendering internally until the given
+         * timestamp. It does not release the buffer until the actual rendering though,
+         * and thus times/throttles the decoding loop by keeping the buffers and not returning
+         * them until the picture is rendered, which means that {@link MediaCodec#dequeueOutputBuffer(MediaCodec.BufferInfo, long)}
+         * fails until a frame is rendered and the associated buffer returned to the codec
+         * for a new frame output.
+         */
         long renderTimestampNs = System.nanoTime() + (renderOffsetUs * 1000);
         getCodec().releaseOutputBuffer(frameInfo.buffer, renderTimestampNs); // render picture
         releaseFrameInfo(frameInfo);
