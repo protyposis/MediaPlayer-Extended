@@ -263,9 +263,12 @@ public class MediaPlayer {
         }
 
         // Decode the first frame to initialize the decoder, and seek back to the start
-        // This is necessary on some platforms, else a seek directly after initialization will fail
-        // TODO find out which API versions need this workaround (not required on API 22)
-        if(Build.VERSION.SDK_INT < 22) {
+        // This is necessary on some platforms, else a seek directly after initialization will fail,
+        // or the decoder goes into a state where it does not accept any input and does not deliver
+        // any output, locking up playback (observed on N4 API22).
+        // N4 API22 Test: disable this code open video, seek to end, press play to start from beginning
+        //                -> results in infinite decoding loop without output
+        if(true) {
             if(mDecoders.getVideoDecoder() != null) {
                 MediaCodecDecoder.FrameInfo vfi = mDecoders.decodeFrame(true);
                 mDecoders.getVideoDecoder().releaseFrame(vfi);
