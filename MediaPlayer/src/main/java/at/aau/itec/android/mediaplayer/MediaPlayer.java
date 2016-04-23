@@ -702,7 +702,7 @@ public class MediaPlayer {
         private void playInternal() throws IOException, InterruptedException {
             if(mDecoders.isEOS()) {
                 mCurrentPosition = 0;
-                seekInternal(0);
+                mDecoders.seekTo(SeekMode.FAST, 0);
             }
 
             // reset time (otherwise playback tries to "catch up" time after a pause)
