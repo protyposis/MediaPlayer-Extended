@@ -394,7 +394,7 @@ abstract class MediaCodecDecoder {
      * @param frameInfo the frame info holding the frame buffer to dismiss
      */
     public void dismissFrame(FrameInfo frameInfo) {
-        if(mCurrentFrameInfo != null) releaseFrame(frameInfo);
+        releaseFrame(frameInfo);
     }
 
     /**
@@ -402,7 +402,7 @@ abstract class MediaCodecDecoder {
      * This only works if the decoder holds a current frame, e.g. after a seek.
      */
     public void dismissFrame() {
-        dismissFrame(mCurrentFrameInfo);
+        if(mCurrentFrameInfo != null) dismissFrame(mCurrentFrameInfo);
     }
 
     /**
