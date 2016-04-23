@@ -896,6 +896,12 @@ public class MediaPlayer {
         }
 
         private void renderVideoFrame(MediaCodecDecoder.FrameInfo videoFrameInfo) throws InterruptedException {
+            if(videoFrameInfo.endOfStream) {
+                // The EOS frame does not contain a video frame, so we dismiss it
+                mDecoders.getVideoDecoder().dismissFrame(videoFrameInfo);
+                return;
+            }
+
             // Calculate waiting time until the next frame's PTS
             // The waiting time might be much higher that a frame's duration because timed API21
             // rendering caches multiple released output frames before actually rendering them.
@@ -919,18 +925,14 @@ public class MediaPlayer {
                         mDecoders.getVideoDecoder().getVideoWidth(), mDecoders.getVideoDecoder().getVideoHeight()));
             }
 
-            // Release the current frame and render it to the surface
-            if(!mRenderModeApi21) {
-                // Slow down playback, if necessary, to keep frame rate
-                if (waitingTime > 5000) {
-                    // Sleep until it's time to render the next frame
-                    // This is not v-synced to the display. Not required any more on API 21+.
-                    Thread.sleep(waitingTime / 1000);
-                }
-                mDecoders.getVideoDecoder().renderFrame(videoFrameInfo, 0); // render frame
-            } else {
-                mDecoders.getVideoDecoder().renderFrame(videoFrameInfo, waitingTime); // deferred rendering on API 21+
+            // Slow down playback, if necessary, to keep frame rate
+            if(!mRenderModeApi21 && waitingTime > 5000) {
+                // Sleep until it's time to render the next frame
+                // This is not v-synced to the display. Not required any more on API 21+.
+                Thread.sleep(waitingTime / 1000);
             }
+            // Release the current frame and render it to the surface
+            mDecoders.getVideoDecoder().renderFrame(videoFrameInfo, waitingTime);
         }
     }
 
