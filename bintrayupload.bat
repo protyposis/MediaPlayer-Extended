@@ -1,6 +1,8 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+REM Uploading all modules at once (with one gradle command) does not work any more, so a separate command for each module must be issued
+
 SET username=%1
 SET apikey=%2
 SET modules="MediaPlayer" "MediaPlayer-DASH" "MediaPlayer-GLES" "MediaPlayer-GLES-FlowAbs" "MediaPlayer-GLES-QrMarker"
