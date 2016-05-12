@@ -51,7 +51,7 @@ class MediaCodecAudioDecoder extends MediaCodecDecoder {
         // chosen threshold time to avoid filling up the memory with buffered audio data and
         // requesting too much data from the network too fast (e.g. DASH segments).
         if(!isPassive()) {
-            return mAudioPlayback.getBufferTimeUs() < 200000;
+            return mAudioPlayback.getQueueBufferTimeUs() < 200000;
         }
         else {
             return super.shouldDecodeAnotherFrame();

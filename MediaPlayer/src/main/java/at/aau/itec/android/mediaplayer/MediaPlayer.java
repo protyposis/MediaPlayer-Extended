@@ -579,6 +579,7 @@ public class MediaPlayer {
         private static final int PLAYBACK_LOOP = 3;
         private static final int PLAYBACK_SEEK = 4;
         private static final int PLAYBACK_RELEASE = 5;
+        private static final int PLAYBACK_PAUSE_AUDIO = 6;
 
         private boolean mPaused;
         private MediaCodecDecoder.FrameInfo mVideoFrameInfo;
@@ -667,6 +668,9 @@ public class MediaPlayer {
                     case PLAYBACK_PAUSE:
                         pauseInternal();
                         return true;
+                    case PLAYBACK_PAUSE_AUDIO:
+                        pauseInternalAudio();
+                        return true;
                     case PLAYBACK_LOOP:
                         loopInternal();
                         return true;
@@ -710,6 +714,7 @@ public class MediaPlayer {
 
             // Start audio playback
             if(mAudioPlayback != null) {
+                mHandler.removeMessages(PLAYBACK_PAUSE_AUDIO);
                 mAudioPlayback.play();
             }
 
@@ -719,12 +724,31 @@ public class MediaPlayer {
             loopInternal();
         }
 
-        private void pauseInternal() {
+        private void pauseInternal(boolean drainAudioPlayback) {
             // When playback is paused in timed API21 render mode, the remaining cached frames will
             // still be rendered, resulting in a short but noticeable pausing lag. This can be avoided
             // by switching to the old render timing mode.
             mHandler.removeMessages(PLAYBACK_LOOP); // removes remaining loop requests (required when EOS is reached)
-            if (mAudioPlayback != null) mAudioPlayback.pause();
+            if (mAudioPlayback != null) {
+                if(drainAudioPlayback) {
+                    // Defer pausing the audio playback for the length of the playback buffer, to
+                    // make sure that all audio samples have been played out.
+                    mHandler.sendEmptyMessageDelayed(PLAYBACK_PAUSE_AUDIO,
+                            (mAudioPlayback.getQueueBufferTimeUs() + mAudioPlayback.getPlaybackBufferTimeUs()) / 1000 + 1);
+                } else {
+                    mAudioPlayback.pause();
+                }
+            }
+        }
+
+        private void pauseInternal() {
+            pauseInternal(false);
+        }
+
+        private void pauseInternalAudio() {
+            if (mAudioPlayback != null) {
+                mAudioPlayback.pause();
+            }
         }
 
         private void loopInternal() throws IOException, InterruptedException {
@@ -804,7 +828,7 @@ public class MediaPlayer {
                 // ... else just pause playback and wait for next command
                 else {
                     mPaused = true;
-                    pauseInternal();
+                    pauseInternal(true); // pause but play remaining buffered audio
                 }
             } else {
                 // Get next frame
@@ -878,6 +902,8 @@ public class MediaPlayer {
             // make sure no other events run afterwards
             mEventHandler.removeMessages(PLAYBACK_SEEK);
             mEventHandler.removeMessages(PLAYBACK_LOOP);
+            mEventHandler.removeMessages(PLAYBACK_PAUSE);
+            mEventHandler.removeMessages(PLAYBACK_PAUSE_AUDIO);
 
             if(mDecoders != null) {
                 if(mVideoFrameInfo != null) {

@@ -49,7 +49,7 @@ class AudioPlayback {
     private int mFrameSize;
     private int mSampleRate;
     private BufferQueue mBufferQueue;
-    private int mPlaybackBufferSizeFactor;
+    private int mPlaybackBufferSize;
     private AudioThread mAudioThread;
     private long mLastPresentationTimeUs;
     private int mAudioSessionId;
@@ -69,8 +69,8 @@ class AudioPlayback {
     private long mLastPlaybackHeadPositionUs;
 
     public AudioPlayback() {
-        mPlaybackBufferSizeFactor = 4; // works for now; low dropouts but not too large
         mFrameChunkSize = 4096; // arbitrary default chunk size
+        mPlaybackBufferSize = mFrameChunkSize * 4; // works for now; low dropouts but not too large
         mBufferQueue = new BufferQueue();
     }
 
@@ -113,7 +113,7 @@ class AudioPlayback {
                 mSampleRate,
                 channelCount == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
-                mFrameChunkSize * mPlaybackBufferSizeFactor, // at least twice the size to enable double buffering (according to docs)
+                mPlaybackBufferSize, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM, mAudioSessionId);
         mAudioSessionId = mAudioTrack.getAudioSessionId();
         setStereoVolume(mVolumeLeft, mVolumeRight);
@@ -239,7 +239,7 @@ class AudioPlayback {
         mBufferQueue.put(audioData, presentationTimeUs);
 //        Log.d(TAG, "buffer queue size " + mBufferQueue.bufferQueue.size()
 //                + " data " + mBufferQueue.mQueuedDataSize
-//                + " time " + getBufferTimeUs());
+//                + " time " + getQueueBufferTimeUs());
         mAudioThread.notifyOfNewBufferInQueue();
     }
 
@@ -256,9 +256,23 @@ class AudioPlayback {
         stopAndRelease(true);
     }
 
-    public long getBufferTimeUs() {
+    /**
+     * Returns the length of the queued audio, that does not fit into the playback buffer yet.
+     * @return the length of the queued audio in microsecs
+     */
+    public long getQueueBufferTimeUs() {
         return (long)((double)(mBufferQueue.mQueuedDataSize / mFrameSize)
                 / mSampleRate * 1000000d);
+    }
+
+    /**
+     * Returns the length of the playback buffer, without posidering the current playback position
+     * inside the buffer (the remaining audio data that is waiting for playback can be less than
+     * the buffer length).
+     * @return the length of the playback buffer in microsecs
+     */
+    public long getPlaybackBufferTimeUs() {
+        return (long)((double)(mPlaybackBufferSize / mFrameSize) / mSampleRate * 1000000d);
     }
 
     private long getPlaybackheadPositionUs() {
