@@ -258,8 +258,18 @@ public class MediaPlayer {
 
         // After the decoder is initialized, we know the video size
         if(mDecoders.getVideoDecoder() != null) {
-            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE,
-                    mDecoders.getVideoDecoder().getVideoWidth(), mDecoders.getVideoDecoder().getVideoHeight()));
+            int width = mDecoders.getVideoDecoder().getVideoWidth();
+            int height = mDecoders.getVideoDecoder().getVideoHeight();
+            int rotation = mDecoders.getVideoDecoder().getVideoRotation();
+
+            // Swap width/height to report correct dimensions of rotated portrait video (rotated by 90 or 270 degrees)
+            if(rotation > 0 && rotation != 180) {
+                int temp = width;
+                width = height;
+                height = temp;
+            }
+
+            mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE, width, height));
         }
 
         // Decode the first frame to initialize the decoder, and seek back to the start

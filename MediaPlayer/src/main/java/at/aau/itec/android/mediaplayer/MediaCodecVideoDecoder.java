@@ -61,6 +61,18 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
         return format != null ? format.getInteger(MediaFormat.KEY_HEIGHT) : 0;
     }
 
+    /**
+     * Returns the rotation of the video in degree.
+     * Only works on API21+, else it always returns 0.
+     * @return the rotation of the video in degrees
+     */
+    public int getVideoRotation() {
+        MediaFormat format = getFormat();
+        // rotation-degrees is available from API21, officially supported from API23 (KEY_ROTATION)
+        return format != null && format.containsKey("rotation-degrees") ?
+                format.getInteger("rotation-degrees") : 0;
+    }
+
     @SuppressLint("NewApi")
     @Override
     public void renderFrame(FrameInfo frameInfo, long offsetUs) {
