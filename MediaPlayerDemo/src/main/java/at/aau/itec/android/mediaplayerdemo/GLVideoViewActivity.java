@@ -73,13 +73,15 @@ public class GLVideoViewActivity extends Activity {
         if(savedInstanceState != null) {
             initPlayer((Uri)savedInstanceState.getParcelable("uri"),
                     savedInstanceState.getInt("position"),
-                    savedInstanceState.getBoolean("playing"));
+                    savedInstanceState.getFloat("playbackSpeed", 1.0f),
+                    savedInstanceState.getBoolean("playing")
+            );
         } else {
-            initPlayer(getIntent().getData(), -1, false);
+            initPlayer(getIntent().getData(), -1, 1.0f, false);
         }
     }
 
-    private void initPlayer(Uri uri, final int position, final boolean playback) {
+    private void initPlayer(Uri uri, final int position, final float speed, final boolean playback) {
         mVideoUri = uri;
         getActionBar().setSubtitle(mVideoUri+"");
 
@@ -91,6 +93,8 @@ public class GLVideoViewActivity extends Activity {
                 } else {
                     mGLVideoView.seekTo(0); // display first frame
                 }
+
+                mGLVideoView.setPlaybackSpeed(speed);
 
                 if (playback) {
                     mGLVideoView.start();
@@ -239,6 +243,7 @@ public class GLVideoViewActivity extends Activity {
             outState.putParcelable("uri", mVideoUri);
             outState.putBoolean("playing", mGLVideoView.isPlaying());
             outState.putInt("position", mGLVideoView.getCurrentPosition());
+            outState.putFloat("playbackSpeed", mGLVideoView.getPlaybackSpeed());
         }
     }
 }

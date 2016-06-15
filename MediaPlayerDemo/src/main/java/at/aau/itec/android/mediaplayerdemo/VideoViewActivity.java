@@ -20,7 +20,6 @@
 package at.aau.itec.android.mediaplayerdemo;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -67,13 +66,15 @@ public class VideoViewActivity extends Activity {
         if(savedInstanceState != null) {
             initPlayer((Uri)savedInstanceState.getParcelable("uri"),
                     savedInstanceState.getInt("position"),
-                    savedInstanceState.getBoolean("playing"));
+                    savedInstanceState.getFloat("playbackSpeed", 1.0f),
+                    savedInstanceState.getBoolean("playing")
+            );
         } else {
-            initPlayer(getIntent().getData(), -1, false);
+            initPlayer(getIntent().getData(), -1, 1.0f, false);
         }
     }
 
-    private void initPlayer(Uri uri, final int position, final boolean playback) {
+    private void initPlayer(Uri uri, final int position, final float speed, final boolean playback) {
         mVideoUri = uri;
         getActionBar().setSubtitle(mVideoUri+"");
 
@@ -85,6 +86,8 @@ public class VideoViewActivity extends Activity {
                 } else {
                     mVideoView.seekTo(0); // display first frame
                 }
+
+                mVideoView.setPlaybackSpeed(speed);
 
                 if (playback) {
                     mVideoView.start();
@@ -233,6 +236,7 @@ public class VideoViewActivity extends Activity {
             outState.putParcelable("uri", mVideoUri);
             outState.putBoolean("playing", mVideoView.isPlaying());
             outState.putInt("position", mVideoView.getCurrentPosition());
+            outState.putFloat("playbackSpeed", mVideoView.getPlaybackSpeed());
         }
     }
 }
