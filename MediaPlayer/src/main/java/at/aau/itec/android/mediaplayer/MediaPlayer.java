@@ -729,6 +729,10 @@ public class MediaPlayer {
             }
 
             mPlaybackSpeed = mTimeBase.getSpeed();
+            // Sync audio playback speed to playback speed (to account for speed changes during pause)
+            if (mAudioPlayback != null) {
+                mAudioPlayback.setPlaybackSpeed((float) mPlaybackSpeed);
+            }
 
             mHandler.removeMessages(PLAYBACK_LOOP);
             loopInternal();
@@ -811,7 +815,7 @@ public class MediaPlayer {
             }
 
             if (mAudioPlayback != null) {
-                // Sync audio playback speed to playback speed
+                // Sync audio playback speed to playback speed (to account for speed changes during playback)
                 // Change the speed on the audio playback object only if it has really changed, to avoid runtime overhead
                 if(mPlaybackSpeed != mTimeBase.getSpeed()) {
                     mPlaybackSpeed = mTimeBase.getSpeed();
