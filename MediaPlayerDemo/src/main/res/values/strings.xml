@@ -25,13 +25,13 @@
     <string name="action_seekcurrentpositionplus1ms">Seek offset test: to current position + 1ms</string>
     <string name="action_seektoend">Seek to end test</string>
     <string name="action_getcurrentposition">Toast current position</string>
-    <string name="title_activity_side_by_side">Android VideoView vs. ITEC VideoView</string>
+    <string name="title_activity_side_by_side">Android VideoView vs. MPX VideoView</string>
     <string name="title_activity_videoview">VideoView Demo</string>
     <string name="title_activity_glvideoview">GLVideoView Shader Demo</string>
     <string name="title_activity_glcameraview">GLCameraView Shader Demo</string>
     <string name="videoview_sbs">VideoView Comparison</string>
     <string name="androidvv">Android VideoView</string>
-    <string name="itecvv">MPX VideoView</string>
+    <string name="mpxvv">MPX VideoView</string>
     <string name="toggle_parameters">Parameters</string>
     <string name="save_frame">Save Frame</string>
     <string name="switch_camera">Switch Camera</string>

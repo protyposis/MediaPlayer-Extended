@@ -42,13 +42,13 @@
         android:layout_weight="1"/>
 
     <TextView
-        android:id="@+id/itecvv_title"
-        android:text="@string/itecvv"
+        android:id="@+id/mpxvv_title"
+        android:text="@string/mpxvv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
     <net.protyposis.android.mediaplayer.VideoView
-        android:id="@+id/itecvv"
+        android:id="@+id/mpxvv"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>

@@ -43,7 +43,7 @@ public class SideBySideActivity extends Activity {
 
     private Uri mVideoUri;
     private android.widget.VideoView mAndroidVideoView;
-    private VideoView mItecVideoView;
+    private VideoView mMpxVideoView;
 
     private MediaController.MediaPlayerControl mMediaPlayerControl;
     private MediaController mMediaController;
@@ -55,9 +55,9 @@ public class SideBySideActivity extends Activity {
         Utils.setActionBarSubtitleEllipsizeMiddle(this);
 
         mAndroidVideoView = (android.widget.VideoView) findViewById(R.id.androidvv);
-        mItecVideoView = (VideoView) findViewById(R.id.itecvv);
+        mMpxVideoView = (VideoView) findViewById(R.id.mpxvv);
 
-        mMediaPlayerControl = new MediaPlayerMultiControl(mAndroidVideoView, mItecVideoView);
+        mMediaPlayerControl = new MediaPlayerMultiControl(mAndroidVideoView, mMpxVideoView);
         mMediaController = new MediaController(this);
         mMediaController.setAnchorView(findViewById(R.id.container));
         mMediaController.setMediaPlayer(mMediaPlayerControl);
@@ -75,15 +75,15 @@ public class SideBySideActivity extends Activity {
                         mAndroidVideoView.seekTo(0); // display first frame
                     }
                 });
-                mItecVideoView.setOnPreparedListener(new net.protyposis.android.mediaplayer.MediaPlayer.OnPreparedListener() {
+                mMpxVideoView.setOnPreparedListener(new net.protyposis.android.mediaplayer.MediaPlayer.OnPreparedListener() {
                     @Override
                     public void onPrepared(net.protyposis.android.mediaplayer.MediaPlayer mp) {
-                        mItecVideoView.seekTo(0); // display first frame
+                        mMpxVideoView.seekTo(0); // display first frame
                     }
                 });
 
                 mAndroidVideoView.setVideoURI(mVideoUri);
-                mItecVideoView.setVideoURI(mVideoUri);
+                mMpxVideoView.setVideoURI(mVideoUri);
             }
         }, 1000);
     }

@@ -56,8 +56,8 @@
         android:layout_below="@id/vv_title"/>
 
     <TextView
-        android:id="@+id/itecvv_title"
-        android:text="@string/itecvv"
+        android:id="@+id/mpxvv_title"
+        android:text="@string/mpxvv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_toEndOf="@id/centerShim"
@@ -65,11 +65,11 @@
         android:layout_alignTop="@id/centerShim"/>
 
     <net.protyposis.android.mediaplayer.VideoView
-        android:id="@+id/itecvv"
+        android:id="@+id/mpxvv"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_toEndOf="@id/centerShim"
         android:layout_toRightOf="@id/centerShim"
-        android:layout_below="@id/itecvv_title"/>
+        android:layout_below="@id/mpxvv_title"/>
 
 </RelativeLayout>

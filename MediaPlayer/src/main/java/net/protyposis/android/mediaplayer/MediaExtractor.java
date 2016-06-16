@@ -69,7 +69,7 @@ import java.util.UUID;
  */
 public class MediaExtractor {
 
-    public static final String MEDIA_FORMAT_EXTENSION_KEY_DAR = "itecmp-dar";
+    public static final String MEDIA_FORMAT_EXTENSION_KEY_DAR = "mpx-dar";
 
     private android.media.MediaExtractor mApiExtractor;
 
