@@ -19,7 +19,7 @@
   -->
 <resources>
 
-    <string name="app_name">ITEC MediaPlayer Demo</string>
+    <string name="app_name">MediaPlayer-Extended Demo</string>
     <string name="action_settings">Settings</string>
     <string name="action_seekcurrentposition">Seek offset test: to current position</string>
     <string name="action_seekcurrentpositionplus1ms">Seek offset test: to current position + 1ms</string>
@@ -31,13 +31,13 @@
     <string name="title_activity_glcameraview">GLCameraView Shader Demo</string>
     <string name="videoview_sbs">VideoView Comparison</string>
     <string name="androidvv">Android VideoView</string>
-    <string name="itecvv">ITEC VideoView</string>
+    <string name="itecvv">MPX VideoView</string>
     <string name="toggle_parameters">Parameters</string>
     <string name="save_frame">Save Frame</string>
     <string name="switch_camera">Switch Camera</string>
     <string name="effects">Effects</string>
     <string name="parameter_reset_short">RST</string>
-    <string name="description_headline">Welcome to the ITEC MediaPlayer Library Showcase!</string>
+    <string name="description_headline">Welcome to the MediaPlayer-Extended Library Showcase!</string>
     <string name="description_text">This technical demo shows the key features of the library in a very simple app and serves as a reference on how to use the components in Java code. This app is not intended to be used as a video player application by end users. The library sources and a detailed description are available at the following link:</string>
     <string name="library_url">http://github.com/protyposis/ITEC-MediaPlayer</string>
     <string name="uri_missing">no URI selected</string>
@@ -45,7 +45,7 @@
     <string name="feautre_videoview_description">VideoView replaces the VideoView of the Android API.</string>
     <string name="feature_glvideoview">GLVideoView (with shaders)</string>
     <string name="feature_glvideoview_description">GLVideoView is a VideoView with an OpenGL ES surface which can easily be enriched with custom GLSL shaders.</string>
-    <string name="feature_sidebyside">ITEC ViewView / Android VideoView comparison</string>
+    <string name="feature_sidebyside">MPX ViewView / Android VideoView comparison</string>
     <string name="feature_sidebyside_description">A side by side comparison of both implementations. Not available for DASH content.</string>
     <string name="feature_glcameraview">GLCameraView (with shaders)</string>
     <string name="feature_glcameraview_description">GLCameraView extends from the same base as GLViewView and also provides GLES functionality.</string>
