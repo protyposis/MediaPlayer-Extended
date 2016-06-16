@@ -29,7 +29,7 @@ publish {
     groupId = playerModuleBase
     artifactId = 'mediaplayer-gles-flowabs'
     publishVersion = libraryVersionString()
-    desc = 'ITEC MediaPlayer GLES FlowAbs shaders'
+    desc = 'MediaPlayer-Extended GLES FlowAbs shaders'
     website = 'https://github.com/protyposis/ITEC-MediaPlayer'
     licences = ['GPL-3.0']
 }
