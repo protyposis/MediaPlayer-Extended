@@ -49,7 +49,7 @@
     <string name="feature_sidebyside_description">A side by side comparison of both implementations. Not available for DASH content.</string>
     <string name="feature_glcameraview">GLCameraView (with shaders)</string>
     <string name="feature_glcameraview_description">GLCameraView extends from the same base as GLViewView and also provides GLES functionality.</string>
-    <string name="copyright_notice">Copyright © 2014 Mario Guggenberger. Published under the GPLv3. http://www.gnu.org/licenses/gpl-3.0</string>
+    <string name="copyright_notice">Copyright © 2014–2016 Mario Guggenberger. Published under the GPLv3. http://www.gnu.org/licenses/gpl-3.0</string>
     <string name="open_source_licenses">Open Source Licenses</string>
     <string name="action_halfspeed">0.5x Speed</string>
     <string name="action_doublespeed">2.0x Speed</string>
