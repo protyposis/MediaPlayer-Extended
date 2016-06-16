@@ -1,7 +1,7 @@
 DASH-IF Test Vector evaluation
 ==============================
 
-This table is an evaluation of the compatibility of ITEC-MediaPlayer with the DASH test vectors
+This table is an evaluation of the compatibility of MediaPlayer-Extended with the DASH test vectors
 available here: http://dashif.org/test-vectors/
 
 Tested on a Nexus 4 with Android 5.1.1.
