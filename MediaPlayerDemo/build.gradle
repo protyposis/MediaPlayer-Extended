@@ -19,7 +19,9 @@ android {
     buildToolsVersion "22.0.1"
 
     defaultConfig {
-        applicationId packageBase + '.mediaplayerdemo'
+        // Keep old ITEC package name as application Id for Play Store compatibility
+        applicationId 'at.aau.itec.android.mediaplayerdemo'
+
         minSdkVersion 16
         targetSdkVersion 22
         versionCode 1

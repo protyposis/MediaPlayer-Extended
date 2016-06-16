@@ -64,7 +64,7 @@
         android:layout_toRightOf="@id/centerShim"
         android:layout_alignTop="@id/centerShim"/>
 
-    <at.aau.itec.android.mediaplayer.VideoView
+    <net.protyposis.android.mediaplayer.VideoView
         android:id="@+id/itecvv"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"

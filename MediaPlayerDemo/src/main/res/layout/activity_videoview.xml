@@ -28,7 +28,7 @@
     android:paddingBottom="@dimen/activity_vertical_margin"
     tools:context=".VideoViewActivity">
 
-    <at.aau.itec.android.mediaplayer.VideoView
+    <net.protyposis.android.mediaplayer.VideoView
         android:id="@+id/vv"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"

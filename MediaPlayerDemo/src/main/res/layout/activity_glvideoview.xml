@@ -35,7 +35,7 @@
         android:text="@string/zoom_pan_info"
         android:layout_centerHorizontal="true"/>
 
-    <at.aau.itec.android.mediaplayer.GLVideoView
+    <net.protyposis.android.mediaplayer.GLVideoView
         android:id="@+id/glvv"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"

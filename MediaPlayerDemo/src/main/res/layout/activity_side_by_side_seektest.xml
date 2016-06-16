@@ -35,7 +35,7 @@
         android:layout_height="wrap_content">
     </Spinner>
 
-    <at.aau.itec.android.mediaplayer.VideoView
+    <net.protyposis.android.mediaplayer.VideoView
         android:id="@+id/vv1"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
@@ -47,7 +47,7 @@
         android:layout_height="wrap_content">
     </Spinner>
 
-    <at.aau.itec.android.mediaplayer.VideoView
+    <net.protyposis.android.mediaplayer.VideoView
         android:id="@+id/vv2"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
