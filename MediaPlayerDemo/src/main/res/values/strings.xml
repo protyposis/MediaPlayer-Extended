@@ -2,42 +2,42 @@
 <!--
   ~ Copyright (c) 2014 Mario Guggenberger <mg@protyposis.net>
   ~
-  ~ This file is part of ITEC MediaPlayer.
+  ~ This file is part of MediaPlayer-Extended.
   ~
-  ~ ITEC MediaPlayer is free software: you can redistribute it and/or modify
+  ~ MediaPlayer-Extended is free software: you can redistribute it and/or modify
   ~ it under the terms of the GNU General Public License as published by
   ~ the Free Software Foundation, either version 3 of the License, or
   ~ (at your option) any later version.
   ~
-  ~ ITEC MediaPlayer is distributed in the hope that it will be useful,
+  ~ MediaPlayer-Extended is distributed in the hope that it will be useful,
   ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
   ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   ~ GNU General Public License for more details.
   ~
   ~ You should have received a copy of the GNU General Public License
-  ~ along with ITEC MediaPlayer.  If not, see <http://www.gnu.org/licenses/>.
+  ~ along with MediaPlayer-Extended.  If not, see <http://www.gnu.org/licenses/>.
   -->
 <resources>
 
-    <string name="app_name">ITEC MediaPlayer Demo</string>
+    <string name="app_name">MediaPlayer-Extended Demo</string>
     <string name="action_settings">Settings</string>
     <string name="action_seekcurrentposition">Seek offset test: to current position</string>
     <string name="action_seekcurrentpositionplus1ms">Seek offset test: to current position + 1ms</string>
     <string name="action_seektoend">Seek to end test</string>
     <string name="action_getcurrentposition">Toast current position</string>
-    <string name="title_activity_side_by_side">Android VideoView vs. ITEC VideoView</string>
+    <string name="title_activity_side_by_side">Android VideoView vs. MPX VideoView</string>
     <string name="title_activity_videoview">VideoView Demo</string>
     <string name="title_activity_glvideoview">GLVideoView Shader Demo</string>
     <string name="title_activity_glcameraview">GLCameraView Shader Demo</string>
     <string name="videoview_sbs">VideoView Comparison</string>
     <string name="androidvv">Android VideoView</string>
-    <string name="itecvv">ITEC VideoView</string>
+    <string name="mpxvv">MPX VideoView</string>
     <string name="toggle_parameters">Parameters</string>
     <string name="save_frame">Save Frame</string>
     <string name="switch_camera">Switch Camera</string>
     <string name="effects">Effects</string>
     <string name="parameter_reset_short">RST</string>
-    <string name="description_headline">Welcome to the ITEC MediaPlayer Library Showcase!</string>
+    <string name="description_headline">Welcome to the MediaPlayer-Extended Library Showcase!</string>
     <string name="description_text">This technical demo shows the key features of the library in a very simple app and serves as a reference on how to use the components in Java code. This app is not intended to be used as a video player application by end users. The library sources and a detailed description are available at the following link:</string>
     <string name="library_url">http://github.com/protyposis/ITEC-MediaPlayer</string>
     <string name="uri_missing">no URI selected</string>
@@ -45,7 +45,7 @@
     <string name="feautre_videoview_description">VideoView replaces the VideoView of the Android API.</string>
     <string name="feature_glvideoview">GLVideoView (with shaders)</string>
     <string name="feature_glvideoview_description">GLVideoView is a VideoView with an OpenGL ES surface which can easily be enriched with custom GLSL shaders.</string>
-    <string name="feature_sidebyside">ITEC ViewView / Android VideoView comparison</string>
+    <string name="feature_sidebyside">MPX ViewView / Android VideoView comparison</string>
     <string name="feature_sidebyside_description">A side by side comparison of both implementations. Not available for DASH content.</string>
     <string name="feature_glcameraview">GLCameraView (with shaders)</string>
     <string name="feature_glcameraview_description">GLCameraView extends from the same base as GLViewView and also provides GLES functionality.</string>

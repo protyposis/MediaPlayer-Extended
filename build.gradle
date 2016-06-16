@@ -22,7 +22,7 @@ allprojects {
 }
 
 ext {
-    packageBase = 'at.aau.itec.android'
+    packageBase = 'net.protyposis.android'
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
     libraryVersionCode = 13

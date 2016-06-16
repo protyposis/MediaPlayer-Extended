@@ -29,7 +29,7 @@ publish {
     groupId = playerModuleBase
     artifactId = 'mediaplayer-gles'
     publishVersion = libraryVersionString()
-    desc = 'ITEC MediaPlayer GLES extension module'
+    desc = 'MediaPlayer-Extended GLES extension module'
     website = 'https://github.com/protyposis/ITEC-MediaPlayer'
     licences = ['GPL-3.0']
 }

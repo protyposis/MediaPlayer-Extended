@@ -36,7 +36,7 @@ publish {
     groupId = playerModuleBase
     artifactId = 'mediaplayer-dash'
     publishVersion = libraryVersionString()
-    desc = 'ITEC MediaPlayer DASH extension module'
+    desc = 'MediaPlayer-Extended DASH extension module'
     website = 'https://github.com/protyposis/ITEC-MediaPlayer'
     licences = ['GPL-3.0']
 }

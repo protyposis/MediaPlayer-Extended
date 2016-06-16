@@ -1,20 +1,20 @@
 <!--
   ~ Copyright (c) 2014 Mario Guggenberger <mg@protyposis.net>
   ~
-  ~ This file is part of ITEC MediaPlayer.
+  ~ This file is part of MediaPlayer-Extended.
   ~
-  ~ ITEC MediaPlayer is free software: you can redistribute it and/or modify
+  ~ MediaPlayer-Extended is free software: you can redistribute it and/or modify
   ~ it under the terms of the GNU General Public License as published by
   ~ the Free Software Foundation, either version 3 of the License, or
   ~ (at your option) any later version.
   ~
-  ~ ITEC MediaPlayer is distributed in the hope that it will be useful,
+  ~ MediaPlayer-Extended is distributed in the hope that it will be useful,
   ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
   ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   ~ GNU General Public License for more details.
   ~
   ~ You should have received a copy of the GNU General Public License
-  ~ along with ITEC MediaPlayer.  If not, see <http://www.gnu.org/licenses/>.
+  ~ along with MediaPlayer-Extended.  If not, see <http://www.gnu.org/licenses/>.
   -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -42,13 +42,13 @@
         android:layout_weight="1"/>
 
     <TextView
-        android:id="@+id/itecvv_title"
-        android:text="@string/itecvv"
+        android:id="@+id/mpxvv_title"
+        android:text="@string/mpxvv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
-    <at.aau.itec.android.mediaplayer.VideoView
-        android:id="@+id/itecvv"
+    <net.protyposis.android.mediaplayer.VideoView
+        android:id="@+id/mpxvv"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
