@@ -1,9 +1,9 @@
-<img src="./MediaPlayerDemo/src/main/ic_launcher-web.png" width="100" height="100" alt="ITEC MediaPlayer Icon"/>
+<img src="./MediaPlayerDemo/src/main/ic_launcher-web.png" width="100" height="100" alt="MediaPlayer-Extended Icon"/>
 
-ITEC MediaPlayer
-================
+MediaPlayer-Extended
+====================
 
-The ITEC MediaPlayer library is a video player library for Android supporting
+The MediaPlayer-Extended library (f.k.a. ITEC MediaPlayer) is a video player library for Android supporting
 exact seeking to frames, playback speed adjustment, shader support, zooming & panning, frame extraction
 and a lot of media source protocols and formats, including DASH. It strives to be an API-compatible
 direct replacement for the Android `MediaPlayer` and `VideoView` components and builds upon the Android
@@ -112,11 +112,11 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:2.2.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:2.2.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:2.2.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:2.2.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:2.2.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:2.2.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3'
     }
 
 #### Local Maven repository ####
@@ -131,11 +131,11 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer:2.2.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:2.2.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:2.2.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3-SNAPSHOT'
-        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:2.2.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:2.2.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:2.2.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3-SNAPSHOT'
     }
 
 
@@ -191,7 +191,7 @@ extremely slow QR marker identification effect, and a nice Canny edge detection 
 
 This module is a demo app that incorporates all the main functionality of the MediaPlayer modules
 and serves as an example on how they can be used and extended. It is available for download as
-[ITEC MediaPlayer Demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) on the Google Play Store.
+[MediaPlayer-Extended Demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) on the Google Play Store.
 
 
 Known Issues
