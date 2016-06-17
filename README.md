@@ -34,8 +34,8 @@ Changelog
 * __v3.0.0__: Library renamed from ITEC MediaPlayer to MediaPlayer-Extended
  * Package renamed from `at.aau.itec.android.mediaplayer` to `net.protyposis.android.mediaplayer`
  * This version is functionally equivalent to v2.2.3. It is given a new major version because the changed
-   package name can be considered an incompatible API change, which requires a new major version
-   according to [SemVer](http://semver.org/spec/v2.0.0.html) (builds with an open-range version dependency would fail).
+   package name might be considered an incompatible API change, which requires a new major version
+   according to [SemVer](http://semver.org/spec/v2.0.0.html).
 * v2.2.3: fix playback speed change during pause
 * v2.2.2: correctly display rotated video and report rotated dimensions (on API21+, fixes issue #6)
 * v2.2.1: play back all remaining buffered audio at the end of stream
