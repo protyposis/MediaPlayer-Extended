@@ -3,7 +3,7 @@
 MediaPlayer-Extended
 ====================
 
-The MediaPlayer-Extended library (f.k.a. ITEC MediaPlayer) is a video player library for Android supporting
+The MediaPlayer-Extended library (f.k.a. ITEC MediaPlayer) is a media player library for Android supporting
 exact seeking to frames, playback speed adjustment, shader support, zooming & panning, frame extraction
 and a lot of media source protocols and formats, including DASH. It strives to be an API-compatible
 direct replacement for the Android `MediaPlayer` and `VideoView` components and builds upon the Android
@@ -31,6 +31,11 @@ Features
 Changelog
 ---------
 
+* __v3.0.0__: Library renamed from ITEC MediaPlayer to MediaPlayer-Extended
+ * Package renamed from `at.aau.itec.android.mediaplayer` to `net.protyposis.android.mediaplayer`
+ * This version is functionally equivalent to v2.2.3. It is given a new major version because the changed
+   package name can be considered an incompatible API change, which requires a new major version
+   according to [SemVer](http://semver.org/spec/v2.0.0.html) (builds with an open-range version dependency would fail).
 * v2.2.3: fix playback speed change during pause
 * v2.2.2: correctly display rotated video and report rotated dimensions (on API21+, fixes issue #6)
 * v2.2.1: play back all remaining buffered audio at the end of stream
