@@ -30,7 +30,7 @@ publish {
     artifactId = 'mediaplayer-gles-flowabs'
     publishVersion = libraryVersionString()
     desc = 'MediaPlayer-Extended GLES FlowAbs shaders'
-    website = 'https://github.com/protyposis/ITEC-MediaPlayer'
+    website = 'https://github.com/protyposis/MediaPlayer-Extended'
     licences = ['GPL-3.0']
 }
 

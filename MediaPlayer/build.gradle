@@ -29,7 +29,7 @@ publish {
     artifactId = 'mediaplayer'
     publishVersion = libraryVersionString()
     desc = 'MediaPlayer-Extended core module'
-    website = 'https://github.com/protyposis/ITEC-MediaPlayer'
+    website = 'https://github.com/protyposis/MediaPlayer-Extended'
     licences = ['GPL-3.0']
 }
 

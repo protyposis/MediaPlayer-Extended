@@ -30,7 +30,7 @@ publish {
     artifactId = 'mediaplayer-gles-qrmarker'
     publishVersion = libraryVersionString()
     desc = 'MediaPlayer-Extended GLES QrMarker shaders'
-    website = 'https://github.com/protyposis/ITEC-MediaPlayer'
+    website = 'https://github.com/protyposis/MediaPlayer-Extended'
     licences = ['GPL-3.0']
 }
 

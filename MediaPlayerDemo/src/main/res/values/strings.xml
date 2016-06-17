@@ -39,7 +39,7 @@
     <string name="parameter_reset_short">RST</string>
     <string name="description_headline">Welcome to the MediaPlayer-Extended Library Showcase!</string>
     <string name="description_text">This technical demo shows the key features of the library in a very simple app and serves as a reference on how to use the components in Java code. This app is not intended to be used as a video player application by end users. The library sources and a detailed description are available at the following link:</string>
-    <string name="library_url">http://github.com/protyposis/ITEC-MediaPlayer</string>
+    <string name="library_url">https://github.com/protyposis/MediaPlayer-Extended</string>
     <string name="uri_missing">no URI selected</string>
     <string name="feature_videoview">VideoView</string>
     <string name="feautre_videoview_description">VideoView replaces the VideoView of the Android API.</string>
