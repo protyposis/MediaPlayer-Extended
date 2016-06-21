@@ -110,6 +110,9 @@ your local Maven repository or (3) include the required gradle modules directly.
 The [JCenter](https://bintray.com/bintray/jcenter) Maven repository contains release builds of the
 library, usage is similar to any other Maven dependency:
 
+**JCenter currently does not resolve the packages of version 3.0.0, please use the old version 2.2.3
+(which is functionally equivalent to 3.0.0) in the meantime.**
+
     repositories {
         ...
         jcenter()
@@ -117,11 +120,11 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:2.2.3'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:2.2.3'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:2.2.3'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer:2.2.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-dash:2.2.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles:2.2.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3'
+        compile 'at.aau.itec.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3'
     }
 
 #### Local Maven repository ####
@@ -136,11 +139,11 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:2.2.3-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:2.2.3-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:2.2.3-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:2.2.3-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:2.2.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:3.0.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:3.0.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:3.0.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:3.0.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:3.0.0-SNAPSHOT'
     }
 
 
