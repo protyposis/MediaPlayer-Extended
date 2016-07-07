@@ -117,11 +117,11 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayermediaplayer:3.0.0'
-        compile 'net.protyposis.android.mediaplayermediaplayer-dash:3.0.0'
-        compile 'net.protyposis.android.mediaplayermediaplayer-gles:3.0.0'
-        compile 'net.protyposis.android.mediaplayermediaplayer-gles-flowabs:3.0.0'
-        compile 'net.protyposis.android.mediaplayermediaplayer-gles-qrmarker:3.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:3.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:3.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:3.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:3.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:3.0.0'
     }
 
 #### Local Maven repository ####
