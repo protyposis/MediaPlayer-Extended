@@ -110,6 +110,8 @@ public class DashParser {
         }
     }
 
+    private Date serverDate;
+
     /**
      * Parses an MPD XML file. This needs to be executed off the main thread, else a
      * NetworkOnMainThreadException gets thrown.
@@ -142,6 +144,9 @@ public class DashParser {
 
             // Determine this MPD's default BaseURL by removing the last path segment (which is the MPD file)
             Uri baseUrl = Uri.parse(uri.toString().substring(0, uri.toString().lastIndexOf("/") + 1));
+
+            // Get the current datetime from the server for live stream time syncing
+            serverDate = response.headers().getDate("Date");
 
             // Parse the MPD file
             mpd = parse(response.body().byteStream(), baseUrl);
@@ -382,10 +387,14 @@ public class DashParser {
                                 calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
                                 now = calendar.getTime();
 
+                                // sync local time with server time (from http date header)
+                                if(serverDate != null) {
+                                    now = serverDate;
+                                }
+
                                 /* Calculate the time delta between the availability start time
                                  * and the current time, for that we know at which position we
                                  * currently are in the live stream. */
-                                // TODO sync local time with server time (from http date header)?
                                 long availabilityDeltaTimeUs = (now.getTime() - mpd.availabilityStartTime.getTime()) * 1000;
 
                                 // shift by the period start
