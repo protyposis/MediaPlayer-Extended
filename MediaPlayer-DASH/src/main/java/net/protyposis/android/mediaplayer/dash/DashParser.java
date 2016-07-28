@@ -371,6 +371,7 @@ public class DashParser {
                         else {
                             representation.segmentDurationUs = segmentTemplate.calculateDurationUs();
                             int numSegments = (int) Math.ceil((double) mpd.mediaPresentationDurationUs / representation.segmentDurationUs);
+                            int dynamicStartNumberOffset = 0;
 
                             if(mpd.isDynamic) {
                                 // Simulate availabilityStartTime support by converting it to a startNumber
@@ -401,7 +402,7 @@ public class DashParser {
 
                                 // convert the delta time to the number of corresponding segments
                                 // add it to the start number (which by default is 0 if not specified)
-                                segmentTemplate.startNumber += (int)(availabilityDeltaTimeUs / representation.segmentDurationUs);
+                                dynamicStartNumberOffset = (int)(availabilityDeltaTimeUs / representation.segmentDurationUs);
                             }
 
                             // init segment
@@ -410,7 +411,7 @@ public class DashParser {
                             representation.initSegment = new Segment(processedInitUrl);
 
                             // media segments
-                            for (int i = segmentTemplate.startNumber; i < segmentTemplate.startNumber + numSegments; i++) {
+                            for (int i = segmentTemplate.startNumber + dynamicStartNumberOffset; i < segmentTemplate.startNumber + dynamicStartNumberOffset + numSegments; i++) {
                                 String processedMediaUrl = processMediaUrl(
                                         segmentTemplate.media, representation.id, i, representation.bandwidth, null);
                                 representation.segments.add(new Segment(processedMediaUrl));
