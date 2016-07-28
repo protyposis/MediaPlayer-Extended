@@ -41,24 +41,57 @@ public class MediaPlayer {
 
     public enum SeekMode {
         /**
-         * Seeks to the previous sync point. Fastest seek mode.
+         * Seeks to the previous sync point.
+         * This mode exists for backwards compatibility and is the same as {@link #FAST_TO_PREVIOUS_SYNC}.
          */
-        FAST,
+        @Deprecated
+        FAST(MediaExtractor.SEEK_TO_PREVIOUS_SYNC),
+
+        /**
+         * Seeks to the previous sync point.
+         * This seek mode equals Android MediaExtractor's {@link android.media.MediaExtractor#SEEK_TO_PREVIOUS_SYNC}.
+         */
+        FAST_TO_PREVIOUS_SYNC(MediaExtractor.SEEK_TO_PREVIOUS_SYNC),
+
+        /**
+         * Seeks to the next sync point.
+         * This seek mode equals Android MediaExtractor's {@link android.media.MediaExtractor#SEEK_TO_NEXT_SYNC}.
+         */
+        FAST_TO_NEXT_SYNC(MediaExtractor.SEEK_TO_NEXT_SYNC),
+
+        /**
+         * Seeks to to the closest sync point.
+         * This seek mode equals Android MediaExtractor's {@link android.media.MediaExtractor#SEEK_TO_CLOSEST_SYNC}.
+         */
+        FAST_TO_CLOSEST_SYNC(MediaExtractor.SEEK_TO_CLOSEST_SYNC),
+
         /**
          * Seeks to the exact frame if the seek time equals the frame time, else
          * to the following frame; this means that it will often seek one frame too far.
          */
-        PRECISE,
+        PRECISE(MediaExtractor.SEEK_TO_PREVIOUS_SYNC),
+
         /**
+         * Default mode.
          * Always seeks to the exact frame. Can cost maximally twice the time than the PRECISE mode.
          */
-        EXACT,
+        EXACT(MediaExtractor.SEEK_TO_PREVIOUS_SYNC),
 
         /**
          * Always seeks to the exact frame by skipping the decoding of all frames between the sync
          * and target frame, because of which it can result in block artifacts.
          */
-        FAST_EXACT
+        FAST_EXACT(MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+
+        private int baseSeekMode = MediaExtractor.SEEK_TO_PREVIOUS_SYNC;
+
+        SeekMode(int baseSeekMode) {
+            this.baseSeekMode = baseSeekMode;
+        }
+
+        public int getBaseSeekMode() {
+            return baseSeekMode;
+        }
     }
 
     /**
@@ -286,7 +319,7 @@ public class MediaPlayer {
                 mDecoders.decodeFrame(false);
             }
             if (mAudioPlayback != null) mAudioPlayback.pause(true);
-            mDecoders.seekTo(SeekMode.FAST, 0);
+            mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
         }
 
         // Create the playback loop handler thread
@@ -716,7 +749,7 @@ public class MediaPlayer {
         private void playInternal() throws IOException, InterruptedException {
             if(mDecoders.isEOS()) {
                 mCurrentPosition = 0;
-                mDecoders.seekTo(SeekMode.FAST, 0);
+                mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
             }
 
             // reset time (otherwise playback tries to "catch up" time after a pause)
@@ -836,7 +869,7 @@ public class MediaPlayer {
 
                 // If looping is on, seek back to the start...
                 if(mLooping) {
-                    mDecoders.seekTo(SeekMode.FAST, 0);
+                    mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
                     mDecoders.renderFrames();
                 }
                 // ... else just pause playback and wait for next command

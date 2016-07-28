@@ -115,7 +115,7 @@ public class SideBySideSeekTestActivity extends Activity {
                     });
                     if(++count[0] == videoViews.size()) {
                         mSpinner1.setSelection(0);
-                        mSpinner2.setSelection(2);
+                        mSpinner2.setSelection(5);
                     }
                 }
             });

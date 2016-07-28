@@ -496,7 +496,7 @@ abstract class MediaCodecDecoder {
         Log.d(TAG, "seeking to:                 " + seekTargetTimeUs);
         Log.d(TAG, "extractor current position: " + extractor.getSampleTime());
 
-        extractor.seekTo(seekTargetTimeUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+        extractor.seekTo(seekTargetTimeUs, seekMode.getBaseSeekMode());
 
         Log.d(TAG, "extractor new position:     " + extractor.getSampleTime());
 
