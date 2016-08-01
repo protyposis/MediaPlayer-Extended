@@ -64,5 +64,6 @@
     <string name="openvideo_description">Open a video file or DASH MPD from any app (e.g. the web browser), or select one of these options:</string>
     <string name="openvideo_pick">Pick a file</string>
     <string name="openvideo_type">Paste or type URL</string>
+    <string name="openvideo_dash_hint">Hint: If the URL to a DASH MPD does not end in the .mpd extension, you can hint a DASH stream by prepending \'dash://\' in front of the actual URL.</string>
 
 </resources>

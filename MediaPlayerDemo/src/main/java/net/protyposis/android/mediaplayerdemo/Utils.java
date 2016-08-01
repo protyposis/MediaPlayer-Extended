@@ -51,8 +51,16 @@ public class Utils {
 
     public static MediaSource uriToMediaSource(Context context, Uri uri) {
         MediaSource source = null;
-        if(uri.toString().endsWith(".mpd")) {
+
+        // A DASH source is either detected if the given URL has an .mpd extension or if the DASH
+        // pseudo protocol has been prepended.
+        if(uri.toString().endsWith(".mpd") || uri.toString().startsWith("dash://")) {
             AdaptationLogic adaptationLogic;
+
+            // Strip dash:// pseudo protocol
+            if(uri.toString().startsWith("dash://")) {
+                uri = Uri.parse(uri.toString().substring(7));
+            }
 
             //adaptationLogic = new ConstantPropertyBasedLogic(ConstantPropertyBasedLogic.Mode.HIGHEST_BITRATE);
             adaptationLogic = new SimpleRateBasedAdaptationLogic();
