@@ -82,6 +82,29 @@ and `GLVideoView` are equivalents of Android's `VideoView`.
 To migrate from the Android default classes to this library, just replace the imports in your Java headers. If
 there are any methods missing, fill free to open an issue on the issue tracker or submit a pull request.
 
+### API ###
+
+This are the most important additions to Android's default components:
+
+| Method                       | MediaPlayer | VideoView | GLVideoView | GLCameraView | Description |
+| ---------------------------- |:-----------:|:---------:|:-----------:|:------------:| ----------- |
+| `setDataSource(MediaSource)` | X           | X (setVideoSource) | X  |              | Sets a `MediaSource` (e.g. `UriSource`, `FileSource`, `DashSource`), see description below. |
+| `setSeekMode(SeekMode)`      | X           | X         | X           |              | Sets the seek mode (e.g. FAST, EXACT, ..., see the `SeekMode` enum). Default mode is EXACT. |
+| `getSeekMode()`              | X           | X         | X           |              | Gets the current seek mode. |
+| `setPlaybackSpeed(float)`    | X           | X         | X           |              | Sets the playback speed factor (e.g. 1.0 is normal speed, 0.5 is half speed, 2.0 is double speed). Audio pitch changes with the speed factor. |
+| `getPlaybackSpeed()`         | X           | X         | X           |              | Gets the current playback speed factor. |
+| `setZoom(float)`             |             |           | X           | X            | Sets the zoom factor into the picture (1.0 is full screen, 2.0 is 200% magnification, etc.). |
+| `getZoomLevel()`             |             |           | X           | X            | Gets the current zoom factor. |
+| `setPan(float, float)`       |             |           | X           | X            | Sets the panning of the zoomed picture into X and Y directions (0, 0 means center). |
+| `getPanX()`                  |             |           | X           | X            | Gets the current X panning. |
+| `getPanY()`                  |             |           | X           | X            | Gets the current Y panning. |
+| `addEffect(Effect)`          |             |           | X           | X            | Adds a GLES shader effect that implements the `Effect` interface and usually extends the abstract `ShaderEffect` class. See the demo app for an example on how to use and parameterize effects. Add and select the `NoEffect` effect to disable an active effect. |
+| `selectEffect(int)`          |             |           | X           | X            | Selects/activates a previously added GLES effect by its index (in the order of effect addition). |
+| `captureFrame()`             |             |           | X           | X            | Requests the video frame to be captured, which will be returned as Bitmap through the `setOnFrameCapturedCallback(OnFrameCapturedCallback)` callback. |
+| `supportsCameraSwitch()`     |             |           |             | X            | Checks if the device has multiple cameras. |
+| `switchCamera()`             |             |           |             | X            | Switches to the next camera, usually front to back and back to front. |
+
+
 ### MediaSource ###
 
 This library adds additional methods to set the playback source, namely
@@ -94,7 +117,8 @@ implementations are provided:
  * `FileSource` expects a `File` instance (e.g. `new File(String pathToFile)`), or two instances to
    separate audio and video files.
  * `DashSource` (in the MediaPlayer-DASH module) expects an URI to an MPD file/resource, or a custom
-   built or parsed `MPD` object instance.
+   built or parsed `MPD` object instance, and an object implementing `AdaptationLogic` (e.g. one of
+   the provided `ConstantPropertyBasedLogic` or `SimpleRateBasedAdaptationLogic`).
 
 Additional media sources can be built by implementing the `MediaSource` interface. The advantage of this
 interface is that it provides a way to implement data sources above the file level, and that it can
