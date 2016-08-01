@@ -251,8 +251,12 @@ public class DashParser {
                 if(tagName.equals("SegmentTemplate")) {
                     segmentTemplate = readSegmentTemplate(parser, baseUrl, null);
                 } else if(tagName.equals("Representation")) {
-                    adaptationSet.representations.add(readRepresentation(
-                            mpd, period, adaptationSet, baseUrl, parser, segmentTemplate));
+                    try {
+                        adaptationSet.representations.add(readRepresentation(
+                                mpd, period, adaptationSet, baseUrl, parser, segmentTemplate));
+                    } catch (Exception e) {
+                        Log.e(TAG, "error reading representation: " + e.getMessage(), e);
+                    }
                 }
             } else if(type == XmlPullParser.END_TAG) {
                 String tagName = parser.getName();
