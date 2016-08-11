@@ -104,5 +104,7 @@ public class TexturedRectangle extends Shape {
 
         // finally, render the rectangle
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+
+        GLUtils.checkError("TexturedRectangle.draw");
     }
 }

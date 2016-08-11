@@ -20,6 +20,7 @@
 package net.protyposis.android.mediaplayer.effects;
 
 import net.protyposis.android.mediaplayer.gles.Framebuffer;
+import net.protyposis.android.mediaplayer.gles.GLUtils;
 import net.protyposis.android.mediaplayer.gles.Texture2D;
 import net.protyposis.android.mediaplayer.gles.TextureShaderProgram;
 import net.protyposis.android.mediaplayer.gles.TexturedRectangle;
