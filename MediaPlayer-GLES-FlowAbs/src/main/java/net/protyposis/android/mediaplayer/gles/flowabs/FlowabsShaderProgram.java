@@ -41,17 +41,19 @@ public class FlowabsShaderProgram extends TextureShaderProgram {
 
     @Override
     protected String preprocessFragmentShaderCode(String fragmentShaderCode) {
-        /* add precision specifier which is mandatory in GLES but missing in the flowabs shaders
+        /* Add precision specifier which is mandatory in GLES but missing in the flowabs shaders
          * because they are normal OpenGL 2.0 shaders.
-         */
-        fragmentShaderCode = "precision highp float;\n" + fragmentShaderCode;
+         * Add v_TextureCoord declaration */
+        fragmentShaderCode = "precision highp float;\n" +
+                "\n" +
+                "varying vec2 v_TextureCoord;\n" +
+                fragmentShaderCode;
 
-        /* Replace uv coordinate calculation fitted for OpenGL GL_CLAMP with one fitted
-         * for GLES GL_CLAMP_TO_EDGE for a pixel perfect mapping.
-         */
+        /* Replace uv coordinate calculation with v_TextureCoord because usage of gl_FragCoord results
+         * in an error 0x501 on some platforms. */
         fragmentShaderCode = fragmentShaderCode.replace(
                 "vec2 uv = gl_FragCoord.xy / img_size;",
-                "vec2 uv = vec2(0.5, 0.5) / img_size + gl_FragCoord.xy / img_size;");
+                "vec2 uv = v_TextureCoord;");
 
         return fragmentShaderCode;
     }
