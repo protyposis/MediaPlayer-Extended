@@ -243,6 +243,7 @@ Tested and confirmed working on:
 
 * LG Nexus 4 (Android 4.4.4/5.0/5.0.1/5.1.1, Adreno 320)
 * LG Nexus 5 (Android 4.4.4/5.0/5.0.1, Adreno 330)
+* LG Nexus 5X (Android 6.0.1, Adreno 418)
 * ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs)
 * ASUS Nexus 7 2013 (Android 4.4.4/5.0/5.0.2, Adreno 320)
 * ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs)
