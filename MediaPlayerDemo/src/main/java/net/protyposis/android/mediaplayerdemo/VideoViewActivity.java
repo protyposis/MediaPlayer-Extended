@@ -49,6 +49,7 @@ public class VideoViewActivity extends Activity {
     private int mVideoPosition;
     private float mVideoPlaybackSpeed;
     private boolean mVideoPlaying;
+    private MediaSource mMediaSource;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -153,9 +154,11 @@ public class VideoViewActivity extends Activity {
             }
         });
 
-        Utils.uriToMediaSourceAsync(this, mVideoUri, new Utils.MediaSourceAsyncCallbackHandler() {
+        Utils.MediaSourceAsyncCallbackHandler mMediaSourceAsyncCallbackHandler =
+                new Utils.MediaSourceAsyncCallbackHandler() {
             @Override
             public void onMediaSourceLoaded(MediaSource mediaSource) {
+                mMediaSource = mediaSource;
                 mVideoView.setVideoSource(mediaSource);
                 mVideoView.seekTo(mVideoPosition);
                 mVideoView.setPlaybackSpeed(mVideoPlaybackSpeed);
@@ -168,7 +171,15 @@ public class VideoViewActivity extends Activity {
             public void onException(Exception e) {
                 Log.e(TAG, "error loading video", e);
             }
-        });
+        };
+        if(mMediaSource == null) {
+            // Convert uri to media source asynchronously to avoid UI blocking
+            // It could take a while, e.g. if it's a DASH source and needs to be preprocessed
+            Utils.uriToMediaSourceAsync(this, mVideoUri, mMediaSourceAsyncCallbackHandler);
+        } else {
+            // Media source is already here, just use it
+            mMediaSourceAsyncCallbackHandler.onMediaSourceLoaded(mMediaSource);
+        }
     }
 
     @Override
