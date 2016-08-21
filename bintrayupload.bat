@@ -8,5 +8,5 @@ SET apikey=%2
 SET modules="MediaPlayer" "MediaPlayer-DASH"
 
 FOR %%m in (%modules%) DO (
-	gradlew %%~m:clean %%~m:build %%~m:bintrayUpload -PbintrayUser=%username% -PbintrayKey=%apikey% -PdryRun=false
+	gradlew %%~m:clean %%~m:build %%~m:bintrayUpload -PbintrayUser=%username% -PbintrayKey=%apikey% -PdryRun=false --configure-on-demand
 )
