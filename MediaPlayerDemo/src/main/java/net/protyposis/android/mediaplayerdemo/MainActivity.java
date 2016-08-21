@@ -52,8 +52,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
     private Button mVideoSelectButton;
     private Button mVideoSelect2Button;
     private Button mVideoViewButton;
-    private Button mGLVideoViewButton;
-    private Button mGLCameraViewButton;
     private Button mSideBySideButton;
     private Button mSideBySideSeekTestButton;
 
@@ -76,8 +74,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
         mVideoSelectButton = (Button) findViewById(R.id.videoselect);
         mVideoSelect2Button = (Button) findViewById(R.id.videoselect2);
         mVideoViewButton = (Button) findViewById(R.id.videoview);
-        mGLVideoViewButton = (Button) findViewById(R.id.glvideoview);
-        mGLCameraViewButton = (Button) findViewById(R.id.glcameraview);
         mSideBySideButton = (Button) findViewById(R.id.sidebyside);
         mSideBySideSeekTestButton = (Button) findViewById(R.id.sidebysideseektest);
         mVideoUriText = (TextView) findViewById(R.id.videouri);
@@ -113,18 +109,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, VideoViewActivity.class).setData(mVideoUri));
-            }
-        });
-        mGLVideoViewButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, GLVideoViewActivity.class).setData(mVideoUri));
-            }
-        });
-        mGLCameraViewButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, GLCameraViewActivity.class).setData(mVideoUri));
             }
         });
         mSideBySideButton.setOnClickListener(new View.OnClickListener() {
@@ -214,7 +198,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
             mVideoUriText.setText(getString(R.string.uri_missing));
 
             mVideoViewButton.setEnabled(false);
-            mGLVideoViewButton.setEnabled(false);
             mSideBySideButton.setEnabled(false);
             mSideBySideSeekTestButton.setEnabled(false);
         } else {
@@ -246,7 +229,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                     mVideoUri = uri;
 
                     mVideoViewButton.setEnabled(true);
-                    mGLVideoViewButton.setEnabled(true);
                     mSideBySideButton.setEnabled(!(mediaSource instanceof DashSource));
                     mSideBySideSeekTestButton.setEnabled(true);
 
@@ -269,9 +251,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
         Map<String, Class> components = new LinkedHashMap<String, Class>();
         components.put("MediaPlayer", net.protyposis.android.mediaplayer.BuildConfig.class);
         components.put("MediaPlayer-DASH", net.protyposis.android.mediaplayer.dash.BuildConfig.class);
-        components.put("MediaPlayer-GLES", net.protyposis.android.mediaplayer.gles.BuildConfig.class);
-        components.put("MediaPlayer-GLES-FlowAbs", net.protyposis.android.mediaplayer.gles.flowabs.BuildConfig.class);
-        components.put("MediaPlayer-GLES-QrMarker", net.protyposis.android.mediaplayer.gles.qrmarker.BuildConfig.class);
         components.put("MediaPlayerDemo", net.protyposis.android.mediaplayerdemo.BuildConfig.class);
 
         Iterator<String> componentIterator = components.keySet().iterator();

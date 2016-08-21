@@ -11,9 +11,6 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/MediaPlayer" />
             <option value="$PROJECT_DIR$/MediaPlayer-DASH" />
-            <option value="$PROJECT_DIR$/MediaPlayer-GLES" />
-            <option value="$PROJECT_DIR$/MediaPlayer-GLES-FlowAbs" />
-            <option value="$PROJECT_DIR$/MediaPlayer-GLES-QrMarker" />
             <option value="$PROJECT_DIR$/MediaPlayerDemo" />
           </set>
         </option>
@@ -22,9 +19,6 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/MediaPlayer" />
             <option value="$PROJECT_DIR$/MediaPlayer-DASH" />
-            <option value="$PROJECT_DIR$/MediaPlayer-GLES" />
-            <option value="$PROJECT_DIR$/MediaPlayer-GLES-FlowAbs" />
-            <option value="$PROJECT_DIR$/MediaPlayer-GLES-QrMarker" />
             <option value="$PROJECT_DIR$/MediaPlayerDemo" />
           </set>
         </option>

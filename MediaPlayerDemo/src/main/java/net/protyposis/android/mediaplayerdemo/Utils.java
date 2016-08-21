@@ -35,7 +35,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import net.protyposis.android.mediaplayer.GLTextureView;
 import net.protyposis.android.mediaplayer.MediaSource;
 import net.protyposis.android.mediaplayer.UriSource;
 import net.protyposis.android.mediaplayer.dash.AdaptationLogic;
@@ -99,29 +98,6 @@ public class Utils {
             Log.e(TAG, "failed to save frame", e);
         }
         return false;
-    }
-
-    public static class OnFrameCapturedCallback implements GLTextureView.OnFrameCapturedCallback {
-
-        private Context mContext;
-        private String mFileNamePrefix;
-
-        public OnFrameCapturedCallback(Context context, String fileNamePrefix) {
-            mContext = context;
-            mFileNamePrefix = fileNamePrefix;
-        }
-
-        @Override
-        public void onFrameCaptured(Bitmap bitmap) {
-            File targetFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-                    mFileNamePrefix + System.currentTimeMillis() + ".png");
-            if(Utils.saveBitmapToFile(bitmap, targetFile)) {
-                Toast.makeText(mContext, "Saved frame to " + targetFile.getPath(),
-                        Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(mContext, "Failed saving frame", Toast.LENGTH_LONG).show();
-            }
-        }
     }
 
     private static class LoadMediaSourceAsyncTask extends AsyncTask<Uri, Void, MediaSource> {

@@ -27,14 +27,11 @@
     <string name="action_getcurrentposition">Toast current position</string>
     <string name="title_activity_side_by_side">Android VideoView vs. MPX VideoView</string>
     <string name="title_activity_videoview">VideoView Demo</string>
-    <string name="title_activity_glvideoview">GLVideoView Shader Demo</string>
-    <string name="title_activity_glcameraview">GLCameraView Shader Demo</string>
     <string name="videoview_sbs">VideoView Comparison</string>
     <string name="androidvv">Android VideoView</string>
     <string name="mpxvv">MPX VideoView</string>
     <string name="toggle_parameters">Parameters</string>
     <string name="save_frame">Save Frame</string>
-    <string name="switch_camera">Switch Camera</string>
     <string name="effects">Effects</string>
     <string name="parameter_reset_short">RST</string>
     <string name="description_headline">Welcome to the MediaPlayer-Extended Library Showcase!</string>
@@ -43,12 +40,8 @@
     <string name="uri_missing">no URI selected</string>
     <string name="feature_videoview">VideoView</string>
     <string name="feautre_videoview_description">VideoView replaces the VideoView of the Android API.</string>
-    <string name="feature_glvideoview">GLVideoView (with shaders)</string>
-    <string name="feature_glvideoview_description">GLVideoView is a VideoView with an OpenGL ES surface which can easily be enriched with custom GLSL shaders.</string>
     <string name="feature_sidebyside">MPX ViewView / Android VideoView comparison</string>
     <string name="feature_sidebyside_description">A side by side comparison of both implementations. Not available for DASH content.</string>
-    <string name="feature_glcameraview">GLCameraView (with shaders)</string>
-    <string name="feature_glcameraview_description">GLCameraView extends from the same base as GLViewView and also provides GLES functionality.</string>
     <string name="copyright_notice">Copyright © 2014–2016 Mario Guggenberger. Published under the GPLv3. http://www.gnu.org/licenses/gpl-3.0</string>
     <string name="open_source_licenses">Open Source Licenses</string>
     <string name="action_halfspeed">0.5x Speed</string>

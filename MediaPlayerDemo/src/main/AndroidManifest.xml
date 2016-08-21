@@ -6,10 +6,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- needed to save frames -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <!-- camera preview demo -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -57,14 +53,6 @@
         <activity
             android:name=".VideoViewActivity"
             android:label="@string/title_activity_videoview" >
-        </activity>
-        <activity
-            android:name=".GLVideoViewActivity"
-            android:label="@string/title_activity_glvideoview" >
-        </activity>
-        <activity
-            android:name=".GLCameraViewActivity"
-            android:label="@string/title_activity_glcameraview" >
         </activity>
     </application>
 

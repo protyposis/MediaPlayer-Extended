@@ -5,9 +5,6 @@
       <module fileurl="file://$PROJECT_DIR$/MediaCodecPlayer.iml" filepath="$PROJECT_DIR$/MediaCodecPlayer.iml" />
       <module fileurl="file://$PROJECT_DIR$/MediaPlayer/MediaPlayer.iml" filepath="$PROJECT_DIR$/MediaPlayer/MediaPlayer.iml" />
       <module fileurl="file://$PROJECT_DIR$/MediaPlayer-DASH/MediaPlayer-DASH.iml" filepath="$PROJECT_DIR$/MediaPlayer-DASH/MediaPlayer-DASH.iml" />
-      <module fileurl="file://$PROJECT_DIR$/MediaPlayer-GLES/MediaPlayer-GLES.iml" filepath="$PROJECT_DIR$/MediaPlayer-GLES/MediaPlayer-GLES.iml" />
-      <module fileurl="file://$PROJECT_DIR$/MediaPlayer-GLES-FlowAbs/MediaPlayer-GLES-FlowAbs.iml" filepath="$PROJECT_DIR$/MediaPlayer-GLES-FlowAbs/MediaPlayer-GLES-FlowAbs.iml" />
-      <module fileurl="file://$PROJECT_DIR$/MediaPlayer-GLES-QrMarker/MediaPlayer-GLES-QrMarker.iml" filepath="$PROJECT_DIR$/MediaPlayer-GLES-QrMarker/MediaPlayer-GLES-QrMarker.iml" />
       <module fileurl="file://$PROJECT_DIR$/MediaPlayerDemo/MediaPlayerDemo.iml" filepath="$PROJECT_DIR$/MediaPlayerDemo/MediaPlayerDemo.iml" />
     </modules>
   </component>
