@@ -50,6 +50,11 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
         codec.configure(format, mVideoSurface, null, 0);
     }
 
+    public void updateSurface(Surface videoSurface) {
+        mVideoSurface = videoSurface;
+        reinitCodec();
+    }
+
     public int getVideoWidth() {
         MediaFormat format = getFormat();
         return format != null ? (int)(format.getInteger(MediaFormat.KEY_HEIGHT)

@@ -370,8 +370,19 @@ public class MediaPlayer {
         } else {
             mSurface = null;
         }
-        setVideoRenderTimingMode(VideoRenderTimingMode.AUTO);
-        updateSurfaceScreenOn();
+
+        if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
+            //mDecoders.getVideoDecoder().updateSurface(mSurface);
+        }
+
+        if(mHandler == null) {
+            // Player not prepared yet, so we can set the timing mode
+            setVideoRenderTimingMode(VideoRenderTimingMode.AUTO);
+            updateSurfaceScreenOn();
+        } else {
+            // Player is already prepared, just change the surface
+            mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, mSurface));
+        }
     }
 
     /**
@@ -383,8 +394,15 @@ public class MediaPlayer {
             Log.w(TAG, "setScreenOnWhilePlaying(true) is ineffective for Surface");
         }
         mSurfaceHolder = null;
-        setVideoRenderTimingMode(VideoRenderTimingMode.SLEEP); // the surface could be a GL texture, so we switch to sleep timing mode
-        updateSurfaceScreenOn();
+
+        if(mHandler == null) {
+            // Player not prepared yet, so we can set the timing mode
+            setVideoRenderTimingMode(VideoRenderTimingMode.SLEEP); // the surface could be a GL texture, so we switch to sleep timing mode
+            updateSurfaceScreenOn();
+        } else {
+            // Player is already prepared, just change the surface
+            mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, mSurface));
+        }
     }
 
     public void start() {
@@ -599,7 +617,7 @@ public class MediaPlayer {
      */
     void setVideoRenderTimingMode(VideoRenderTimingMode mode) {
         if(mPlaybackThread != null) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("called after prepare/prepareAsync");
         }
         if(mode == VideoRenderTimingMode.SURFACEVIEW_TIMESTAMP_API21 && Build.VERSION.SDK_INT < 21) {
             throw new IllegalArgumentException("this mode needs min API 21");
@@ -623,6 +641,8 @@ public class MediaPlayer {
         private static final int PLAYBACK_SEEK = 4;
         private static final int PLAYBACK_RELEASE = 5;
         private static final int PLAYBACK_PAUSE_AUDIO = 6;
+
+        static final int DECODER_SET_SURFACE = 100;
 
         private boolean mPaused;
         private MediaCodecDecoder.FrameInfo mVideoFrameInfo;
@@ -723,6 +743,10 @@ public class MediaPlayer {
                     case PLAYBACK_RELEASE:
                         releaseInternal();
                         return true;
+                    case DECODER_SET_SURFACE:
+                        if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
+                            mDecoders.getVideoDecoder().updateSurface((Surface) msg.obj);
+                        }
                     default:
                         Log.d(TAG, "unknown/invalid message");
                         return false;
