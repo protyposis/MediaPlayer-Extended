@@ -39,12 +39,16 @@ public class VideoViewActivity extends Activity {
 
     private static final String TAG = VideoViewActivity.class.getSimpleName();
 
-    private Uri mVideoUri;
     private VideoView mVideoView;
     private ProgressBar mProgress;
 
     private MediaController.MediaPlayerControl mMediaPlayerControl;
     private MediaController mMediaController;
+
+    private Uri mVideoUri;
+    private int mVideoPosition;
+    private float mVideoPlaybackSpeed;
+    private boolean mVideoPlaying;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,33 +67,43 @@ public class VideoViewActivity extends Activity {
 
         mProgress.setVisibility(View.VISIBLE);
 
-        if(savedInstanceState != null) {
-            initPlayer((Uri)savedInstanceState.getParcelable("uri"),
-                    savedInstanceState.getInt("position"),
-                    savedInstanceState.getFloat("playbackSpeed", 1.0f),
-                    savedInstanceState.getBoolean("playing")
-            );
-        } else {
-            initPlayer(getIntent().getData(), -1, 1.0f, false);
-        }
+        // Init video playback state (will eventually be overwritten by saved instance state)
+        mVideoUri = getIntent().getData();
+        mVideoPosition = 0;
+        mVideoPlaybackSpeed = 0;
+        mVideoPlaying = false;
     }
 
-    private void initPlayer(Uri uri, final int position, final float speed, final boolean playback) {
-        mVideoUri = uri;
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        mVideoUri = savedInstanceState.getParcelable("uri");
+        mVideoPosition = savedInstanceState.getInt("position");
+        mVideoPlaybackSpeed = savedInstanceState.getInt("playbackSpeed");
+        mVideoPlaying = savedInstanceState.getBoolean("playing");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        initPlayer();
+    }
+
+    private void initPlayer() {
         getActionBar().setSubtitle(mVideoUri+"");
 
         mVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer vp) {
-                if (position > 0) {
-                    mVideoView.seekTo(position);
+                if (mVideoPosition > 0) {
+                    mVideoView.seekTo(mVideoPosition);
                 } else {
                     mVideoView.seekTo(0); // display first frame
                 }
 
-                mVideoView.setPlaybackSpeed(speed);
+                mVideoView.setPlaybackSpeed(mVideoPlaybackSpeed);
 
-                if (playback) {
+                if (mVideoPlaying) {
                     mVideoView.start();
                 }
 
@@ -151,7 +165,7 @@ public class VideoViewActivity extends Activity {
             }
         });
 
-        Utils.uriToMediaSourceAsync(this, uri, new Utils.MediaSourceAsyncCallbackHandler() {
+        Utils.uriToMediaSourceAsync(this, mVideoUri, new Utils.MediaSourceAsyncCallbackHandler() {
             @Override
             public void onMediaSourceLoaded(MediaSource mediaSource) {
                 mVideoView.setVideoSource(mediaSource);
@@ -232,11 +246,15 @@ public class VideoViewActivity extends Activity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        if(mVideoUri != null) {
+        if (mVideoView != null) {
+            mVideoPosition = mVideoView.getCurrentPosition();
+            mVideoPlaybackSpeed = mVideoView.getPlaybackSpeed();
+            mVideoPlaying = mVideoView.isPlaying();
+            // the uri is stored in the base activity
             outState.putParcelable("uri", mVideoUri);
-            outState.putBoolean("playing", mVideoView.isPlaying());
-            outState.putInt("position", mVideoView.getCurrentPosition());
+            outState.putInt("position", mVideoPosition);
             outState.putFloat("playbackSpeed", mVideoView.getPlaybackSpeed());
+            outState.putBoolean("playing", mVideoPlaying);
         }
     }
 }
