@@ -92,6 +92,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         mTargetState = STATE_IDLE;
         mSource = source;
         mSeekWhenPrepared = 0;
+        mPlaybackSpeedWhenPrepared = 1;
         openVideo();
         requestLayout();
         invalidate();
