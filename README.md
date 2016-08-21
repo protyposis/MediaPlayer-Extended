@@ -300,4 +300,4 @@ License
 -------
 
 Copyright (C) 2014, 2015, 2016 Mario Guggenberger <mg@protyposis.net>.
-This project is released under the terms of the GNU General Public License. See `LICENSE` for details.
+Released under the Apache 2.0 license. See `LICENSE` for details.
