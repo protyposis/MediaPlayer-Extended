@@ -480,7 +480,6 @@ public class MediaPlayer {
     public void stop() {
         if(mPlaybackThread != null) {
             mPlaybackThread.release();
-            mPlaybackThread.quitSafelyCompat();
             mPlaybackThread = null;
         }
         stayAwake(false);
@@ -682,37 +681,30 @@ public class MediaPlayer {
             mHandler.obtainMessage(PLAYBACK_SEEK, usec).sendToTarget();
         }
 
-        public void release() {
-            // Set this flag so the loop does not schedule next loop iteration
-            mPaused = true;
-
-            // Remove other events waiting in line to make the destroy happen faster
-            mEventHandler.removeMessages(PLAYBACK_SEEK);
-            mEventHandler.removeMessages(PLAYBACK_LOOP);
-
-            mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
-        }
-
-        public boolean quitSafelyCompat() {
-            if(Build.VERSION.SDK_INT < 18) {
-                // quitSafely not existing below API 18, workaround is needed
-                if(isAlive()) {
-                    synchronized (this) {
-                        while (mHandler.hasMessages(PLAYBACK_RELEASE)) {
-                            try {
-                                // wait for #releaseInternal to finish and notify
-                                wait();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                            }
-                        }
-                    }
-                    return true;
-                }
-                return false;
-            } else {
-                return super.quitSafely();
+        private void release() {
+            if(!isAlive()) {
+                return;
             }
+
+            synchronized (this) {
+                // Set this flag so the loop does not schedule next loop iteration
+                mPaused = true;
+
+                // Remove other events waiting in line to make the destroy happen faster
+                mEventHandler.removeMessages(PLAYBACK_SEEK);
+                mEventHandler.removeMessages(PLAYBACK_LOOP);
+
+                mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
+
+                // wait for #releaseInternal to finish and notify
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "interrupted", e);
+                }
+            }
+
+            Log.d(TAG, "released");
         }
 
         @Override
