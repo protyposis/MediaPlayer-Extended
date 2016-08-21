@@ -41,12 +41,24 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     private static final String TAG = VideoView.class.getSimpleName();
 
+    private static final int STATE_ERROR              = -1;
+    private static final int STATE_IDLE               = 0;
+    private static final int STATE_PREPARING          = 1;
+    private static final int STATE_PREPARED           = 2;
+    private static final int STATE_PLAYING            = 3;
+    private static final int STATE_PAUSED             = 4;
+    private static final int STATE_PLAYBACK_COMPLETED = 5;
+
+    private int mCurrentState = STATE_IDLE;
+    private int mTargetState  = STATE_IDLE;
+
     private MediaSource mSource;
     private MediaPlayer mPlayer;
     private SurfaceHolder mSurfaceHolder;
     private int mVideoWidth;
     private int mVideoHeight;
     private int mSeekWhenPrepared;
+    private float mPlaybackSpeedWhenPrepared;
 
     private MediaPlayer.OnPreparedListener mOnPreparedListener;
     private MediaPlayer.OnSeekListener mOnSeekListener;
@@ -76,6 +88,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
     }
 
     public void setVideoSource(MediaSource source) {
+        mCurrentState = STATE_IDLE;
+        mTargetState = STATE_IDLE;
         mSource = source;
         mSeekWhenPrepared = 0;
         openVideo();
@@ -144,6 +158,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         final Handler exceptionHandler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
+                mCurrentState = STATE_ERROR;
+                mTargetState = STATE_ERROR;
                 mErrorListener.onError(mPlayer, MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
                 return true;
             }
@@ -167,6 +183,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
                     // when it fails, and to stay in sync which the Android VideoView that does
                     // the same.
                     mPlayer.prepareAsync();
+                    mCurrentState = STATE_PREPARING;
 
                     Log.d(TAG, "video opened");
                 } catch (IOException e) {
@@ -285,24 +302,42 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     @Override
     public void start() {
-        mPlayer.start();
+        if(isInPlaybackState()) {
+            mPlayer.start();
+        } else {
+            mTargetState = STATE_PLAYING;
+        }
     }
 
     @Override
     public void pause() {
-        mPlayer.pause();
+        if(isInPlaybackState()) {
+            mPlayer.pause();
+        }
+        mTargetState = STATE_PAUSED;
     }
 
     public void stopPlayback() {
-        mPlayer.stop();
+        if(mPlayer != null) {
+            mPlayer.stop();
+            mCurrentState = STATE_IDLE;
+            mTargetState = STATE_IDLE;
+        }
     }
 
     public void setPlaybackSpeed(float speed) {
-        mPlayer.setPlaybackSpeed(speed);
+        if(isInPlaybackState()) {
+            mPlayer.setPlaybackSpeed(speed);
+        }
+        mPlaybackSpeedWhenPrepared = speed;
     }
 
     public float getPlaybackSpeed() {
-        return mPlayer.getPlaybackSpeed();
+        if(isInPlaybackState()) {
+            return mPlayer.getPlaybackSpeed();
+        } else {
+            return mPlaybackSpeedWhenPrepared;
+        }
     }
 
     @Override
@@ -334,7 +369,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     @Override
     public void seekTo(int msec) {
-        if(mPlayer != null) {
+        if(isInPlaybackState()) {
             mPlayer.seekTo(msec);
             mSeekWhenPrepared = 0;
         } else {
@@ -348,6 +383,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     public void setSeekMode(MediaPlayer.SeekMode seekMode) {
         mPlayer.setSeekMode(seekMode);
+    }
+
+    private boolean isInPlaybackState() {
+        return mPlayer != null && mCurrentState >= STATE_PREPARING;
     }
 
     @Override
@@ -384,6 +423,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             new MediaPlayer.OnPreparedListener() {
         @Override
         public void onPrepared(MediaPlayer mp) {
+            mCurrentState = STATE_PREPARED;
+
+            setPlaybackSpeed(mPlaybackSpeedWhenPrepared);
+
             if(mOnPreparedListener != null) {
                 mOnPreparedListener.onPrepared(mp);
             }
@@ -391,6 +434,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             int seekToPosition = mSeekWhenPrepared;  // mSeekWhenPrepared may be changed after seekTo() call
             if (seekToPosition != 0) {
                 seekTo(seekToPosition);
+            }
+
+            if(mTargetState == STATE_PLAYING) {
+                start();
             }
         }
     };
@@ -428,6 +475,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
+            mCurrentState = STATE_PLAYBACK_COMPLETED;
+            mTargetState = STATE_PLAYBACK_COMPLETED;
             if(mOnCompletionListener != null) {
                 mOnCompletionListener.onCompletion(mp);
             }
@@ -438,6 +487,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             new MediaPlayer.OnErrorListener() {
         @Override
         public boolean onError(MediaPlayer mp, int what, int extra) {
+            mCurrentState = STATE_ERROR;
+            mTargetState = STATE_ERROR;
             if(mOnErrorListener != null) {
                 return mOnErrorListener.onError(mp, what, extra);
             }
