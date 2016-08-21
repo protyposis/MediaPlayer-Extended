@@ -3,12 +3,11 @@
 MediaPlayer-Extended
 ====================
 
-The MediaPlayer-Extended library (f.k.a. ITEC MediaPlayer) is a media player library for Android supporting
-exact seeking to frames, playback speed adjustment, shader support, zooming & panning, frame extraction
-and a lot of media source protocols and formats, including DASH. It strives to be an API-compatible
-direct replacement for the Android `MediaPlayer` and `VideoView` components and builds upon the Android
-`MediaExtractor` and `MediaCodec` API components. It is very lightweight, easy to use, makes native
-code / NDK fiddling unnecessary, and works from Android 4.1 up.
+The MediaPlayer-Extended library is an API-compatible media player library for Android supporting
+exact seeking to frames, playback speed adjustment, and DASH playback.
+It strives to be a direct replacement for the Android `MediaPlayer` and `VideoView`
+components and builds upon the Android `MediaExtractor` and `MediaCodec` API components.
+It is very lightweight, easy to use, makes native code / NDK fiddling unnecessary, and works from Android 4.1 up.
 
 A [demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) is available on the Google Play Store.
 
@@ -19,18 +18,23 @@ Features
  * Direct replacement for Android components
  * Frame-exact seeking
  * Playback speed adjustment
- * GLES shader support
- * Picture zooming/panning support
- * Frame extraction
  * Local files and network sources
  * Supports all Android [network protocols and media formats](http://developer.android.com/guide/appendix/media-formats.html)
  * DASH support
  * Lightweight (all components total to ~100kB)
 
+For the GLES hardware accelerated view with zooming/panning, shader effects and frame grabbing, that
+was part of this library until v3.x, please check [Spectaculum](https://github.com/protyposis/Spectaculum).
+
 
 Changelog
 ---------
 
+* __v4.0.0__: GLES components removed, license changed, stability improvements
+ * GLES components have been migrated to the [Spectaculum](https://github.com/protyposis/Spectaculum) library
+ * License changed from GPLv3 to Apache 2.0
+ * stability improvements in VideoView
+ * MediaPlayer.release() is now blocking until all resources are released
 * v3.1.0: add seek modes from Android's MediaPlayer, bugfixes in the DASH MPD parser
 * __v3.0.0__: Library renamed from ITEC MediaPlayer to MediaPlayer-Extended
  * Package renamed from `at.aau.itec.android.mediaplayer` to `net.protyposis.android.mediaplayer`
@@ -68,8 +72,6 @@ Requirements
 ------------
 
  * Android API 16+ (Android 4.1 Jelly Bean)
- * optional: Adreno GPU
- * optional: OpenGL ES 3.0
 
 
 Usage
@@ -77,32 +79,22 @@ Usage
 
 Usage is very simple because the library's aim is to be API-compatible with the default Android classes.
 The `MediaPlayer` in this library is the equivalent of Android's `MediaPlayer`, the `VideoView`
-and `GLVideoView` are equivalents of Android's `VideoView`.
+is the equivalent of Android's `VideoView`.
 
 To migrate from the Android default classes to this library, just replace the imports in your Java headers. If
 there are any methods missing, fill free to open an issue on the issue tracker or submit a pull request.
 
 ### API ###
 
-This are the most important additions to Android's default components:
+This are the important additions to Android's default components:
 
-| Method                       | MediaPlayer | VideoView | GLVideoView | GLCameraView | Description |
-| ---------------------------- |:-----------:|:---------:|:-----------:|:------------:| ----------- |
-| `setDataSource(MediaSource)` | X           | X (setVideoSource) | X  |              | Sets a `MediaSource` (e.g. `UriSource`, `FileSource`, `DashSource`), see description below. |
-| `setSeekMode(SeekMode)`      | X           | X         | X           |              | Sets the seek mode (e.g. FAST, EXACT, ..., see the `SeekMode` enum). Default mode is EXACT. |
-| `getSeekMode()`              | X           | X         | X           |              | Gets the current seek mode. |
-| `setPlaybackSpeed(float)`    | X           | X         | X           |              | Sets the playback speed factor (e.g. 1.0 is normal speed, 0.5 is half speed, 2.0 is double speed). Audio pitch changes with the speed factor. |
-| `getPlaybackSpeed()`         | X           | X         | X           |              | Gets the current playback speed factor. |
-| `setZoom(float)`             |             |           | X           | X            | Sets the zoom factor into the picture (1.0 is full screen, 2.0 is 200% magnification, etc.). |
-| `getZoomLevel()`             |             |           | X           | X            | Gets the current zoom factor. |
-| `setPan(float, float)`       |             |           | X           | X            | Sets the panning of the zoomed picture into X and Y directions (0, 0 means center). |
-| `getPanX()`                  |             |           | X           | X            | Gets the current X panning. |
-| `getPanY()`                  |             |           | X           | X            | Gets the current Y panning. |
-| `addEffect(Effect)`          |             |           | X           | X            | Adds a GLES shader effect that implements the `Effect` interface and usually extends the abstract `ShaderEffect` class. See the demo app for an example on how to use and parameterize effects. Add and select the `NoEffect` effect to disable an active effect. |
-| `selectEffect(int)`          |             |           | X           | X            | Selects/activates a previously added GLES effect by its index (in the order of effect addition). |
-| `captureFrame()`             |             |           | X           | X            | Requests the video frame to be captured, which will be returned as Bitmap through the `setOnFrameCapturedCallback(OnFrameCapturedCallback)` callback. |
-| `supportsCameraSwitch()`     |             |           |             | X            | Checks if the device has multiple cameras. |
-| `switchCamera()`             |             |           |             | X            | Switches to the next camera, usually front to back and back to front. |
+| Method                       | MediaPlayer | VideoView | Description |
+| ---------------------------- |:-----------:|:---------:| ----------- |
+| `setDataSource(MediaSource)` | X           | X (setVideoSource) | Sets a `MediaSource` (e.g. `UriSource`, `FileSource`, `DashSource`), see description below. |
+| `setSeekMode(SeekMode)`      | X           | X         | Sets the seek mode (e.g. FAST, EXACT, ..., see the `SeekMode` enum). Default mode is EXACT. |
+| `getSeekMode()`              | X           | X         | Gets the current seek mode. |
+| `setPlaybackSpeed(float)`    | X           | X         | Sets the playback speed factor (e.g. 1.0 is normal speed, 0.5 is half speed, 2.0 is double speed). Audio pitch changes with the speed factor. |
+| `getPlaybackSpeed()`         | X           | X         | Gets the current playback speed factor. |
 
 
 ### MediaSource ###
@@ -142,11 +134,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:3.1.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:3.1.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:3.1.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:3.1.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:3.1.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.0'
     }
 
 #### Local Maven repository ####
@@ -161,22 +150,16 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:3.1.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:3.1.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles:3.1.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-flowabs:3.1.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-gles-qrmarker:3.1.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.0-SNAPSHOT'
     }
 
 
-### Components ###
-
-The library is split into several logical components, comprising the base MediaPlayer and additional optional
-components that extend the functionality of the base.
+### Modules ###
 
 #### MediaPlayer ####
 
-The base component provides the `MediaPlayer`, which can be used as a replacement for the Android
+The base module provides the `MediaPlayer`, which can be used as a replacement for the Android
 [MediaPlayer](http://developer.android.com/reference/android/media/MediaPlayer.html), and the `VideoView`,
 which can be used as a replacement for the Android [VideoView](http://developer.android.com/reference/android/widget/VideoView.html).
 To load a video, use either the compatibility methods known from the Android API to specify a file or URI, or supply a `UriSource`.
@@ -195,27 +178,13 @@ but many common use cases.
 MediaPlayer-DASH has external dependencies on [OkHttp](https://github.com/square/okhttp),
 [Okio](https://github.com/square/okio), and [ISO Parser](https://github.com/sannies/mp4parser).
 
-#### MediaPlayer-GLES ####
+Example:
 
-Extends the MediaPlayer base with a GLES surface and GLSL shader support. It provides the `GLVideoView`,
-a VideoView with a GL surface and a simple interface for custom shader effects. Effects implement
-the `Effect` interface and can be dynamically parameterized. It also provides the `GLCameraView`,
-which is a camera preview widget with effect support. It comes with a few simple effects, e.g.
-a sobel edge detector, a simple toon effect and some 9x9 kernel effects. The GLES views can be zoomed
-and panned with the typical touchscreen gestures.
-
-#### MediaPlayer-GLES-FlowAbs ####
-
-This module adds the [FlowAbs](https://code.google.com/p/flowabs/) shader effect to the GLES component
-and demonstrates the possibility to construct and use very elaborate shaders. It also offers various
-sub-effects that the flowabs-effect is composed of, including (flow-based) difference of Gaussians,
-color quantization and a tangent flow map.
-
-#### MediaPlayer-GLES-QrMarker ####
-
-This module is another example of an effect composed of multiple shaders. It is taken from
-[QrMarker](https://github.com/thHube/QrMarker-ComputerVision) and provides a rather pointless and
-extremely slow QR marker identification effect, and a nice Canny edge detection effect.
+```java
+Uri uri = Uri.parse("http://server.com/path/stream.mpd");
+MediaSource dashSource = new DashSource(context, uri, new SimpleRateBasedAdaptationLogic());
+mediaPlayer.setDataSource(dashSource); // or: videoView.setVideoSource(dashSource);
+```
 
 #### MediaPlayerDemo ####
 
@@ -224,32 +193,11 @@ and serves as an example on how they can be used and extended. It is available f
 [MediaPlayer-Extended Demo](https://play.google.com/store/apps/details?id=at.aau.itec.android.mediaplayerdemo) on the Google Play Store.
 
 
-Known Issues
-------------
+Issues & Limitations
+--------------------
 
 * MediaPlayer-DASH: MPD parser is basic and only tested with the test MPDs listed below
 * MediaPlayer-DASH: representation switching can result in a short lag (this only happens with mp4/avc videos because reinitializing Android's MediaCodec takes some time; a workaround would be to prepare a second codec with a second surface, and switch them at the right frame; webm works flawlessly)
-* MediaPlayer-GLES-FlowAbs: The OrientationAlignedBilateralFilterShaderProgram / FlowAbsBilateralFilterEffect does
-  not work correctly for some unknown reason and is deactivated in the FlowAbs effect, making it
-  slightly less fancy
-* Exception handling needs to be improved
-
-Device specific:
-
-* MediaPlayer-GLES: GLCameraView's preview aspect ratio is slightly off on the Nexus 7 2013 back camera (seems to be a system bug)
-* MediaPlayer-GLES-FlowAbs: Not working on Tegra devices because shaders contain dynamic loops
-
-Tested and confirmed working on:
-
-* LG Nexus 4 (Android 4.4.4/5.0/5.0.1/5.1.1, Adreno 320)
-* LG Nexus 5 (Android 4.4.4/5.0/5.0.1, Adreno 330)
-* LG Nexus 5X (Android 6.0.1, Adreno 418)
-* ASUS Nexus 7 2012 (Android 4.4.4, Tegra 3, no FlowAbs)
-* ASUS Nexus 7 2013 (Android 4.4.4/5.0/5.0.2, Adreno 320)
-* ASUS Transformer TF701T (Android 4.4.2, Tegra 4, no FlowAbs)
-* Samsung Galaxy SII (Android 4.1.2, ARM Mali-400MP4)
-* Samsung Galaxy Note 2 (Android 4.4.4 CM, ARM Mali-400MP4)
-* Samsung Galaxy Note 4 (Android 5.0.1, Snapdragon version with Adreno 420)
 
 ### DASH ###
 
@@ -272,6 +220,7 @@ out video view buttons.
 MediaExtractor fails reading a stream (usually because of unsupported container features), or a stream
 uses a codec not supported by Android's MediaCodec. The demo app indicates this by an error toast
 message and disabled playback controls.
+
 
 Online Streaming Test URLs
 --------------------------
