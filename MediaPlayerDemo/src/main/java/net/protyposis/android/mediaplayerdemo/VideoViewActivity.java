@@ -95,18 +95,6 @@ public class VideoViewActivity extends Activity {
         mVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer vp) {
-                if (mVideoPosition > 0) {
-                    mVideoView.seekTo(mVideoPosition);
-                } else {
-                    mVideoView.seekTo(0); // display first frame
-                }
-
-                mVideoView.setPlaybackSpeed(mVideoPlaybackSpeed);
-
-                if (mVideoPlaying) {
-                    mVideoView.start();
-                }
-
                 mProgress.setVisibility(View.GONE);
                 mMediaController.setEnabled(true);
             }
@@ -169,6 +157,11 @@ public class VideoViewActivity extends Activity {
             @Override
             public void onMediaSourceLoaded(MediaSource mediaSource) {
                 mVideoView.setVideoSource(mediaSource);
+                mVideoView.seekTo(mVideoPosition);
+                mVideoView.setPlaybackSpeed(mVideoPlaybackSpeed);
+                if (mVideoPlaying) {
+                    mVideoView.start();
+                }
             }
 
             @Override
