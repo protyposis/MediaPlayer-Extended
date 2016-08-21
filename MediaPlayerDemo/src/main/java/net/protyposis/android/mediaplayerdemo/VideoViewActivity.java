@@ -87,7 +87,9 @@ public class VideoViewActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        initPlayer();
+        if(!mVideoView.isPlaying()) {
+            initPlayer();
+        }
     }
 
     private void initPlayer() {
