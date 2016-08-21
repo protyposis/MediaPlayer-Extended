@@ -51,6 +51,10 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
     }
 
     public void updateSurface(Surface videoSurface) {
+        if(videoSurface == null) {
+            // TODO disable video decoder when surface is null
+            throw new RuntimeException("surface must not be null");
+        }
         mVideoSurface = videoSurface;
         reinitCodec();
     }
