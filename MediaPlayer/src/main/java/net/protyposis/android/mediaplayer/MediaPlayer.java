@@ -272,14 +272,29 @@ public class MediaPlayer {
         mDecoders = new Decoders();
 
         if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
-            mDecoders.addDecoder(new MediaCodecVideoDecoder(mVideoExtractor, false, mVideoTrackIndex,
-                    decoderEventListener, mSurface, mVideoRenderTimingMode.isRenderModeApi21()));
+            try {
+                MediaCodecDecoder vd = new MediaCodecVideoDecoder(mVideoExtractor, false, mVideoTrackIndex,
+                        decoderEventListener, mSurface, mVideoRenderTimingMode.isRenderModeApi21());
+                mDecoders.addDecoder(vd);
+            } catch (Exception e) {
+                Log.e(TAG, "cannot create video decoder: " + e.getMessage());
+            }
         }
 
         if(mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE) {
-            boolean passive = (mAudioExtractor == mVideoExtractor || mAudioExtractor == null);
-            mDecoders.addDecoder(new MediaCodecAudioDecoder(mAudioExtractor != null ? mAudioExtractor : mVideoExtractor,
-                    passive, mAudioTrackIndex, decoderEventListener, mAudioPlayback));
+            try {
+                boolean passive = (mAudioExtractor == mVideoExtractor || mAudioExtractor == null);
+                MediaCodecDecoder ad = new MediaCodecAudioDecoder(mAudioExtractor != null ? mAudioExtractor : mVideoExtractor,
+                        passive, mAudioTrackIndex, decoderEventListener, mAudioPlayback);
+                mDecoders.addDecoder(ad);
+            } catch (Exception e) {
+                Log.e(TAG, "cannot create audio decoder: " + e.getMessage());
+            }
+        }
+
+        // If no decoder could be initialized, there is nothing to play back, so we throw an exception
+        if(mDecoders.getDecoders().isEmpty()) {
+            throw new IOException("cannot decode any stream");
         }
 
         if (mAudioPlayback != null) {
