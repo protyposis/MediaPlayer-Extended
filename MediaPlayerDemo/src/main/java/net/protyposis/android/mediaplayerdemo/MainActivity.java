@@ -30,6 +30,7 @@ import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.crashlytics.android.Crashlytics;
 import io.fabric.sdk.android.Fabric;
@@ -181,7 +182,9 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
 
     @Override
     public void onVideoURISelected(Uri uri) {
-        updateUri(uri);
+        if(!updateUri(uri)) {
+            Toast.makeText(this, "Invalid media URL", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -190,7 +193,7 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
         super.onSaveInstanceState(outState);
     }
 
-    private void updateUri(final Uri uri) {
+    private boolean updateUri(final Uri uri) {
         if(uri == null) {
             mVideoUriText.setText(getString(R.string.uri_missing));
 
@@ -201,16 +204,18 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
             updateUri(null); // disable buttons
 
             // Validate content URI
-            if(uri.getScheme().equals("content")) {
-                ContentResolver cr = getContentResolver();
-                try {
+            try {
+                if(uri.getScheme().equals("content")) {
+                    ContentResolver cr = getContentResolver();
                     cr.openInputStream(uri).close();
-                } catch (Exception e) {
-                    // The content URI is invalid, probably because the file has been removed
-                    // or the system rebooted (which invalidates content URIs).
-                    return;
                 }
+            } catch (Exception e) {
+                // The content URI is invalid, probably because the file has been removed
+                // or the system rebooted (which invalidates content URIs),
+                // or the uri does not contain a scheme
+                return false;
             }
+
 
             mVideoUriText.setText("Loading...");
 
@@ -241,6 +246,8 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                 }
             });
         }
+
+        return true;
     }
 
     private void versionInfos() {
