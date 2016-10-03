@@ -224,6 +224,8 @@ public class VideoViewActivity extends Activity {
         } else if(id == R.id.action_getcurrentposition) {
             Toast.makeText(this, "current position: " + mVideoView.getCurrentPosition(), Toast.LENGTH_SHORT).show();
             return true;
+        } else if(id == R.id.action_reload_source) {
+            initPlayer();
         }
         return super.onOptionsItemSelected(item);
     }

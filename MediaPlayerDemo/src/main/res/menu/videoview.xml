@@ -45,6 +45,9 @@
     <item android:id="@+id/action_getcurrentposition"
         android:title="@string/action_getcurrentposition" />
 
+    <item android:id="@+id/action_reload_source"
+        android:title="@string/action_reload_source" />
+
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"
         android:orderInCategory="100"
