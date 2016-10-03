@@ -190,6 +190,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
                     // Send message to the handler that an error occurred
                     // (we don't need a message id as the handler only handles this single message)
                     exceptionHandler.sendEmptyMessage(0);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, "player released while preparing", e);
                 }
             }
         }).start();
