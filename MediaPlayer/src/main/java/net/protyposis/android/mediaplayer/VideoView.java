@@ -174,14 +174,20 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             @Override
             public void run() {
                 try {
+                    mCurrentState = STATE_PREPARING;
+
                     mPlayer.setDataSource(mSource);
+
+                    if(mPlayer == null) {
+                        // player has been release while the data source was set
+                        return;
+                    }
 
                     // Async prepare spawns another thread inside this thread which really isn't
                     // necessary; we call this method anyway because of the events it triggers
                     // when it fails, and to stay in sync which the Android VideoView that does
                     // the same.
                     mPlayer.prepareAsync();
-                    mCurrentState = STATE_PREPARING;
 
                     Log.d(TAG, "video opened");
                 } catch (IOException e) {
@@ -270,6 +276,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             mPlayer.release();
             mPlayer = null;
         }
+        mCurrentState = STATE_IDLE;
+        mTargetState = STATE_IDLE;
     }
 
     public void setOnPreparedListener(MediaPlayer.OnPreparedListener l) {
