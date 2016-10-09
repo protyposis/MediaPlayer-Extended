@@ -68,6 +68,13 @@ Changelog
 * __v1.0__: initial release
 
 
+Support
+-------
+
+For questions and issues, please open an issue on the issue tracker. Commercial support, development
+and consultation is available through [Protyposis Multimedia Solutions](https://protyposis.com).
+
+
 Requirements
 ------------
 
