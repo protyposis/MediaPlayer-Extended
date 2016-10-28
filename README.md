@@ -30,6 +30,9 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.0.2: bugfixes in MediaPlayer, VideoView, and demo app
+ * VideoView: allow setting new video source while previous source is still preparing
+ * MediaPlayer: correctly deliver buffer percentage in onBufferingUpdate
 * __v4.0.0__: GLES components removed, license changed, stability improvements
  * GLES components have been migrated to the [Spectaculum](https://github.com/protyposis/Spectaculum) library
  * License changed from GPLv3 to Apache 2.0
@@ -141,8 +144,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.2'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.2'
     }
 
 #### Local Maven repository ####
@@ -157,8 +160,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.2-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.2-SNAPSHOT'
     }
 
 
