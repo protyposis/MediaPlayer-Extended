@@ -1,4 +1,7 @@
 def readPasswordFromConsole(prompt) {
+    if (project.hasProperty('skippasswordprompts')) {
+        return ""
+    }
     def c = System.console()
     if(c != null) {
         return new String(System.console().readPassword("\n\$ " + prompt + " "))
