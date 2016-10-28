@@ -163,13 +163,24 @@ class Decoders {
     }
 
     public long getCachedDuration() {
-        long minCachedDuration = -1;
+        // Init with the largest possible value...
+        long minCachedDuration = Long.MAX_VALUE;
+
+        // ...then decrease to the lowest duration.
+        // We always return the lowest value, because if only one decoder has to refill its buffer,
+        // all others have to wait. If one decoder returns -1, this function returns -1 too (which
+        // makes sense because we cannot calculate a meaningful cache duration in this case).
         for (MediaCodecDecoder decoder : mDecoders) {
             long cachedDuration = decoder.getCachedDuration();
-            if(cachedDuration != -1 && minCachedDuration > cachedDuration) {
-                minCachedDuration = cachedDuration;
-            }
+            minCachedDuration = Math.min(cachedDuration, minCachedDuration);
         }
+
+        if(minCachedDuration == Long.MAX_VALUE) {
+            // There were no decoders that updated this value, which means we don't have information
+            // on a cached duration, so we return -1 to signal that the information is not available.
+            return -1;
+        }
+
         return minCachedDuration;
     }
 }
