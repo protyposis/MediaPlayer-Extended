@@ -18,6 +18,7 @@ package net.protyposis.android.mediaplayer.dash;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 
 import com.squareup.okhttp.OkHttpClient;
 
@@ -32,6 +33,7 @@ public class DashSource extends UriSource {
     private OkHttpClient mHttpClient;
     private AdaptationLogic mAdaptationLogic;
     private MPD mMPD;
+    private int mCacheSizeInBytes = 100 * 1024 * 1024;
 
     public DashSource(Context context, Uri uri, OkHttpClient httpClient, Map<String, String> headers, AdaptationLogic adaptationLogic) {
         super(context, uri, headers);
@@ -87,10 +89,36 @@ public class DashSource extends UriSource {
         }
     }
 
+    /**
+     * Gets the size of the segment cache. Default size is 100 megabytes.
+     *
+     * @return the size of the segment cache in bytes
+     */
+    public int getCacheSize() {
+        return mCacheSizeInBytes;
+    }
+
+    /**
+     * Sets the size of the segment cache. This only has an effect before the extractors are
+     * created, i.e. before the DashSource is set as a data source (e.g. in MediaPlayer or VideoView).
+     *
+     * If this source has separate video and audio extractors, the used storage size may be twice
+     * the configured cache size because each extractor has its own cache.
+     *
+     * If the size of the cache is smaller than the segments, segments are not cached and caching
+     * is therefore disabled.
+     *
+     * @param sizeInBytes the size of the segment cache in bytes
+     */
+    public void setCacheSize(int sizeInBytes) {
+        mCacheSizeInBytes = sizeInBytes;
+    }
+
     @Override
     public MediaExtractor getVideoExtractor() throws IOException {
         initHttpClient(); // in case init() has not been called
         DashMediaExtractor mediaExtractor = new DashMediaExtractor(mHttpClient);
+        mediaExtractor.setCacheSize(mCacheSizeInBytes);
         mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
         return mediaExtractor;
     }
@@ -101,6 +129,7 @@ public class DashSource extends UriSource {
         AdaptationSet audioSet = mMPD.getFirstPeriod().getFirstAudioSet();
         if(audioSet != null){
             DashMediaExtractor mediaExtractor = new DashMediaExtractor(mHttpClient);
+            mediaExtractor.setCacheSize(mCacheSizeInBytes);
             mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), audioSet, mAdaptationLogic);
             return mediaExtractor;
         } else {

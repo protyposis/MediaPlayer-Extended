@@ -19,6 +19,7 @@ package net.protyposis.android.mediaplayer.dash;
 import android.content.Context;
 import android.media.MediaFormat;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
@@ -86,6 +87,7 @@ class DashMediaExtractor extends MediaExtractor {
     private Map<Integer, CachedSegment> mFutureCache; // the cache for upcoming segments
     private Map<Integer, Call> mFutureCacheRequests; // requests for upcoming segments
     private SegmentLruCache mUsedCache; // cache for used or in use segments
+    private int mUsedCacheSize = 100 * 1024 * 1024; // 100MB by default
     private boolean mMp4Mode;
     private DefaultMp4Builder mMp4Builder;
     private long mSegmentPTSOffsetUs;
@@ -131,7 +133,7 @@ class DashMediaExtractor extends MediaExtractor {
             mInitSegments = new ConcurrentHashMap<>(mAdaptationSet.representations.size());
             mFutureCache = new ConcurrentHashMap<>();
             mFutureCacheRequests = new HashMap<>();
-            mUsedCache = new SegmentLruCache(100 * 1024 * 1024);
+            mUsedCache = new SegmentLruCache(mUsedCacheSize == 0 ? 1 : mUsedCacheSize);
             mMp4Mode = mRepresentation.mimeType.equals("video/mp4") || mRepresentation.initSegment.media.endsWith(".mp4");
             if (mMp4Mode) {
                 mMp4Builder = new DefaultMp4Builder();
@@ -152,6 +154,40 @@ class DashMediaExtractor extends MediaExtractor {
         } catch (Exception e) {
             Log.e(TAG, "failed to set data source");
             throw new IOException("failed to set data source", e);
+        }
+    }
+
+    /**
+     * Gets the size of the segment cache.
+     *
+     * @return the size of the segment cache in bytes
+     */
+    public int getCacheSize() {
+        return mUsedCacheSize;
+    }
+
+    /**
+     * Sets the size of the segment cache.
+     * On Android < 21, the size must be set before setting the data source (which is when the
+     * cache is created), else an exception will be thrown. From Android 21 Lollipop onward,
+     * the cache can be dynamically resized at any time.
+     *
+     * Segments that are larger than the cache size will not be cached. Setting a very small cache
+     * size or zero cache size effectively disables caching.
+     *
+     * @param sizeInBytes the size of the segment cache in bytes
+     * @throws IllegalStateException on Android < 21 if the data source has already been set
+     */
+    public void setCacheSize(int sizeInBytes) {
+        mUsedCacheSize = sizeInBytes;
+        if(mUsedCache != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                // If desired size is zero, set to 1 because 0 is not allowed
+                // (a size of 1 byte equals zero because every segment will be larger than 1 byte)
+                mUsedCache.resize(sizeInBytes == 0 ? 1 : sizeInBytes);
+            } else {
+                throw new IllegalStateException("On Android < 21, cache size must be set before setting data source");
+            }
         }
     }
 
@@ -389,9 +425,17 @@ class DashMediaExtractor extends MediaExtractor {
             }
         }
 
-        mUsedCache.put(segmentNr, cachedSegment);
         mSegmentPTSOffsetUs = cachedSegment.ptsOffsetUs;
         setDataSource(cachedSegment.file.getPath());
+
+        // If the cache size is smaller than the segment, the segment file will not be cached but
+        // deleted immediately (the cache will remove it immediately because it cannot hold it,
+        // and thereby delete it). This does not matter, because if we set the cache size that small,
+        // we are not interested in caching segments anyway. It's not a problem when a segment gets
+        // deleted here, because it has already been set as data source above and as long as the
+        // extractor has a reference to the file, it stays accessible.
+        // It is important that the deletion happens after the data source is set!
+        mUsedCache.put(segmentNr, cachedSegment);
 
         // Reselect tracks at reinitialization for a successive segment
         if(!mSelectedTracks.isEmpty()) {
