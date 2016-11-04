@@ -33,6 +33,7 @@ import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
 import com.googlecode.mp4parser.boxes.threegpp26244.SegmentIndexBox;
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Callback;
+import com.squareup.okhttp.Headers;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -72,6 +73,7 @@ class DashMediaExtractor extends MediaExtractor {
 
     private Context mContext;
     private MPD mMPD;
+    private Headers mHeaders;
     private AdaptationLogic mAdaptationLogic;
     private AdaptationSet mAdaptationSet;
     private Representation mRepresentation;
@@ -88,16 +90,38 @@ class DashMediaExtractor extends MediaExtractor {
     private DefaultMp4Builder mMp4Builder;
     private long mSegmentPTSOffsetUs;
 
-    public DashMediaExtractor() {
-        mHttpClient = new OkHttpClient();
+    /**
+     * Constructs an extractor with an external OkHttpClient instance. This is useful if the
+     * HTTP client needs special configuration.
+     * @param httpClient the http client instance to use for segment requests
+     */
+    public DashMediaExtractor(OkHttpClient httpClient) {
+        if(httpClient != null) {
+            mHttpClient = httpClient;
+        } else {
+            mHttpClient = new OkHttpClient();
+        }
     }
 
-    public final void setDataSource(Context context, MPD mpd, AdaptationSet adaptationSet,
+    public DashMediaExtractor() {
+        this(null);
+    }
+
+    public final void setDataSource(Context context, MPD mpd, Map<String, String> headers, AdaptationSet adaptationSet,
                                     AdaptationLogic adaptationLogic)
             throws IOException {
         try {
             mContext = context;
             mMPD = mpd;
+
+            Headers.Builder headersBuilder = new Headers.Builder();
+            if(headers != null && !headers.isEmpty()) {
+                for(String name : headers.keySet()) {
+                    headersBuilder.add(name, headers.get(name));
+                }
+            }
+            mHeaders = headersBuilder.build();
+
             mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
@@ -502,7 +526,7 @@ class DashMediaExtractor extends MediaExtractor {
                 .replace(" ", "%20") // space
                 .replace("^", "%5E"); // circumflex
 
-        Request.Builder builder = new Request.Builder().url(url);
+        Request.Builder builder = new Request.Builder().url(url).headers(mHeaders);
 
         if(segment.hasRange()) {
             builder.addHeader("Range", "bytes=" + segment.range);

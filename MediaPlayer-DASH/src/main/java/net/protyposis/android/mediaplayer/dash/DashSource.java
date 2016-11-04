@@ -19,6 +19,8 @@ package net.protyposis.android.mediaplayer.dash;
 import android.content.Context;
 import android.net.Uri;
 
+import com.squareup.okhttp.OkHttpClient;
+
 import java.io.IOException;
 import java.util.Map;
 
@@ -27,34 +29,58 @@ import net.protyposis.android.mediaplayer.UriSource;
 
 public class DashSource extends UriSource {
 
+    private OkHttpClient mHttpClient;
     private AdaptationLogic mAdaptationLogic;
     private MPD mMPD;
 
-    public DashSource(Context context, Uri uri, Map<String, String> headers, AdaptationLogic adaptationLogic) {
+    public DashSource(Context context, Uri uri, OkHttpClient httpClient, Map<String, String> headers, AdaptationLogic adaptationLogic) {
         super(context, uri, headers);
+        mHttpClient = httpClient;
+        mAdaptationLogic = adaptationLogic;
+        init();
+    }
+
+    public DashSource(Context context, Uri uri, Map<String, String> headers, AdaptationLogic adaptationLogic) {
+        this(context, uri, null, headers, adaptationLogic);
+    }
+
+    public DashSource(Context context, Uri uri, OkHttpClient httpClient, AdaptationLogic adaptationLogic) {
+        super(context, uri);
+        mHttpClient = httpClient;
         mAdaptationLogic = adaptationLogic;
         init();
     }
 
     public DashSource(Context context, Uri uri, AdaptationLogic adaptationLogic) {
-        super(context, uri);
+        this(context, uri, (OkHttpClient)null, adaptationLogic);
+    }
+
+    public DashSource(Context context, MPD mpd, OkHttpClient httpClient, AdaptationLogic adaptationLogic) {
+        super(context, null);
+        mMPD = mpd;
+        mHttpClient = httpClient;
         mAdaptationLogic = adaptationLogic;
-        init();
     }
 
     public DashSource(Context context, MPD mpd, AdaptationLogic adaptationLogic) {
-        super(context, null);
-        mMPD = mpd;
-        mAdaptationLogic = adaptationLogic;
+        this(context, mpd, null, adaptationLogic);
+    }
+
+    private void initHttpClient() {
+        // Create a http client instance if there is none yet
+        if(mHttpClient == null) {
+            mHttpClient = new OkHttpClient();
+        }
     }
 
     private void init() {
+        initHttpClient();
         if(mAdaptationLogic == null) {
             throw new RuntimeException("AdaptationLogic missing!");
         }
         if(getUri() != null) {
             try {
-                mMPD = new DashParser().parse(this);
+                mMPD = new DashParser().parse(this, mHttpClient);
             } catch (DashParserException e) {
                 throw new RuntimeException(e);
             }
@@ -63,17 +89,19 @@ public class DashSource extends UriSource {
 
     @Override
     public MediaExtractor getVideoExtractor() throws IOException {
-        DashMediaExtractor mediaExtractor = new DashMediaExtractor();
-        mediaExtractor.setDataSource(getContext(), mMPD, mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
+        initHttpClient(); // in case init() has not been called
+        DashMediaExtractor mediaExtractor = new DashMediaExtractor(mHttpClient);
+        mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
         return mediaExtractor;
     }
 
     @Override
     public MediaExtractor getAudioExtractor() throws IOException {
+        initHttpClient(); // in case init() has not been called
         AdaptationSet audioSet = mMPD.getFirstPeriod().getFirstAudioSet();
         if(audioSet != null){
-            DashMediaExtractor mediaExtractor = new DashMediaExtractor();
-            mediaExtractor.setDataSource(getContext(), mMPD, audioSet, mAdaptationLogic);
+            DashMediaExtractor mediaExtractor = new DashMediaExtractor(mHttpClient);
+            mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), audioSet, mAdaptationLogic);
             return mediaExtractor;
         } else {
             return null;
