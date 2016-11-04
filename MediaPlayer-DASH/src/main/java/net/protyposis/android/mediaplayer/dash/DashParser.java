@@ -113,12 +113,12 @@ public class DashParser {
      * Parses an MPD XML file. This needs to be executed off the main thread, else a
      * NetworkOnMainThreadException gets thrown.
      * @param source the URl of an MPD XML file
+     * @param httpClient the http client instance to use for the request
      * @return a MPD object
      * @throws android.os.NetworkOnMainThreadException if executed on the main thread
      */
-    public MPD parse(UriSource source) throws DashParserException {
+    public MPD parse(UriSource source, OkHttpClient httpClient) throws DashParserException {
         MPD mpd = null;
-        OkHttpClient httpClient = new OkHttpClient();
 
         Headers.Builder headers = new Headers.Builder();
         if(source.getHeaders() != null && !source.getHeaders().isEmpty()) {
@@ -156,6 +156,17 @@ public class DashParser {
         }
 
         return mpd;
+    }
+
+    /**
+     * Parses an MPD XML file. This needs to be executed off the main thread, else a
+     * NetworkOnMainThreadException gets thrown.
+     * @param source the URl of an MPD XML file
+     * @return a MPD object
+     * @throws android.os.NetworkOnMainThreadException if executed on the main thread
+     */
+    public MPD parse(UriSource source) throws DashParserException {
+        return parse(source, new OkHttpClient());
     }
 
     private MPD parse(InputStream in, Uri baseUrl) throws XmlPullParserException, IOException, DashParserException {

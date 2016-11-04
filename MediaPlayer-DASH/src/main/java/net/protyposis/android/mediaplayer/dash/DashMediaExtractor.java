@@ -90,8 +90,21 @@ class DashMediaExtractor extends MediaExtractor {
     private DefaultMp4Builder mMp4Builder;
     private long mSegmentPTSOffsetUs;
 
+    /**
+     * Constructs an extractor with an external OkHttpClient instance. This is useful if the
+     * HTTP client needs special configuration.
+     * @param httpClient the http client instance to use for segment requests
+     */
+    public DashMediaExtractor(OkHttpClient httpClient) {
+        if(httpClient != null) {
+            mHttpClient = httpClient;
+        } else {
+            mHttpClient = new OkHttpClient();
+        }
+    }
+
     public DashMediaExtractor() {
-        mHttpClient = new OkHttpClient();
+        this(null);
     }
 
     public final void setDataSource(Context context, MPD mpd, Map<String, String> headers, AdaptationSet adaptationSet,
