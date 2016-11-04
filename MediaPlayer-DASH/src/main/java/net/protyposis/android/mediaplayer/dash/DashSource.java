@@ -64,7 +64,7 @@ public class DashSource extends UriSource {
     @Override
     public MediaExtractor getVideoExtractor() throws IOException {
         DashMediaExtractor mediaExtractor = new DashMediaExtractor();
-        mediaExtractor.setDataSource(getContext(), mMPD, mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
+        mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
         return mediaExtractor;
     }
 
@@ -73,7 +73,7 @@ public class DashSource extends UriSource {
         AdaptationSet audioSet = mMPD.getFirstPeriod().getFirstAudioSet();
         if(audioSet != null){
             DashMediaExtractor mediaExtractor = new DashMediaExtractor();
-            mediaExtractor.setDataSource(getContext(), mMPD, audioSet, mAdaptationLogic);
+            mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), audioSet, mAdaptationLogic);
             return mediaExtractor;
         } else {
             return null;

@@ -33,6 +33,7 @@ import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
 import com.googlecode.mp4parser.boxes.threegpp26244.SegmentIndexBox;
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Callback;
+import com.squareup.okhttp.Headers;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -72,6 +73,7 @@ class DashMediaExtractor extends MediaExtractor {
 
     private Context mContext;
     private MPD mMPD;
+    private Headers mHeaders;
     private AdaptationLogic mAdaptationLogic;
     private AdaptationSet mAdaptationSet;
     private Representation mRepresentation;
@@ -92,12 +94,21 @@ class DashMediaExtractor extends MediaExtractor {
         mHttpClient = new OkHttpClient();
     }
 
-    public final void setDataSource(Context context, MPD mpd, AdaptationSet adaptationSet,
+    public final void setDataSource(Context context, MPD mpd, Map<String, String> headers, AdaptationSet adaptationSet,
                                     AdaptationLogic adaptationLogic)
             throws IOException {
         try {
             mContext = context;
             mMPD = mpd;
+
+            Headers.Builder headersBuilder = new Headers.Builder();
+            if(headers != null && !headers.isEmpty()) {
+                for(String name : headers.keySet()) {
+                    headersBuilder.add(name, headers.get(name));
+                }
+            }
+            mHeaders = headersBuilder.build();
+
             mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
@@ -502,7 +513,7 @@ class DashMediaExtractor extends MediaExtractor {
                 .replace(" ", "%20") // space
                 .replace("^", "%5E"); // circumflex
 
-        Request.Builder builder = new Request.Builder().url(url);
+        Request.Builder builder = new Request.Builder().url(url).headers(mHeaders);
 
         if(segment.hasRange()) {
             builder.addHeader("Range", "bytes=" + segment.range);
