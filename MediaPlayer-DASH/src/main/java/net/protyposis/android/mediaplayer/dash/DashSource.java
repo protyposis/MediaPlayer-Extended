@@ -18,15 +18,14 @@ package net.protyposis.android.mediaplayer.dash;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.Build;
-
-import com.squareup.okhttp.OkHttpClient;
 
 import java.io.IOException;
 import java.util.Map;
 
 import net.protyposis.android.mediaplayer.MediaExtractor;
 import net.protyposis.android.mediaplayer.UriSource;
+
+import okhttp3.OkHttpClient;
 
 public class DashSource extends UriSource {
 

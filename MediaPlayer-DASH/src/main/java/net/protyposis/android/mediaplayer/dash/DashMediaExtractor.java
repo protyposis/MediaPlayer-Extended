@@ -32,13 +32,6 @@ import com.googlecode.mp4parser.authoring.Movie;
 import com.googlecode.mp4parser.authoring.Mp4TrackImpl;
 import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
 import com.googlecode.mp4parser.boxes.threegpp26244.SegmentIndexBox;
-import com.squareup.okhttp.Call;
-import com.squareup.okhttp.Callback;
-import com.squareup.okhttp.Headers;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
-import com.squareup.okhttp.internal.http.OkHeaders;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -52,6 +45,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import net.protyposis.android.mediaplayer.MediaExtractor;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Headers;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import okio.BufferedSink;
 import okio.ByteString;
 import okio.Okio;
@@ -637,7 +637,7 @@ class DashMediaExtractor extends MediaExtractor {
         }
 
         @Override
-        public void onFailure(Request request, IOException e) {
+        public void onFailure(Call call, IOException e) {
             if(mFutureCacheRequests.remove(mCachedSegment) != null) {
                 Log.e(TAG, "onFailure", e);
             } else {
@@ -646,7 +646,7 @@ class DashMediaExtractor extends MediaExtractor {
         }
 
         @Override
-        public void onResponse(Response response) throws IOException {
+        public void onResponse(Call call, Response response) throws IOException {
             if(response.isSuccessful()) {
                 try {
                     long startTime = SystemClock.elapsedRealtime();
@@ -655,7 +655,7 @@ class DashMediaExtractor extends MediaExtractor {
                     /* The time it takes to send the request header to the server until the response
                      * headers arrive. Can be custom implemented through an Interceptor too, in case
                      * this should ever fail in the future. */
-                    long headerTime = Long.parseLong(response.header(OkHeaders.RECEIVED_MILLIS)) - Long.parseLong(response.header(OkHeaders.SENT_MILLIS));
+                    long headerTime = response.receivedResponseAtMillis() - response.sentRequestAtMillis();
 
                     /* The time it takes to read the result body, which is the actual segment data.
                      * The sum of this time together with the header time is the total segment download time. */

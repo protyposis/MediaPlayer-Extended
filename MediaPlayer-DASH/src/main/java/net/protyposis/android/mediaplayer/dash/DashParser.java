@@ -20,11 +20,6 @@ import android.net.Uri;
 import android.util.Log;
 import android.util.Xml;
 
-import com.squareup.okhttp.Headers;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
-
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -43,6 +38,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.protyposis.android.mediaplayer.UriSource;
+
+import okhttp3.Headers;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * Created by maguggen on 27.08.2014.
