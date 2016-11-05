@@ -18,10 +18,12 @@ package net.protyposis.android.mediaplayer.dash;
 
 import android.content.Context;
 import android.media.MediaFormat;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -43,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 
 import net.protyposis.android.mediaplayer.MediaExtractor;
 
@@ -74,7 +77,7 @@ class DashMediaExtractor extends MediaExtractor {
 
     private Context mContext;
     private MPD mMPD;
-    private Headers mHeaders;
+    private SegmentDownloader mSegmentDownloader;
     private AdaptationLogic mAdaptationLogic;
     private AdaptationSet mAdaptationSet;
     private Representation mRepresentation;
@@ -82,7 +85,6 @@ class DashMediaExtractor extends MediaExtractor {
     private boolean mRepresentationSwitched;
     private int mCurrentSegment;
     private List<Integer> mSelectedTracks;
-    private OkHttpClient mHttpClient;
     private Map<Representation, ByteString> mInitSegments;
     private Map<Integer, CachedSegment> mFutureCache; // the cache for upcoming segments
     private Map<Integer, Call> mFutureCacheRequests; // requests for upcoming segments
@@ -94,40 +96,17 @@ class DashMediaExtractor extends MediaExtractor {
     private Handler mHander;
     private SyncBarrier<IOException> mInitBarrier;
 
-    /**
-     * Constructs an extractor with an external OkHttpClient instance. This is useful if the
-     * HTTP client needs special configuration.
-     * @param httpClient the http client instance to use for segment requests
-     */
-    public DashMediaExtractor(OkHttpClient httpClient) {
-        if(httpClient != null) {
-            mHttpClient = httpClient;
-        } else {
-            mHttpClient = new OkHttpClient();
-        }
-
+    public DashMediaExtractor() {
         mInitBarrier = new SyncBarrier<>();
     }
 
-    public DashMediaExtractor() {
-        this(null);
-    }
-
-    public final void setDataSource(Context context, MPD mpd, Map<String, String> headers, AdaptationSet adaptationSet,
+    public final void setDataSource(Context context, MPD mpd, SegmentDownloader segmentDownloader, AdaptationSet adaptationSet,
                                     AdaptationLogic adaptationLogic)
             throws IOException {
         try {
             mContext = context;
             mMPD = mpd;
-
-            Headers.Builder headersBuilder = new Headers.Builder();
-            if(headers != null && !headers.isEmpty()) {
-                for(String name : headers.keySet()) {
-                    headersBuilder.add(name, headers.get(name));
-                }
-            }
-            mHeaders = headersBuilder.build();
-
+            mSegmentDownloader = segmentDownloader;
             mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
@@ -341,9 +320,6 @@ class DashMediaExtractor extends MediaExtractor {
     @Override
     public void release() {
         super.release();
-        if(mHandlerThread != null) {
-            mHandlerThread.quit();
-        }
         invalidateFutureCache();
         mUsedCache.evictAll();
     }
@@ -455,14 +431,8 @@ class DashMediaExtractor extends MediaExtractor {
         // At the first call, download the initialization segments, and reuse them later.
         if(mInitSegments.isEmpty()) {
             for(Representation representation : mAdaptationSet.representations) {
-                Request request = buildSegmentRequest(representation.initSegment);
                 long startTime = SystemClock.elapsedRealtime();
-                Response response = mHttpClient.newCall(request).execute();
-                if(!response.isSuccessful()) {
-                    throw new IOException("sync dl error @ init segment: "
-                            + response.code() + " " + response.message()
-                            + " " + request.url().toString());
-                }
+                Response response = mSegmentDownloader.downloadBlocking(representation.initSegment, SegmentDownloader.INITSEGMENT);
                 ByteString segmentData = response.body().source().readByteString();
                 mInitSegments.put(representation, segmentData);
                 mAdaptationLogic.reportSegmentDownload(mAdaptationSet, representation, representation.segments.get(segmentNr), segmentData.size(), SystemClock.elapsedRealtime() - startTime);
@@ -471,14 +441,9 @@ class DashMediaExtractor extends MediaExtractor {
         }
 
         Segment segment = mRepresentation.segments.get(segmentNr);
-        Request request = buildSegmentRequest(segment);
+
         long startTime = SystemClock.elapsedRealtime();
-        Response response = mHttpClient.newCall(request).execute();
-        if(!response.isSuccessful()) {
-            throw new IOException("sync dl error @ segment " + segmentNr + ": "
-                    + response.code() + " " + response.message()
-                    + " " + request.url().toString());
-        }
+        Response response = mSegmentDownloader.downloadBlocking(segment, segmentNr);
         byte[] segmentData = response.body().bytes();
         mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, segment, segmentData.length, SystemClock.elapsedRealtime() - startTime);
         CachedSegment cachedSegment = new CachedSegment(segmentNr, segment, mRepresentation);
@@ -496,10 +461,8 @@ class DashMediaExtractor extends MediaExtractor {
         for(int i = mCurrentSegment + 1; i < Math.min(mCurrentSegment + 1 + segmentsToBuffer, mRepresentation.segments.size()); i++) {
             if(!mFutureCache.containsKey(i) && !mFutureCacheRequests.containsKey(i)) {
                 Segment segment = representation.segments.get(i);
-                Request request = buildSegmentRequest(segment);
-                Call call = mHttpClient.newCall(request);
                 CachedSegment cachedSegment = new CachedSegment(i, segment, representation); // segment could be accessed through representation by i
-                call.enqueue(new SegmentDownloadCallback(cachedSegment));
+                Call call = mSegmentDownloader.downloadAsync(segment, cachedSegment, mSegmentDownloadCallback);
                 mFutureCacheRequests.put(i, call);
             }
         }
@@ -540,24 +503,6 @@ class DashMediaExtractor extends MediaExtractor {
         for(File file : context.getCacheDir().listFiles()) {
             file.delete();
         }
-    }
-
-    /**
-     * Builds a request object for a segment.
-     */
-    private Request buildSegmentRequest(Segment segment) {
-        // Replace illegal special chars
-        String url = segment.media
-                .replace(" ", "%20") // space
-                .replace("^", "%5E"); // circumflex
-
-        Request.Builder builder = new Request.Builder().url(url).headers(mHeaders);
-
-        if(segment.hasRange()) {
-            builder.addHeader("Range", "bytes=" + segment.range);
-        }
-
-        return builder.build();
     }
 
     /**
@@ -677,17 +622,11 @@ class DashMediaExtractor extends MediaExtractor {
         }
     }
 
-    private class SegmentDownloadCallback implements Callback {
-
-        private CachedSegment mCachedSegment;
-
-        private SegmentDownloadCallback(CachedSegment cachedSegment) {
-            mCachedSegment = cachedSegment;
-        }
+    private SegmentDownloader.SegmentDownloadCallback mSegmentDownloadCallback = new SegmentDownloader.SegmentDownloadCallback() {
 
         @Override
-        public void onFailure(Call call, IOException e) {
-            if(mFutureCacheRequests.remove(mCachedSegment) != null) {
+        public void onFailure(CachedSegment cachedSegment, IOException e) {
+            if (mFutureCacheRequests.remove(cachedSegment) != null) {
                 Log.e(TAG, "onFailure", e);
             } else {
                 // If a call is not in the requests map anymore, it has been cancelled and didn't really fail
@@ -695,31 +634,11 @@ class DashMediaExtractor extends MediaExtractor {
         }
 
         @Override
-        public void onResponse(Call call, Response response) throws IOException {
-            if(response.isSuccessful()) {
-                try {
-                    long startTime = SystemClock.elapsedRealtime();
-                    byte[] segmentData = response.body().bytes();
-
-                    /* The time it takes to send the request header to the server until the response
-                     * headers arrive. Can be custom implemented through an Interceptor too, in case
-                     * this should ever fail in the future. */
-                    long headerTime = response.receivedResponseAtMillis() - response.sentRequestAtMillis();
-
-                    /* The time it takes to read the result body, which is the actual segment data.
-                     * The sum of this time together with the header time is the total segment download time. */
-                    long payloadTime = SystemClock.elapsedRealtime() - startTime;
-
-                    mHander.sendMessage(mHander.obtainMessage(MESSAGE_SEGMENT_DOWNLOADED,
-                            new SegmentDownloadFinishedEventArgs(mCachedSegment, segmentData, headerTime + payloadTime)));
-                } catch(Exception e) {
-                    Log.e(TAG, "onResponse", e);
-                } finally {
-                    response.body().close();
-                }
-            }
+        public void onSuccess(CachedSegment cachedSegment, byte[] segmentData, long duration) throws IOException {
+            mHander.sendMessage(mHander.obtainMessage(MESSAGE_SEGMENT_DOWNLOADED,
+                    new SegmentDownloadFinishedEventArgs(cachedSegment, segmentData, duration)));
         }
-    }
+    };
 
     private class SyncBarrier<T> {
 
