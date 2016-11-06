@@ -25,12 +25,14 @@ class CachedSegment {
     int number;
     Segment segment;
     Representation representation;
+    AdaptationSet adaptationSet;
     File file;
     long ptsOffsetUs;
 
-    CachedSegment(int number, Segment segment, Representation representation) {
+    CachedSegment(int number, Segment segment, Representation representation, AdaptationSet adaptationSet) {
         this.number = number;
         this.segment = segment;
         this.representation = representation;
+        this.adaptationSet = adaptationSet;
     }
 }

@@ -30,6 +30,7 @@ import okhttp3.OkHttpClient;
 public class DashSource extends UriSource {
 
     private OkHttpClient mHttpClient;
+    private SegmentDownloader mSegmentDownloader;
     private AdaptationLogic mAdaptationLogic;
     private MPD mMPD;
     private int mCacheSizeInBytes = 100 * 1024 * 1024;
@@ -71,6 +72,10 @@ public class DashSource extends UriSource {
         // Create a http client instance if there is none yet
         if(mHttpClient == null) {
             mHttpClient = new OkHttpClient();
+        }
+        // Create a segment downloader if there is none yet
+        if(mSegmentDownloader == null) {
+            mSegmentDownloader = new SegmentDownloader(mHttpClient, getHeaders());
         }
     }
 
@@ -116,9 +121,9 @@ public class DashSource extends UriSource {
     @Override
     public MediaExtractor getVideoExtractor() throws IOException {
         initHttpClient(); // in case init() has not been called
-        DashMediaExtractor mediaExtractor = new DashMediaExtractor(mHttpClient);
+        DashMediaExtractor mediaExtractor = new DashMediaExtractor();
         mediaExtractor.setCacheSize(mCacheSizeInBytes);
-        mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
+        mediaExtractor.setDataSource(getContext(), mMPD, mSegmentDownloader, mMPD.getFirstPeriod().getFirstVideoSet(), mAdaptationLogic);
         return mediaExtractor;
     }
 
@@ -127,9 +132,9 @@ public class DashSource extends UriSource {
         initHttpClient(); // in case init() has not been called
         AdaptationSet audioSet = mMPD.getFirstPeriod().getFirstAudioSet();
         if(audioSet != null){
-            DashMediaExtractor mediaExtractor = new DashMediaExtractor(mHttpClient);
+            DashMediaExtractor mediaExtractor = new DashMediaExtractor();
             mediaExtractor.setCacheSize(mCacheSizeInBytes);
-            mediaExtractor.setDataSource(getContext(), mMPD, getHeaders(), audioSet, mAdaptationLogic);
+            mediaExtractor.setDataSource(getContext(), mMPD, mSegmentDownloader, audioSet, mAdaptationLogic);
             return mediaExtractor;
         } else {
             return null;
