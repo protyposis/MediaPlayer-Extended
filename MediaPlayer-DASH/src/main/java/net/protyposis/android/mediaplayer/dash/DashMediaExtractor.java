@@ -18,12 +18,10 @@ package net.protyposis.android.mediaplayer.dash;
 
 import android.content.Context;
 import android.media.MediaFormat;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -45,15 +43,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 
 import net.protyposis.android.mediaplayer.MediaExtractor;
 
 import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.Headers;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import okhttp3.Response;
 import okio.BufferedSink;
 import okio.ByteString;
@@ -92,12 +85,15 @@ class DashMediaExtractor extends MediaExtractor {
     private int mUsedCacheSize = 100 * 1024 * 1024; // 100MB by default
     private boolean mMp4Mode;
     private long mSegmentPTSOffsetUs;
-    private HandlerThread mHandlerThread;
-    private Handler mHander;
-    private SyncBarrier<IOException> mInitBarrier;
+
+    private HandlerThread mSegmentProcessingThread;
+    private HandlerThread mSegmentSwitchingThread;
+    private Handler mSegmentProcessingHandler;
+    private Handler mSegmentSwitchingHandler;
+    private SyncBarrier<IOException> mSegmentSwitchingBarrier;
 
     public DashMediaExtractor() {
-        mInitBarrier = new SyncBarrier<>();
+        // nothing to do here
     }
 
     public final void setDataSource(Context context, MPD mpd, SegmentDownloader segmentDownloader, AdaptationSet adaptationSet,
@@ -130,13 +126,21 @@ class DashMediaExtractor extends MediaExtractor {
                 clearTempDir(mContext);
             }
 
-            if(mHandlerThread != null) {
-                mHandlerThread.quit();
+            if(mSegmentProcessingThread != null) {
+                mSegmentProcessingThread.quit();
+            }
+            if(mSegmentSwitchingThread != null) {
+                mSegmentSwitchingThread.quit();
             }
 
-            mHandlerThread = new HandlerThread("DashMediaExtractorThread");
-            mHandlerThread.start();
-            mHander = new Handler(mHandlerThread.getLooper(), mHandlerCallback);
+            mSegmentProcessingThread = new HandlerThread("DashMediaExtractor-SegmentProcessor");
+            mSegmentProcessingThread.start();
+            mSegmentProcessingHandler = new Handler(mSegmentProcessingThread.getLooper(), mHandlerCallback);
+
+            mSegmentSwitchingThread = new HandlerThread("DashMediaExtractor-SegmentSwitcher");
+            mSegmentSwitchingThread.start();
+            mSegmentSwitchingHandler = new Handler(mSegmentSwitchingThread.getLooper(), mHandlerCallback);
+            mSegmentSwitchingBarrier = new SyncBarrier<>();
 
             initOnWorkerThread(getNextSegment());
         } catch (Exception e) {
@@ -320,6 +324,12 @@ class DashMediaExtractor extends MediaExtractor {
     @Override
     public void release() {
         super.release();
+        if(mSegmentProcessingThread != null) {
+            mSegmentProcessingThread.quit();
+        }
+        if(mSegmentSwitchingThread != null) {
+            mSegmentSwitchingThread.quit();
+        }
         invalidateFutureCache();
         mUsedCache.evictAll();
     }
@@ -340,9 +350,9 @@ class DashMediaExtractor extends MediaExtractor {
 
     private void initOnWorkerThread(int segmentNr) throws IOException {
         // Send the init command to the handler thread...
-        mHander.sendMessage(mHander.obtainMessage(MESSAGE_SEGMENT_INIT, segmentNr, 0));
+        mSegmentSwitchingHandler.sendMessage(mSegmentSwitchingHandler.obtainMessage(MESSAGE_SEGMENT_INIT, segmentNr, 0));
         // ... and block until it's done
-        IOException e = mInitBarrier.doWait();
+        IOException e = mSegmentSwitchingBarrier.doWait();
 
         // Throw exception if init failed
         if(e != null) {
@@ -605,7 +615,7 @@ class DashMediaExtractor extends MediaExtractor {
                 exception = e;
             }
 
-            mInitBarrier.doNotify(exception);
+            mSegmentSwitchingBarrier.doNotify(exception);
         }
     };
 
@@ -635,7 +645,7 @@ class DashMediaExtractor extends MediaExtractor {
 
         @Override
         public void onSuccess(CachedSegment cachedSegment, byte[] segmentData, long duration) throws IOException {
-            mHander.sendMessage(mHander.obtainMessage(MESSAGE_SEGMENT_DOWNLOADED,
+            mSegmentProcessingHandler.sendMessage(mSegmentProcessingHandler.obtainMessage(MESSAGE_SEGMENT_DOWNLOADED,
                     new SegmentDownloadFinishedEventArgs(cachedSegment, segmentData, duration)));
         }
     };
