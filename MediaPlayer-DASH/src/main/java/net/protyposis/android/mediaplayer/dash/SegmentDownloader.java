@@ -17,7 +17,6 @@
 package net.protyposis.android.mediaplayer.dash;
 
 import android.os.SystemClock;
-import android.util.Log;
 
 import java.io.IOException;
 import java.util.Map;
@@ -102,7 +101,6 @@ class SegmentDownloader {
 
     interface SegmentDownloadCallback {
         void onFailure(CachedSegment cachedSegment, IOException e);
-
         void onSuccess(CachedSegment cachedSegment, byte[] segmentData, long duration) throws IOException;
     }
 
