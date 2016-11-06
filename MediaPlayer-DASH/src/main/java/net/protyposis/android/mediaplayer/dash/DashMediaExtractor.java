@@ -587,7 +587,7 @@ class DashMediaExtractor extends MediaExtractor {
              * does not support the fragmented MP4 container format. Each segment therefore needs
              * to be joined with the init fragment and converted to a "conventional" unfragmented MP4
              * container file. */
-            IsoFile baseIsoFile = new IsoFile(new MemoryDataSourceImpl(mInitSegments.get(cachedSegment.representation).toByteArray())); // TODO do not go ByteString -> byte[] -> ByteBuffer, find more efficient way (custom mp4parser DataSource maybe?)
+            IsoFile baseIsoFile = new IsoFile(new MemoryDataSourceImpl(mInitSegments.get(cachedSegment.representation).asByteBuffer()));
             IsoFile fragment = new IsoFile(new MemoryDataSourceImpl(mediaSegment));
 
             /* The PTS in a converted MP4 always start at 0, so we read the offset from the segment
