@@ -19,8 +19,10 @@ package net.protyposis.android.mediaplayer.dash;
 import android.os.SystemClock;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
@@ -41,7 +43,7 @@ class SegmentDownloader {
 
     private OkHttpClient mHttpClient;
     private Headers mHeaders;
-    private PriorityQueue<CachedSegment> mDownloadQueue; // segments waiting in line to be requested
+    private PriorityQueue<DownloadQueueItem> mDownloadQueue; // segments waiting in line to be requested
     private Map<String, Call> mDownloadRequests; // segments currently being requested
     private int mMaxConcurrentDownloadRequests = 3;
 
@@ -60,11 +62,13 @@ class SegmentDownloader {
         }
         mHeaders = headersBuilder.build();
 
-        mDownloadQueue = new PriorityQueue<>(20, new Comparator<CachedSegment>() {
+        mDownloadQueue = new PriorityQueue<>(20, new Comparator<DownloadQueueItem>() {
             @Override
-            public int compare(CachedSegment lhs, CachedSegment rhs) {
+            public int compare(DownloadQueueItem lhs, DownloadQueueItem rhs) {
                 // Sort the downloads by their PTS (sorting by segment number fails when a/v segments are of different length)
-                return (int)(lhs.ptsOffsetUs - rhs.ptsOffsetUs);
+                // NOTE: do not use lhs.segment.ptsOffsetUs, it is optional and not always filled
+                return (int)(lhs.segment.number * lhs.segment.representation.segmentDurationUs
+                        - rhs.segment.number * rhs.segment.representation.segmentDurationUs);
             }
         });
         mDownloadRequests = new HashMap<>();
@@ -87,25 +91,20 @@ class SegmentDownloader {
         return response;
     }
 
-    Call downloadAsync(CachedSegment cachedSegment, SegmentDownloadCallback callback) {
-        Request request = buildSegmentRequest(cachedSegment.segment);
-
-        Call call = mHttpClient.newCall(request);
-        mDownloadRequests.put(getKey(cachedSegment.adaptationSet, cachedSegment.number), call);
-        call.enqueue(new ResponseCallback(cachedSegment, callback));
-
-        return call;
+    synchronized void downloadAsync(CachedSegment segment, SegmentDownloadCallback callback) {
+        mDownloadQueue.offer(new DownloadQueueItem(segment, callback));
+        scheduleDownloads();
     }
 
-    boolean isDownloading(AdaptationSet adaptationSet, int segmentNr) {
+    synchronized boolean isDownloading(AdaptationSet adaptationSet, int segmentNr) {
         // Check if the segment is in transfer
         if(mDownloadRequests.containsKey(getKey(adaptationSet, segmentNr))) {
             return true;
         }
 
         // Check if the segment is queued
-        for(CachedSegment segment : mDownloadQueue) {
-            if(segment.number == segmentNr && segment.adaptationSet == adaptationSet) {
+        for(DownloadQueueItem item : mDownloadQueue) {
+            if(item.segment.number == segmentNr && item.segment.adaptationSet == adaptationSet) {
                 return true;
             }
         }
@@ -113,15 +112,43 @@ class SegmentDownloader {
         return false;
     }
 
-    void cancelDownloads() {
+    synchronized void cancelDownloads(AdaptationSet adaptationSet) {
         // Clear waiting queue
-        mDownloadQueue.clear();
+        List<DownloadQueueItem> queueItemsToDelete = new ArrayList<>();
+        for (DownloadQueueItem item : mDownloadQueue) {
+            if (item.segment.adaptationSet == adaptationSet) {
+                queueItemsToDelete.add(item);
+            }
+        }
+        for (DownloadQueueItem item : queueItemsToDelete) {
+            mDownloadQueue.remove(item);
+        }
 
         // Cancel requests
-        for(String key : mDownloadRequests.keySet()) {
-            mDownloadRequests.get(key).cancel();
+        List<String> requestItemsToDelete = new ArrayList<>();
+        for (String key : mDownloadRequests.keySet()) {
+            if (key.startsWith(adaptationSet.group + "-")) {
+                requestItemsToDelete.add(key);
+                mDownloadRequests.get(key).cancel();
+            }
         }
-        mDownloadRequests.clear();
+        for(String key : requestItemsToDelete) {
+            mDownloadRequests.remove(key);
+        }
+    }
+
+    private synchronized void scheduleDownloads() {
+        int downloadsToRequest = mMaxConcurrentDownloadRequests - mDownloadRequests.size();
+
+        for(int i = 0; i < downloadsToRequest && !mDownloadQueue.isEmpty(); i++) {
+            DownloadQueueItem item = mDownloadQueue.poll();
+
+            Request request = buildSegmentRequest(item.segment.segment);
+
+            Call call = mHttpClient.newCall(request);
+            mDownloadRequests.put(getKey(item.segment.adaptationSet, item.segment.number), call);
+            call.enqueue(new ResponseCallback(item.segment, item.callback));
+        }
     }
 
     /**
@@ -181,16 +208,20 @@ class SegmentDownloader {
 
         @Override
         public void onFailure(Call call, IOException e) {
-            mDownloadRequests.remove(mCachedSegment.number);
+            mDownloadRequests.remove(getKey(mCachedSegment.adaptationSet, mCachedSegment.number));
+
             if(!call.isCanceled()) {
                 // Call back only if a request 'really' failed, i.e. if it hasn't been canceled on purpose
                 mCallback.onFailure(mCachedSegment, e);
             }
+
+            scheduleDownloads();
         }
 
         @Override
         public void onResponse(Call call, Response response) throws IOException {
-            mDownloadRequests.remove(mCachedSegment.number);
+            mDownloadRequests.remove(getKey(mCachedSegment.adaptationSet, mCachedSegment.number));
+
             if (response.isSuccessful()) {
                 try {
                     long startTime = SystemClock.elapsedRealtime();
@@ -212,6 +243,19 @@ class SegmentDownloader {
                     response.body().close();
                 }
             }
+
+            scheduleDownloads();
+        }
+    }
+
+    private class DownloadQueueItem {
+
+        private CachedSegment segment;
+        private SegmentDownloadCallback callback;
+
+        public DownloadQueueItem(CachedSegment segment, SegmentDownloadCallback callback) {
+            this.segment = segment;
+            this.callback = callback;
         }
     }
 }

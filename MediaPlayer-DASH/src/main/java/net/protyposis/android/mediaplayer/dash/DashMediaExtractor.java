@@ -469,7 +469,7 @@ class DashMediaExtractor extends MediaExtractor {
             if(!mFutureCache.containsKey(i) && !mSegmentDownloader.isDownloading(mAdaptationSet, i)) {
                 Segment segment = representation.segments.get(i);
                 CachedSegment cachedSegment = new CachedSegment(i, segment, representation, mAdaptationSet); // segment could be accessed through representation by i
-                Call call = mSegmentDownloader.downloadAsync(cachedSegment, mSegmentDownloadCallback);
+                mSegmentDownloader.downloadAsync(cachedSegment, mSegmentDownloadCallback);
             }
         }
     }
@@ -479,7 +479,7 @@ class DashMediaExtractor extends MediaExtractor {
      */
     private synchronized void invalidateFutureCache() {
         // cancel and remove requests
-        mSegmentDownloader.cancelDownloads();
+        mSegmentDownloader.cancelDownloads(mAdaptationSet);
 
         // delete and remove files
         for(Integer segmentNumber : mFutureCache.keySet()) {
