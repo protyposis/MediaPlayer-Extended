@@ -616,44 +616,51 @@ class DashMediaExtractor extends MediaExtractor {
 
         @Override
         public boolean handleMessage(Message msg) {
-            if(msg.what == MESSAGE_SEGMENT_DOWNLOADED) {
-                SegmentDownloadFinishedEventArgs args = (SegmentDownloadFinishedEventArgs) msg.obj;
+            switch (msg.what) {
+                case MESSAGE_SEGMENT_DOWNLOADED:
+                    handleSegmentDownloaded((SegmentDownloadFinishedEventArgs) msg.obj);
+                    return true;
 
-                try {
-                    handleSegment(args.data, args.cachedSegment);
-
-                    mAdaptationLogic.reportSegmentDownload(mAdaptationSet, args.cachedSegment.representation,
-                            args.cachedSegment.segment, args.data.length, args.duration);
-
-                    mFutureCacheRequests.remove(args.cachedSegment.number);
-                    mFutureCache.put(args.cachedSegment.number, args.cachedSegment);
-
-                    Log.d(TAG, "async cached " + args.cachedSegment.number + " "
-                            + args.cachedSegment.segment.toString() + " -> " + args.cachedSegment.file.getPath());
-
-                    synchronized (mFutureCache) {
-                        mFutureCache.notify();
-                    }
-                } catch (IOException e) {
-                    // TODO handle error
-                    Log.e(TAG, "segment download failed", e);
-                }
-
-                return true;
-            }
-            else if(msg.what == MESSAGE_SEGMENT_INIT) {
-                IOException exception = null;
-
-                try {
-                    init(msg.arg1);
-                } catch (IOException e) {
-                    exception = e;
-                }
-
-                mInitBarrier.doNotify(exception);
+                case MESSAGE_SEGMENT_INIT:
+                    handleSegmentInit(msg.arg1);
+                    return true;
             }
 
             return false;
+        }
+
+        private void handleSegmentDownloaded(SegmentDownloadFinishedEventArgs args) {
+            try {
+                handleSegment(args.data, args.cachedSegment);
+
+                mAdaptationLogic.reportSegmentDownload(mAdaptationSet, args.cachedSegment.representation,
+                        args.cachedSegment.segment, args.data.length, args.duration);
+
+                mFutureCacheRequests.remove(args.cachedSegment.number);
+                mFutureCache.put(args.cachedSegment.number, args.cachedSegment);
+
+                Log.d(TAG, "async cached " + args.cachedSegment.number + " "
+                        + args.cachedSegment.segment.toString() + " -> " + args.cachedSegment.file.getPath());
+
+                synchronized (mFutureCache) {
+                    mFutureCache.notify();
+                }
+            } catch (IOException e) {
+                // TODO handle error
+                Log.e(TAG, "segment download failed", e);
+            }
+        }
+
+        private void handleSegmentInit(int segmentNr) {
+            IOException exception = null;
+
+            try {
+                init(segmentNr);
+            } catch (IOException e) {
+                exception = e;
+            }
+
+            mInitBarrier.doNotify(exception);
         }
     };
 
