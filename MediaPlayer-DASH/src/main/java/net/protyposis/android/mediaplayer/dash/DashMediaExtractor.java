@@ -573,7 +573,7 @@ class DashMediaExtractor extends MediaExtractor {
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
                 case MESSAGE_SEGMENT_DOWNLOADED:
-                    handleSegmentDownloaded((SegmentDownloadFinishedEventArgs) msg.obj);
+                    handleSegmentDownloaded((SegmentDownloader.DownloadFinishedArgs) msg.obj);
                     return true;
 
                 case MESSAGE_SEGMENT_INIT:
@@ -584,7 +584,7 @@ class DashMediaExtractor extends MediaExtractor {
             return false;
         }
 
-        private void handleSegmentDownloaded(SegmentDownloadFinishedEventArgs args) {
+        private void handleSegmentDownloaded(SegmentDownloader.DownloadFinishedArgs args) {
             try {
                 handleSegment(args.data, args.cachedSegment);
 
@@ -619,19 +619,6 @@ class DashMediaExtractor extends MediaExtractor {
         }
     };
 
-    private class SegmentDownloadFinishedEventArgs {
-
-        private CachedSegment cachedSegment;
-        private byte[] data;
-        private long duration;
-
-        SegmentDownloadFinishedEventArgs(CachedSegment cachedSegment, byte[] data, long duration) {
-            this.cachedSegment = cachedSegment;
-            this.data = data;
-            this.duration = duration;
-        }
-    }
-
     private SegmentDownloader.SegmentDownloadCallback mSegmentDownloadCallback = new SegmentDownloader.SegmentDownloadCallback() {
 
         @Override
@@ -644,9 +631,9 @@ class DashMediaExtractor extends MediaExtractor {
         }
 
         @Override
-        public void onSuccess(CachedSegment cachedSegment, byte[] segmentData, long duration) throws IOException {
-            mSegmentProcessingHandler.sendMessage(mSegmentProcessingHandler.obtainMessage(MESSAGE_SEGMENT_DOWNLOADED,
-                    new SegmentDownloadFinishedEventArgs(cachedSegment, segmentData, duration)));
+        public void onSuccess(SegmentDownloader.DownloadFinishedArgs args) throws IOException {
+            mSegmentProcessingHandler.sendMessage(mSegmentProcessingHandler.obtainMessage(
+                    MESSAGE_SEGMENT_DOWNLOADED, args));
         }
     };
 

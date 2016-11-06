@@ -99,9 +99,22 @@ class SegmentDownloader {
         return builder.build();
     }
 
+    class DownloadFinishedArgs {
+
+        CachedSegment cachedSegment;
+        byte[] data;
+        long duration;
+
+        DownloadFinishedArgs(CachedSegment cachedSegment, byte[] data, long duration) {
+            this.cachedSegment = cachedSegment;
+            this.data = data;
+            this.duration = duration;
+        }
+    }
+
     interface SegmentDownloadCallback {
         void onFailure(CachedSegment cachedSegment, IOException e);
-        void onSuccess(CachedSegment cachedSegment, byte[] segmentData, long duration) throws IOException;
+        void onSuccess(DownloadFinishedArgs args) throws IOException;
     }
 
     private class ResponseCallback implements Callback {
@@ -135,7 +148,7 @@ class SegmentDownloader {
                      * The sum of this time together with the header time is the total segment download time. */
                     long payloadTime = SystemClock.elapsedRealtime() - startTime;
 
-                    mCallback.onSuccess(mCachedSegment, segmentData, headerTime + payloadTime);
+                    mCallback.onSuccess(new DownloadFinishedArgs(mCachedSegment, segmentData, headerTime + payloadTime));
                 } catch (IOException e) {
                     mCallback.onFailure(mCachedSegment, e);
                 } finally {
