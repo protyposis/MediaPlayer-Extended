@@ -87,8 +87,8 @@ class SegmentDownloader {
         return response;
     }
 
-    Call downloadAsync(Segment segment, CachedSegment cachedSegment, SegmentDownloadCallback callback) {
-        Request request = buildSegmentRequest(segment);
+    Call downloadAsync(CachedSegment cachedSegment, SegmentDownloadCallback callback) {
+        Request request = buildSegmentRequest(cachedSegment.segment);
 
         Call call = mHttpClient.newCall(request);
         mDownloadRequests.put(getKey(cachedSegment.adaptationSet, cachedSegment.number), call);

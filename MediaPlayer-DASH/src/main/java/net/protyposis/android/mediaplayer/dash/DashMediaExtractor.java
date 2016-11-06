@@ -469,7 +469,7 @@ class DashMediaExtractor extends MediaExtractor {
             if(!mFutureCache.containsKey(i) && !mSegmentDownloader.isDownloading(mAdaptationSet, i)) {
                 Segment segment = representation.segments.get(i);
                 CachedSegment cachedSegment = new CachedSegment(i, segment, representation, mAdaptationSet); // segment could be accessed through representation by i
-                Call call = mSegmentDownloader.downloadAsync(segment, cachedSegment, mSegmentDownloadCallback);
+                Call call = mSegmentDownloader.downloadAsync(cachedSegment, mSegmentDownloadCallback);
             }
         }
     }
