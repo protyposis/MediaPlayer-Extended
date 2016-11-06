@@ -18,9 +18,10 @@ package net.protyposis.android.mediaplayer.dash;
 
 import android.content.Context;
 import android.media.MediaFormat;
-import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Process;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -42,7 +43,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 
 import net.protyposis.android.mediaplayer.MediaExtractor;
 
@@ -90,6 +90,9 @@ class DashMediaExtractor extends MediaExtractor {
     private int mUsedCacheSize = 100 * 1024 * 1024; // 100MB by default
     private boolean mMp4Mode;
     private long mSegmentPTSOffsetUs;
+    private HandlerThread mHandlerThread;
+    private Handler mHander;
+    private SyncBarrier<IOException> mInitBarrier;
 
     /**
      * Constructs an extractor with an external OkHttpClient instance. This is useful if the
@@ -102,6 +105,8 @@ class DashMediaExtractor extends MediaExtractor {
         } else {
             mHttpClient = new OkHttpClient();
         }
+
+        mInitBarrier = new SyncBarrier<>();
     }
 
     public DashMediaExtractor() {
@@ -145,6 +150,14 @@ class DashMediaExtractor extends MediaExtractor {
             if (sInstanceCount++ == 0) {
                 clearTempDir(mContext);
             }
+
+            if(mHandlerThread != null) {
+                mHandlerThread.quit();
+            }
+
+            mHandlerThread = new HandlerThread("DashMediaExtractorThread");
+            mHandlerThread.start();
+            mHander = new Handler(mHandlerThread.getLooper(), mHandlerCallback);
 
             initOnWorkerThread(getNextSegment());
         } catch (Exception e) {
@@ -328,6 +341,9 @@ class DashMediaExtractor extends MediaExtractor {
     @Override
     public void release() {
         super.release();
+        if(mHandlerThread != null) {
+            mHandlerThread.quit();
+        }
         invalidateFutureCache();
         mUsedCache.evictAll();
     }
@@ -346,46 +362,15 @@ class DashMediaExtractor extends MediaExtractor {
         return false;
     }
 
-    private void initOnWorkerThread(final Integer segmentNr) throws IOException {
-        /* Avoid NetworkOnMainThreadException by running network request in worker thread
-         * but blocking until finished to avoid complicated and in this case unnecessary
-         * async handling.
-         */
-        try {
-            final Exception[] asyncException = new Exception[1];
+    private void initOnWorkerThread(int segmentNr) throws IOException {
+        // Send the init command to the handler thread...
+        mHander.sendMessage(mHander.obtainMessage(MESSAGE_SEGMENT_INIT, segmentNr, 0));
+        // ... and block until it's done
+        IOException e = mInitBarrier.doWait();
 
-            String currentThreadName = Thread.currentThread().getName();
-            if(currentThreadName != null && currentThreadName.startsWith("AsyncTask")) {
-                // We are already inside an async task, just continue on this thread
-                try {
-                    init(segmentNr);
-                } catch (Exception e) {
-                    asyncException[0] = e;
-                }
-            } else {
-                // We are on the main thread, execute asynchronously and wait for the result
-                new AsyncTask<Void, Void, Void>() {
-                    @Override
-                    protected Void doInBackground(Void... params) {
-                        Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT);
-                        try {
-                            init(segmentNr);
-                        } catch (Exception e) {
-                            asyncException[0] = e;
-                        }
-                        return null;
-                    }
-                }.execute().get();
-            }
-
-            // hand an async thrown exception over to the main thread
-            if(asyncException[0] != null) {
-                throw new IOException("error initializing segment", asyncException[0]);
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
+        // Throw exception if init failed
+        if(e != null) {
+            throw e;
         }
     }
 
@@ -624,6 +609,74 @@ class DashMediaExtractor extends MediaExtractor {
         cachedSegment.ptsOffsetUs = segmentPTSOffsetUs;
     }
 
+    private static final int MESSAGE_SEGMENT_DOWNLOADED = 1;
+    private static final int MESSAGE_SEGMENT_INIT = 2;
+
+    private Handler.Callback mHandlerCallback = new Handler.Callback() {
+
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_SEGMENT_DOWNLOADED:
+                    handleSegmentDownloaded((SegmentDownloadFinishedEventArgs) msg.obj);
+                    return true;
+
+                case MESSAGE_SEGMENT_INIT:
+                    handleSegmentInit(msg.arg1);
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void handleSegmentDownloaded(SegmentDownloadFinishedEventArgs args) {
+            try {
+                handleSegment(args.data, args.cachedSegment);
+
+                mAdaptationLogic.reportSegmentDownload(mAdaptationSet, args.cachedSegment.representation,
+                        args.cachedSegment.segment, args.data.length, args.duration);
+
+                mFutureCacheRequests.remove(args.cachedSegment.number);
+                mFutureCache.put(args.cachedSegment.number, args.cachedSegment);
+
+                Log.d(TAG, "async cached " + args.cachedSegment.number + " "
+                        + args.cachedSegment.segment.toString() + " -> " + args.cachedSegment.file.getPath());
+
+                synchronized (mFutureCache) {
+                    mFutureCache.notify();
+                }
+            } catch (IOException e) {
+                // TODO handle error
+                Log.e(TAG, "segment download failed", e);
+            }
+        }
+
+        private void handleSegmentInit(int segmentNr) {
+            IOException exception = null;
+
+            try {
+                init(segmentNr);
+            } catch (IOException e) {
+                exception = e;
+            }
+
+            mInitBarrier.doNotify(exception);
+        }
+    };
+
+    private class SegmentDownloadFinishedEventArgs {
+
+        private CachedSegment cachedSegment;
+        private byte[] data;
+        private long duration;
+
+        SegmentDownloadFinishedEventArgs(CachedSegment cachedSegment, byte[] data, long duration) {
+            this.cachedSegment = cachedSegment;
+            this.data = data;
+            this.duration = duration;
+        }
+    }
+
     private class SegmentDownloadCallback implements Callback {
 
         private CachedSegment mCachedSegment;
@@ -657,20 +710,51 @@ class DashMediaExtractor extends MediaExtractor {
                      * The sum of this time together with the header time is the total segment download time. */
                     long payloadTime = SystemClock.elapsedRealtime() - startTime;
 
-                    mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mCachedSegment.representation, mCachedSegment.segment, segmentData.length, headerTime + payloadTime);
-                    handleSegment(segmentData, mCachedSegment);
-                    mFutureCacheRequests.remove(mCachedSegment.number);
-                    mFutureCache.put(mCachedSegment.number, mCachedSegment);
-                    Log.d(TAG, "async cached " + mCachedSegment.number + " " + mCachedSegment.segment.toString() + " -> " + mCachedSegment.file.getPath());
-                    synchronized (mFutureCache) {
-                        mFutureCache.notify();
-                    }
+                    mHander.sendMessage(mHander.obtainMessage(MESSAGE_SEGMENT_DOWNLOADED,
+                            new SegmentDownloadFinishedEventArgs(mCachedSegment, segmentData, headerTime + payloadTime)));
                 } catch(Exception e) {
                     Log.e(TAG, "onResponse", e);
                 } finally {
                     response.body().close();
                 }
             }
+        }
+    }
+
+    private class SyncBarrier<T> {
+
+        private Object monitor = new Object();
+        private boolean signalled = false;
+        private T returnValue;
+
+        T doWait() {
+            T returnValue;
+
+            synchronized (monitor) {
+                while (!signalled) {
+                    try {
+                        monitor.wait();
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "sync error, e");
+                    }
+                }
+                signalled = false;
+                returnValue = this.returnValue;
+            }
+
+            return returnValue;
+        }
+
+        void doNotify(T returnValue) {
+            synchronized (monitor) {
+                signalled = true;
+                this.returnValue = returnValue;
+                monitor.notify();
+            }
+        }
+
+        void doNotify() {
+            doNotify(null);
         }
     }
 }
