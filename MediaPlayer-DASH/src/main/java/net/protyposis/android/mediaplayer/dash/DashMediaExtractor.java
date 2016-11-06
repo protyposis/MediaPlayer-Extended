@@ -89,7 +89,6 @@ class DashMediaExtractor extends MediaExtractor {
     private SegmentLruCache mUsedCache; // cache for used or in use segments
     private int mUsedCacheSize = 100 * 1024 * 1024; // 100MB by default
     private boolean mMp4Mode;
-    private DefaultMp4Builder mMp4Builder;
     private long mSegmentPTSOffsetUs;
 
     /**
@@ -135,9 +134,6 @@ class DashMediaExtractor extends MediaExtractor {
             mFutureCacheRequests = new HashMap<>();
             mUsedCache = new SegmentLruCache(mUsedCacheSize == 0 ? 1 : mUsedCacheSize);
             mMp4Mode = mRepresentation.mimeType.equals("video/mp4") || mRepresentation.initSegment.media.endsWith(".mp4");
-            if (mMp4Mode) {
-                mMp4Builder = new DefaultMp4Builder();
-            }
             mSegmentPTSOffsetUs = 0;
 
             /* If the extractor previously crashed and could not gracefully finish, some old temp files
@@ -612,7 +608,7 @@ class DashMediaExtractor extends MediaExtractor {
             for(TrackBox trackBox : baseIsoFile.getMovieBox().getBoxes(TrackBox.class)) {
                 mp4Segment.addTrack(new Mp4TrackImpl(null, trackBox, fragment));
             }
-            Container mp4SegmentContainer = mMp4Builder.build(mp4Segment);
+            Container mp4SegmentContainer = new DefaultMp4Builder().build(mp4Segment); // always create new instance to avoid memory leaks!
             FileOutputStream fos = new FileOutputStream(segmentFile, false);
             mp4SegmentContainer.writeContainer(fos.getChannel());
             fos.close();
