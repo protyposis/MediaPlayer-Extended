@@ -42,7 +42,7 @@ class SegmentDownloader {
     private OkHttpClient mHttpClient;
     private Headers mHeaders;
     private PriorityQueue<CachedSegment> mDownloadQueue; // segments waiting in line to be requested
-    private Map<Integer, Call> mDownloadRequests; // segments currently being requested
+    private Map<String, Call> mDownloadRequests; // segments currently being requested
     private int mMaxConcurrentDownloadRequests = 3;
 
     SegmentDownloader(OkHttpClient httpClient, Map<String, String> headers) {
@@ -91,21 +91,21 @@ class SegmentDownloader {
         Request request = buildSegmentRequest(segment);
 
         Call call = mHttpClient.newCall(request);
-        mDownloadRequests.put(cachedSegment.number, call);
+        mDownloadRequests.put(getKey(cachedSegment.adaptationSet, cachedSegment.number), call);
         call.enqueue(new ResponseCallback(cachedSegment, callback));
 
         return call;
     }
 
-    boolean isDownloading(int segmentNr) {
+    boolean isDownloading(AdaptationSet adaptationSet, int segmentNr) {
         // Check if the segment is in transfer
-        if(mDownloadRequests.containsKey(segmentNr)) {
+        if(mDownloadRequests.containsKey(getKey(adaptationSet, segmentNr))) {
             return true;
         }
 
         // Check if the segment is queued
         for(CachedSegment segment : mDownloadQueue) {
-            if(segment.number == segmentNr) {
+            if(segment.number == segmentNr && segment.adaptationSet == adaptationSet) {
                 return true;
             }
         }
@@ -118,10 +118,19 @@ class SegmentDownloader {
         mDownloadQueue.clear();
 
         // Cancel requests
-        for(Integer segmentNumber : mDownloadRequests.keySet()) {
-            mDownloadRequests.get(segmentNumber).cancel();
+        for(String key : mDownloadRequests.keySet()) {
+            mDownloadRequests.get(key).cancel();
         }
         mDownloadRequests.clear();
+    }
+
+    /**
+     * Returns a unique key for a segment of an adaptation set. Just using the segment number as
+     * key does not suffice because multiple adaptation sets (e.g. video and audio) have overlapping
+     * segment numbers.
+     */
+    private String getKey(AdaptationSet adaptationSet, int segmentNr) {
+        return adaptationSet.group + "-" + segmentNr;
     }
 
     /**

@@ -366,7 +366,7 @@ class DashMediaExtractor extends MediaExtractor {
             cachedSegment = mUsedCache.get(segmentNr);
             if(cachedSegment == null) {
                 // Third, check if a request is already active
-                boolean downloading = mSegmentDownloader.isDownloading(segmentNr);
+                boolean downloading = mSegmentDownloader.isDownloading(mAdaptationSet, segmentNr);
                 /* TODO add synchronization to the whole caching code
                  * E.g., a request could have finished between this mFutureCacheRequests call and
                  * the previous mUsedCache call, whose result is missed.
@@ -453,7 +453,7 @@ class DashMediaExtractor extends MediaExtractor {
         Response response = mSegmentDownloader.downloadBlocking(segment, segmentNr);
         byte[] segmentData = response.body().bytes();
         mAdaptationLogic.reportSegmentDownload(mAdaptationSet, mRepresentation, segment, segmentData.length, SystemClock.elapsedRealtime() - startTime);
-        CachedSegment cachedSegment = new CachedSegment(segmentNr, segment, mRepresentation);
+        CachedSegment cachedSegment = new CachedSegment(segmentNr, segment, mRepresentation, mAdaptationSet);
         handleSegment(segmentData, cachedSegment);
         Log.d(TAG, "sync dl " + segmentNr + " " + segment.toString() + " -> " + cachedSegment.file.getPath());
 
@@ -466,9 +466,9 @@ class DashMediaExtractor extends MediaExtractor {
     private synchronized void fillFutureCache(Representation representation) {
         int segmentsToBuffer = (int)Math.ceil((double)mMinBufferTimeUs / mRepresentation.segmentDurationUs);
         for(int i = mCurrentSegment + 1; i < Math.min(mCurrentSegment + 1 + segmentsToBuffer, mRepresentation.segments.size()); i++) {
-            if(!mFutureCache.containsKey(i) && !mSegmentDownloader.isDownloading(i)) {
+            if(!mFutureCache.containsKey(i) && !mSegmentDownloader.isDownloading(mAdaptationSet, i)) {
                 Segment segment = representation.segments.get(i);
-                CachedSegment cachedSegment = new CachedSegment(i, segment, representation); // segment could be accessed through representation by i
+                CachedSegment cachedSegment = new CachedSegment(i, segment, representation, mAdaptationSet); // segment could be accessed through representation by i
                 Call call = mSegmentDownloader.downloadAsync(segment, cachedSegment, mSegmentDownloadCallback);
             }
         }
