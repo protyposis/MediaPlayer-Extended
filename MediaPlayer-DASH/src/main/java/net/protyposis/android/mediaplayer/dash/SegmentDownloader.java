@@ -19,7 +19,10 @@ package net.protyposis.android.mediaplayer.dash;
 import android.os.SystemClock;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -38,6 +41,9 @@ class SegmentDownloader {
 
     private OkHttpClient mHttpClient;
     private Headers mHeaders;
+    private PriorityQueue<CachedSegment> mDownloadQueue; // segments waiting in line to be requested
+    private Map<Integer, Call> mDownloadRequests; // segments currently being requested
+    private int mMaxConcurrentDownloadRequests = 3;
 
     SegmentDownloader(OkHttpClient httpClient, Map<String, String> headers) {
         if (httpClient == null) {
@@ -53,6 +59,15 @@ class SegmentDownloader {
             }
         }
         mHeaders = headersBuilder.build();
+
+        mDownloadQueue = new PriorityQueue<>(20, new Comparator<CachedSegment>() {
+            @Override
+            public int compare(CachedSegment lhs, CachedSegment rhs) {
+                // Sort the downloads by their PTS (sorting by segment number fails when a/v segments are of different length)
+                return (int)(lhs.ptsOffsetUs - rhs.ptsOffsetUs);
+            }
+        });
+        mDownloadRequests = new HashMap<>();
     }
 
     SegmentDownloader(OkHttpClient httpClient) {
@@ -76,9 +91,37 @@ class SegmentDownloader {
         Request request = buildSegmentRequest(segment);
 
         Call call = mHttpClient.newCall(request);
+        mDownloadRequests.put(cachedSegment.number, call);
         call.enqueue(new ResponseCallback(cachedSegment, callback));
 
         return call;
+    }
+
+    boolean isDownloading(int segmentNr) {
+        // Check if the segment is in transfer
+        if(mDownloadRequests.containsKey(segmentNr)) {
+            return true;
+        }
+
+        // Check if the segment is queued
+        for(CachedSegment segment : mDownloadQueue) {
+            if(segment.number == segmentNr) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void cancelDownloads() {
+        // Clear waiting queue
+        mDownloadQueue.clear();
+
+        // Cancel requests
+        for(Integer segmentNumber : mDownloadRequests.keySet()) {
+            mDownloadRequests.get(segmentNumber).cancel();
+        }
+        mDownloadRequests.clear();
     }
 
     /**
@@ -129,11 +172,16 @@ class SegmentDownloader {
 
         @Override
         public void onFailure(Call call, IOException e) {
-            mCallback.onFailure(mCachedSegment, e);
+            mDownloadRequests.remove(mCachedSegment.number);
+            if(!call.isCanceled()) {
+                // Call back only if a request 'really' failed, i.e. if it hasn't been canceled on purpose
+                mCallback.onFailure(mCachedSegment, e);
+            }
         }
 
         @Override
         public void onResponse(Call call, Response response) throws IOException {
+            mDownloadRequests.remove(mCachedSegment.number);
             if (response.isSuccessful()) {
                 try {
                     long startTime = SystemClock.elapsedRealtime();
