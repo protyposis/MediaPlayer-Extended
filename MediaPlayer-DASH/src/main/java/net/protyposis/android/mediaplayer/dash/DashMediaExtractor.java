@@ -592,8 +592,9 @@ class DashMediaExtractor extends MediaExtractor {
                 synchronized (mFutureCache) {
                     mFutureCache.notify();
                 }
-            } catch (IOException e) {
-                // TODO handle error
+            } catch (IOException | NullPointerException e) {
+                // TODO handle error?
+                // TODO find out why isoparser sometimes throws a NPE
                 Log.e(TAG, "segment download failed", e);
             }
         }
