@@ -30,18 +30,27 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* __v4.1.0__: Buffering in MediaPlayer, many DASH improvements
+  * Implement correct buffering in MediaPlayer, pause playback during buffering, and send MEDIA_INFO_BUFFERING_START (improves Android API compatibility)
+  * DASH: configurable segment cache size on DashMediaExtractor and through DashSource (unchanged default is 100 megabytes)
+  * DASH: Upgrade OkHttp from v2 to v3 (3.4.2)
+  * DASH: Allow setting of custom OkHttpClient in DashSource and DashMediaExtractor (through the new SegmentManager)
+  * DASH: Order segment download requests by priority (PTS)
+  * DASH fix: memory was leaking for fragmented MP4 sources where fragment data was never freed
+  * DASH fix: use DashSource headers for segment requests too (not just the MPD request)
+  * DASH fix: various other fixes and improvements
 * v4.0.2: bugfixes in MediaPlayer, VideoView, and demo app
- * VideoView: allow setting new video source while previous source is still preparing
- * MediaPlayer: correctly deliver buffer percentage in onBufferingUpdate
+  * VideoView: allow setting new video source while previous source is still preparing
+  * MediaPlayer: correctly deliver buffer percentage in onBufferingUpdate
 * __v4.0.0__: GLES components removed, license changed, stability improvements
- * GLES components have been migrated to the [Spectaculum](https://github.com/protyposis/Spectaculum) library
- * License changed from GPLv3 to Apache 2.0
- * stability improvements in VideoView
- * MediaPlayer.release() is now blocking until all resources are released
+  * GLES components have been migrated to the [Spectaculum](https://github.com/protyposis/Spectaculum) library
+  * License changed from GPLv3 to Apache 2.0
+  * stability improvements in VideoView
+  * MediaPlayer.release() is now blocking until all resources are released
 * v3.1.0: add seek modes from Android's MediaPlayer, bugfixes in the DASH MPD parser
 * __v3.0.0__: Library renamed from ITEC MediaPlayer to MediaPlayer-Extended
- * Package renamed from `at.aau.itec.android.mediaplayer` to `net.protyposis.android.mediaplayer`
- * This version is functionally equivalent to v2.2.3. It is given a new major version because the changed
+  * Package renamed from `at.aau.itec.android.mediaplayer` to `net.protyposis.android.mediaplayer`
+  * This version is functionally equivalent to v2.2.3. It is given a new major version because the changed
    package name might be considered an incompatible API change, which requires a new major version
    according to [SemVer](http://semver.org/spec/v2.0.0.html).
 * v2.2.3: fix playback speed change during pause
@@ -50,10 +59,10 @@ Changelog
 * __v2.2.0__: playback performance improvements (less CPU load), audio-only playback support, bugfixes
 * v2.1.0: add setVolume() to MediaPlayer, update Grade dependencies, update project files to Android Studio 2.0
 * __v2.0.0__: API changed, improved Android API compatibility, improved decoder
-  * smoother playback with less CPU time
-  * add prepare()/prepareAsync() to MediaPlayer (similar to Android MediaPlayer, breaking change from v1, needs to be called after setting the datasource)
-  * first frame not rendered automatically anymore (similar to Android MediaPlayer)
-  * add looping functionality (setLooping/isLooping) to MediaPlayer (similar to Android MediaPlayer)
+   * smoother playback with less CPU time
+   * add prepare()/prepareAsync() to MediaPlayer (similar to Android MediaPlayer, breaking change from v1, needs to be called after setting the datasource)
+   * first frame not rendered automatically anymore (similar to Android MediaPlayer)
+   * add looping functionality (setLooping/isLooping) to MediaPlayer (similar to Android MediaPlayer)
 * v1.4.3: bugfixes for re-setting a data source on a video view, OnSeekListener called from wrong thread, and infinite loop when seeking from end of stream (fixes GitHub issues #8 and #9)
 * v1.4.2: add stopPlayback() and seek mode getters/setters to (GL)VideoView
 * v1.4.1: hotfix for exact seeking in segmented DASH streams
@@ -144,8 +153,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.2'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.2'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.0'
     }
 
 #### Local Maven repository ####
@@ -160,8 +169,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.0.2-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.0.2-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.0-SNAPSHOT'
     }
 
 
@@ -183,7 +192,8 @@ two basic AdaptationLogic implementations, `ConstantPropertyBasedLogic` which se
 constant representation mode, and `SimpleRateBasedAdaptationLogic`, which monitors the bandwidth and
 tries to choose the best representation accordingly. It supports MP4, fragmented MP4 and WebM
 containers, with both file and byte-range requests. The DASH support does not cover the full standard,
-but many common use cases.
+but many common use cases. `DashSource` can also be configured with a custom `OkHttpClient` instance,
+useful for HTTP request caching, cookie management, authentication, proxy settings, etc.
 
 MediaPlayer-DASH has external dependencies on [OkHttp](https://github.com/square/okhttp),
 [Okio](https://github.com/square/okio), and [ISO Parser](https://github.com/sannies/mp4parser).
