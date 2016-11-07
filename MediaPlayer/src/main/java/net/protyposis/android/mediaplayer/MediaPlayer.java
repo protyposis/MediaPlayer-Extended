@@ -36,6 +36,8 @@ public class MediaPlayer {
 
     private static final String TAG = MediaPlayer.class.getSimpleName();
 
+    private static final long BUFFER_LOW_WATER_MARK_US = 2000000; // 2 seconds; NOTE: make sure this is below DashMediaExtractor's mMinBufferTimeUs
+
     public enum SeekMode {
         /**
          * Seeks to the previous sync point.
@@ -263,7 +265,13 @@ public class MediaPlayer {
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
             public void onBuffering(MediaCodecDecoder decoder) {
-                if(!mBuffering) {
+                // Enter buffering mode (playback pause) if cached amount is below water mark
+                // Do not enter buffering mode is player is already paused (buffering mode will be
+                // entered when playback is started and buffer is too empty).
+                if(mPlaybackThread != null && !mPlaybackThread.isPaused()
+                        && !mBuffering
+                        && mDecoders.getCachedDuration() < BUFFER_LOW_WATER_MARK_US
+                        && !mDecoders.hasCacheReachedEndOfStream()) {
                     mBuffering = true;
                     mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                             MEDIA_INFO_BUFFERING_START, 0));
@@ -829,6 +837,29 @@ public class MediaPlayer {
         }
 
         private void loopInternal() throws IOException, InterruptedException {
+            // If this is an online stream, notify the client of the buffer fill level.
+            long cachedDuration = mDecoders.getCachedDuration();
+            if(cachedDuration != -1) {
+                // The cached duration from the MediaExtractor returns the cached time from
+                // the current position onwards, but the Android MediaPlayer returns the
+                // total time consisting of the current playback point and the length of
+                // the prefetched data.
+                // This comes before the buffering pause to update the clients buffering info
+                // also during a buffering playback pause.
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
+                        (int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)), 0));
+            }
+
+            // If we are in buffering mode, check if the buffer has been filled until the low water
+            // mark or the end of the stream has been reached, and pause playback if it isn't filled
+            // high enough yet.
+            if(mBuffering && cachedDuration > -1 && cachedDuration < BUFFER_LOW_WATER_MARK_US && !mDecoders.hasCacheReachedEndOfStream()) {
+                //Log.d(TAG, "buffering... " + mDecoders.getCachedDuration() + " / " + BUFFER_LOW_WATER_MARK_US);
+                // To pause playback for buffering, we simply skip this loop and call it again later
+                mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 100);
+                return;
+            }
+
             if(mDecoders.getVideoDecoder() != null && mVideoFrameInfo == null) {
                 // This method needs a video frame to operate on. If there is no frame, we need
                 // to decode one first.
@@ -844,26 +875,18 @@ public class MediaPlayer {
             long startTime = SystemClock.elapsedRealtime();
 
             // When we are in buffering mode, and a frame has been decoded, the buffer is
-            // obviously refilled so we can send the buffering end message
+            // obviously refilled so we can send the buffering end message and exit buffering mode.
             if(mBuffering) {
                 mBuffering = false;
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
                         MEDIA_INFO_BUFFERING_END, 0));
+
+                // Reset timebase so player does not try to catch up time lost while caching
+                mTimeBase.startAt(mDecoders.getCurrentDecodingPTS());
             }
 
             // Update the current position of the player
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
-
-            // If this is an online stream, notify the client of the buffer fill level.
-            // The cached duration from the MediaExtractor returns the cached time from
-            // the current position onwards, but the Android MediaPlayer returns the
-            // total time consisting fo the current playback point and the length of
-            // the prefetched data.
-            long cachedDuration = mDecoders.getCachedDuration();
-            if(cachedDuration != -1) {
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
-                        (int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)), 0));
-            }
 
             if(mDecoders.getVideoDecoder() != null) {
                 renderVideoFrame(mVideoFrameInfo);

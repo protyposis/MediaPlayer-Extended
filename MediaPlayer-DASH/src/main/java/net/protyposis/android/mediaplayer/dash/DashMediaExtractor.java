@@ -104,7 +104,7 @@ class DashMediaExtractor extends MediaExtractor {
             mAdaptationSet = adaptationSet;
             mAdaptationLogic = adaptationLogic;
             mRepresentation = adaptationLogic.initialize(mAdaptationSet);
-            mMinBufferTimeUs = Math.max(mMPD.minBufferTimeUs, 10 * 1000000L); // 10 secs min buffer time
+            mMinBufferTimeUs = Math.max(mMPD.minBufferTimeUs, 10 * 1000000L); // 10 secs min buffer time; NOTE: make sure this is above MediaPlayer's low buffering water mark
             mCurrentSegment = -1;
             mSelectedTracks = new ArrayList<>();
             mInitSegments = new ConcurrentHashMap<>(mAdaptationSet.representations.size());

@@ -245,12 +245,19 @@ abstract class MediaCodecDecoder {
                 mRepresentationChanging = true;
                 mCodec.queueInputBuffer(inputBufIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
 
-                if(mExtractor.getCachedDuration() == 0) {
+                // Check buffering state before representation changes (and possibly a new segment needs to be downloaded)
+                if(mExtractor.getCachedDuration() > -1) {
                     if(mOnDecoderEventListener != null) {
                         mOnDecoderEventListener.onBuffering(this);
                     }
                 }
             } else {
+                // Check buffering state before the blocking readSampleData call
+                if(mExtractor.getCachedDuration() > -1) {
+                    if(mOnDecoderEventListener != null) {
+                        mOnDecoderEventListener.onBuffering(this);
+                    }
+                }
                 int sampleSize = mExtractor.readSampleData(inputBuffer, 0);
                 long presentationTimeUs = 0;
 
@@ -365,6 +372,16 @@ abstract class MediaCodecDecoder {
      */
     public long getCachedDuration() {
         return mExtractor.getCachedDuration();
+    }
+
+    /**
+     * Returns true iff we are caching data and the cache has reached the
+     * end of the data stream.
+     * @see MediaExtractor#hasCacheReachedEndOfStream()
+     * @return true if caching and end of stream has been reached, else false
+     */
+    public boolean hasCacheReachedEndOfStream() {
+        return mExtractor.hasCacheReachedEndOfStream();
     }
 
     /**

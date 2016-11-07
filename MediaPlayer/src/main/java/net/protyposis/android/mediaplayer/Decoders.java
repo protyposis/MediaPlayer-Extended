@@ -183,4 +183,16 @@ class Decoders {
 
         return minCachedDuration;
     }
+
+    /**
+     * Returns true only if all decoders have reached the end of stream.
+     */
+    public boolean hasCacheReachedEndOfStream() {
+        for (MediaCodecDecoder decoder : mDecoders) {
+            if(!decoder.hasCacheReachedEndOfStream()) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
