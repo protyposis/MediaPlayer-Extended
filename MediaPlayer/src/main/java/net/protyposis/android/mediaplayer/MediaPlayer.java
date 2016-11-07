@@ -263,9 +263,11 @@ public class MediaPlayer {
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
             public void onBuffering(MediaCodecDecoder decoder) {
-                mBuffering = true;
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
-                        MEDIA_INFO_BUFFERING_START, 0));
+                if(!mBuffering) {
+                    mBuffering = true;
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_INFO,
+                            MEDIA_INFO_BUFFERING_START, 0));
+                }
             }
         };
 
