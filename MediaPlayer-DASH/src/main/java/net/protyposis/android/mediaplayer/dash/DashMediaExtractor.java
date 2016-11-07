@@ -61,7 +61,7 @@ import okio.Okio;
  *
  * Created by maguggen on 27.08.2014.
  */
-class DashMediaExtractor extends MediaExtractor {
+public class DashMediaExtractor extends MediaExtractor {
 
     private static final String TAG = DashMediaExtractor.class.getSimpleName();
 

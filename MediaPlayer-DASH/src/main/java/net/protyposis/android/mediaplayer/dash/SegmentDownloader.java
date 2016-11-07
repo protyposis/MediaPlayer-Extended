@@ -37,7 +37,7 @@ import okhttp3.Response;
  * Created by Mario on 05.11.2016.
  */
 
-class SegmentDownloader {
+public class SegmentDownloader {
 
     static final int INITSEGMENT = -1;
 
@@ -47,7 +47,7 @@ class SegmentDownloader {
     private Map<String, Call> mDownloadRequests; // segments currently being requested
     private int mMaxConcurrentDownloadRequests = 3;
 
-    SegmentDownloader(OkHttpClient httpClient, Map<String, String> headers) {
+    public SegmentDownloader(OkHttpClient httpClient, Map<String, String> headers) {
         if (httpClient == null) {
             throw new IllegalArgumentException("http client must be set");
         }
