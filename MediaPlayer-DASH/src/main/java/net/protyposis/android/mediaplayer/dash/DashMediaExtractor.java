@@ -157,7 +157,7 @@ public class DashMediaExtractor extends MediaExtractor {
 
     /**
      * Sets the size of the segment cache.
-     * On Android < 21, the size must be set before setting the data source (which is when the
+     * On Android before API 21, the size must be set before setting the data source (which is when the
      * cache is created), else an exception will be thrown. From Android 21 Lollipop onward,
      * the cache can be dynamically resized at any time.
      *
@@ -165,7 +165,7 @@ public class DashMediaExtractor extends MediaExtractor {
      * size or zero cache size effectively disables caching.
      *
      * @param sizeInBytes the size of the segment cache in bytes
-     * @throws IllegalStateException on Android < 21 if the data source has already been set
+     * @throws IllegalStateException on Android before API 21 if the data source has already been set
      */
     public void setCacheSize(int sizeInBytes) {
         mUsedCacheSize = sizeInBytes;
