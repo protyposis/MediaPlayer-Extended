@@ -885,6 +885,16 @@ public class MediaPlayer {
                 mTimeBase.startAt(mDecoders.getCurrentDecodingPTS());
             }
 
+            // When the waiting time to the next frame is too long, we defer rendering through
+            // the handler here instead of relying on releaseOutputBuffer(buffer, renderTimestampNs),
+            // which does not work well with long waiting times and many frames in the queue.
+            // On API < 21 the frame rendering is timed with a sleep() and this is not really necessary,
+            // but still shifts some waiting time from the sleep() to here.
+            if(mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs) > 60000) {
+                mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 50);
+                return;
+            }
+
             // Update the current position of the player
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
 
