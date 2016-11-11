@@ -333,13 +333,32 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         }
     }
 
+    /**
+     * Sets the playback speed. Can be used for fast forward and slow motion.
+     * The speed must not be negative.
+     *
+     * speed 0.5 = half speed / slow motion
+     * speed 2.0 = double speed / fast forward
+     * speed 0.0 equals to pause
+     *
+     * @param speed the playback speed to set
+     * @throws IllegalArgumentException if the speed is < 0
+     */
     public void setPlaybackSpeed(float speed) {
+        if(speed < 0) {
+            throw new IllegalArgumentException("speed cannot be negative");
+        }
+
         if(isInPlaybackState()) {
             mPlayer.setPlaybackSpeed(speed);
         }
         mPlaybackSpeedWhenPrepared = speed;
     }
 
+    /**
+     * Gets the current playback speed. See {@link #setPlaybackSpeed(float)} for details.
+     * @return the current playback speed
+     */
     public float getPlaybackSpeed() {
         if(isInPlaybackState()) {
             return mPlayer.getPlaybackSpeed();

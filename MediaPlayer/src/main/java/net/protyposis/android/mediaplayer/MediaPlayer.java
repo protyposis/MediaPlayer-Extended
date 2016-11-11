@@ -469,14 +469,28 @@ public class MediaPlayer {
 
     /**
      * Sets the playback speed. Can be used for fast forward and slow motion.
+     * The speed must not be negative.
+     *
      * speed 0.5 = half speed / slow motion
      * speed 2.0 = double speed / fast forward
+     * speed 0.0 equals to pause
+     *
+     * @param speed the playback speed to set
+     * @throws IllegalArgumentException if the speed is < 0
      */
     public void setPlaybackSpeed(float speed) {
+        if(speed < 0) {
+            throw new IllegalArgumentException("speed cannot be negative");
+        }
+
         mTimeBase.setSpeed(speed);
         mTimeBase.startAt(mCurrentPosition);
     }
 
+    /**
+     * Gets the current playback speed. See {@link #setPlaybackSpeed(float)} for details.
+     * @return the current playback speed
+     */
     public float getPlaybackSpeed() {
         return (float)mTimeBase.getSpeed();
     }
