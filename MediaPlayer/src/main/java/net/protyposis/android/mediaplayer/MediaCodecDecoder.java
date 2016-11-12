@@ -347,8 +347,9 @@ abstract class MediaCodecDecoder {
             Log.d(TAG, "output buffers have changed.");
         } else if (res == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
             // NOTE: this is the format of the raw output, not the format as specified by the container
-            MediaFormat oformat = mCodec.getOutputFormat();
-            Log.d(TAG, "output format has changed to " + oformat);
+            MediaFormat format = mCodec.getOutputFormat();
+            Log.d(TAG, "output format has changed to " + format);
+            onOutputFormatChanged(format);
         } else if (res == MediaCodec.INFO_TRY_AGAIN_LATER) {
             //Log.d(TAG, "dequeueOutputBuffer timed out");
         }
@@ -441,6 +442,14 @@ abstract class MediaCodecDecoder {
     protected final void releaseFrameInfo(FrameInfo frameInfo) {
         frameInfo.clear();
         mEmptyFrameInfos.add(frameInfo);
+    }
+
+    /**
+     * Overwrite in subclass to handle a change of the output format.
+     * @param format the new media format
+     */
+    protected void onOutputFormatChanged(MediaFormat format) {
+        // nothing to do here
     }
 
     /**

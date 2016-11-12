@@ -60,4 +60,9 @@ class MediaCodecAudioDecoder extends MediaCodecDecoder {
         mAudioPlayback.write(frameInfo.data, frameInfo.presentationTimeUs);
         releaseFrame(frameInfo);
     }
+
+    @Override
+    protected void onOutputFormatChanged(MediaFormat format) {
+        mAudioPlayback.init(format);
+    }
 }
