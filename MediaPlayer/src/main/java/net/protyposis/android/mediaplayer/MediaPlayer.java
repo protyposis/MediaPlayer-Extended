@@ -904,7 +904,7 @@ public class MediaPlayer {
             // which does not work well with long waiting times and many frames in the queue.
             // On API < 21 the frame rendering is timed with a sleep() and this is not really necessary,
             // but still shifts some waiting time from the sleep() to here.
-            if(mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs) > 60000) {
+            if(mVideoFrameInfo != null && mTimeBase.getOffsetFrom(mVideoFrameInfo.presentationTimeUs) > 60000) {
                 mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 50);
                 return;
             }
