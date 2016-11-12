@@ -66,8 +66,7 @@ class AudioPlayback {
     private long mLastPlaybackHeadPositionUs;
 
     public AudioPlayback() {
-        mFrameChunkSize = 4096; // arbitrary default chunk size
-        mPlaybackBufferSize = mFrameChunkSize * 4; // works for now; low dropouts but not too large
+        mFrameChunkSize = 4096 * 2; // arbitrary default chunk size
         mBufferQueue = new BufferQueue();
     }
 
@@ -105,10 +104,30 @@ class AudioPlayback {
         mFrameSize = bytesPerSample * channelCount;
         mSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
 
+        int channelConfig = AudioFormat.CHANNEL_OUT_DEFAULT;
+        switch(channelCount) {
+            case 1:
+                channelConfig = AudioFormat.CHANNEL_OUT_MONO;
+                break;
+            case 2:
+                channelConfig = AudioFormat.CHANNEL_OUT_STEREO;
+                break;
+            case 4:
+                channelConfig = AudioFormat.CHANNEL_OUT_QUAD;
+                break;
+            case 6:
+                channelConfig = AudioFormat.CHANNEL_OUT_5POINT1;
+                break;
+            case 8:
+                channelConfig = AudioFormat.CHANNEL_OUT_7POINT1;
+        }
+
+        mPlaybackBufferSize = mFrameChunkSize * channelCount;
+
         mAudioTrack = new AudioTrack(
                 AudioManager.STREAM_MUSIC,
                 mSampleRate,
-                channelCount == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
+                channelConfig,
                 AudioFormat.ENCODING_PCM_16BIT,
                 mPlaybackBufferSize, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM, mAudioSessionId);
