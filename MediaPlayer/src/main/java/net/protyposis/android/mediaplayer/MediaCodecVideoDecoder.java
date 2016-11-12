@@ -129,7 +129,10 @@ class MediaCodecVideoDecoder extends MediaCodecDecoder {
 
         FrameInfo frameInfo = super.seekTo(seekMode, seekTargetTimeUs, extractor, codec);
 
-        if(seekMode == MediaPlayer.SeekMode.FAST) {
+        if(seekMode == MediaPlayer.SeekMode.FAST
+                || seekMode == MediaPlayer.SeekMode.FAST_TO_CLOSEST_SYNC
+                || seekMode == MediaPlayer.SeekMode.FAST_TO_PREVIOUS_SYNC
+                || seekMode == MediaPlayer.SeekMode.FAST_TO_NEXT_SYNC) {
             Log.d(TAG, "fast seek to " + seekTargetTimeUs + " arrived at " + frameInfo.presentationTimeUs);
         }
         else if (seekMode == MediaPlayer.SeekMode.FAST_EXACT) {
