@@ -30,6 +30,10 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.1.1: bugfixes in MediaPlayer and demo app
+  * Support surround audio tracks
+  * Throw exception when negative playback speed is set
+  * Fix playback speed fluctuations on API >= 21
 * __v4.1.0__: Buffering in MediaPlayer, many DASH improvements
   * Implement correct buffering in MediaPlayer, pause playback during buffering, and send MEDIA_INFO_BUFFERING_START (improves Android API compatibility)
   * DASH: configurable segment cache size on DashMediaExtractor and through DashSource (unchanged default is 100 megabytes)
@@ -153,8 +157,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.1'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.1'
     }
 
 #### Local Maven repository ####
@@ -169,8 +173,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.1-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.1-SNAPSHOT'
     }
 
 
