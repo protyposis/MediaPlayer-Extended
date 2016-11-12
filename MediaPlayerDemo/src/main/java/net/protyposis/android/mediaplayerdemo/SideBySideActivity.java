@@ -42,7 +42,7 @@ public class SideBySideActivity extends Activity {
     private android.widget.VideoView mAndroidVideoView;
     private VideoView mMpxVideoView;
 
-    private MediaController.MediaPlayerControl mMediaPlayerControl;
+    private MediaPlayerMultiControl mMediaPlayerControl;
     private MediaController mMediaController;
 
     @Override
@@ -58,6 +58,7 @@ public class SideBySideActivity extends Activity {
         mMediaController = new MediaController(this);
         mMediaController.setAnchorView(findViewById(R.id.container));
         mMediaController.setMediaPlayer(mMediaPlayerControl);
+        mMediaController.setEnabled(false);
 
         mVideoUri = getIntent().getData();
         getActionBar().setSubtitle(mVideoUri+"");
@@ -66,16 +67,30 @@ public class SideBySideActivity extends Activity {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
+                final Runnable enableMediaController = new Runnable() {
+                    int preparedCount = 0;
+                    @Override
+                    public void run() {
+                        if(++preparedCount == mMediaPlayerControl.getControlsCount()) {
+                            // Enable controller when all players are initialized
+                            mMediaController.setEnabled(true);
+                        }
+                    }
+                };
+
                 mAndroidVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                     @Override
                     public void onPrepared(MediaPlayer mp) {
                         mAndroidVideoView.seekTo(0); // display first frame
+                        enableMediaController.run();
+
                     }
                 });
                 mMpxVideoView.setOnPreparedListener(new net.protyposis.android.mediaplayer.MediaPlayer.OnPreparedListener() {
                     @Override
                     public void onPrepared(net.protyposis.android.mediaplayer.MediaPlayer mp) {
                         mMpxVideoView.seekTo(0); // display first frame
+                        enableMediaController.run();
                     }
                 });
 
@@ -122,10 +137,14 @@ public class SideBySideActivity extends Activity {
         private List<MediaController.MediaPlayerControl> mControls;
 
         public MediaPlayerMultiControl(MediaController.MediaPlayerControl... controls) {
-            mControls = new ArrayList<MediaController.MediaPlayerControl>();
+            mControls = new ArrayList<>();
             for(MediaController.MediaPlayerControl mpc : controls) {
                 mControls.add(mpc);
             }
+        }
+
+        public int getControlsCount() {
+            return mControls.size();
         }
 
         @Override
