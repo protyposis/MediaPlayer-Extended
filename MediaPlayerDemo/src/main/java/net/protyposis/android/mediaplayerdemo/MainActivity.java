@@ -18,6 +18,7 @@ package net.protyposis.android.mediaplayerdemo;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.graphics.Color;
@@ -92,7 +93,11 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                     intent.setType("*/*");
                     intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"video/*", "audio/*"});
                 }
-                startActivityForResult(intent, REQUEST_LOAD_VIDEO);
+                try {
+                    startActivityForResult(intent, REQUEST_LOAD_VIDEO);
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this, "Your device seems to lack a file picker", Toast.LENGTH_SHORT).show();
+                }
             }
         });
         mVideoSelect2Button.setOnClickListener(new View.OnClickListener() {
