@@ -962,6 +962,8 @@ public class MediaPlayer {
             if(!mPaused) {
                 // Static delay time until the next call of the playback loop
                 long delay = 10;
+                // Scale delay by playback speed to avoid limiting framerate
+                delay = (long)(delay / mTimeBase.getSpeed());
                 // Calculate the duration taken for the current call
                 long duration = (SystemClock.elapsedRealtime() - startTime);
                 // Adjust the delay by the time taken
