@@ -342,7 +342,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
      * speed 0.0 equals to pause
      *
      * @param speed the playback speed to set
-     * @throws IllegalArgumentException if the speed is < 0
+     * @throws IllegalArgumentException if the speed is negative
      */
     public void setPlaybackSpeed(float speed) {
         if(speed < 0) {
