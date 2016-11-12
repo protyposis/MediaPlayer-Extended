@@ -684,6 +684,7 @@ public class MediaPlayer {
         private boolean mRenderModeApi21; // Usage of timed outputBufferRelease on API 21+
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
         private double mPlaybackSpeed;
+        private boolean mAVLocked;
 
         public PlaybackThread() {
             // Give this thread a high priority for more precise event timing
@@ -693,6 +694,7 @@ public class MediaPlayer {
             mPaused = true;
             mRenderModeApi21 = mVideoRenderTimingMode.isRenderModeApi21();
             mRenderingStarted = true;
+            mAVLocked = false;
         }
 
         public void play() {
@@ -807,10 +809,8 @@ public class MediaPlayer {
             // reset time (otherwise playback tries to "catch up" time after a pause)
             mTimeBase.startAt(mDecoders.getCurrentDecodingPTS());
 
-            // Start audio playback
             if(mAudioPlayback != null) {
                 mHandler.removeMessages(PLAYBACK_PAUSE_AUDIO);
-                mAudioPlayback.play();
             }
 
             mPlaybackSpeed = mTimeBase.getSpeed();
@@ -935,8 +935,30 @@ public class MediaPlayer {
                 // Sync timebase to audio timebase when there is audio data available
                 long currentAudioPTS = mAudioPlayback.getCurrentPresentationTimeUs();
                 if(currentAudioPTS > AudioPlayback.PTS_NOT_SET) {
-                    //Log.d(TAG, "sync audio/video time " + currentAudioPTS + "/" + mTimeBase.getCurrentTime());
-                    mTimeBase.startAt(currentAudioPTS);
+                    if(mAVLocked) {
+                        // Keep timebase in sync with audio timebase to avoid a/v drift
+                        mTimeBase.startAt(currentAudioPTS);
+                    } else {
+                        // Try to lock audio to video after a seek by pausing audio playback
+                        // if it is ahead too far.
+                        // This is required to avoid video playback try to catch up with audio by
+                        // playing back in fast forward.
+                        long audioOffset = currentAudioPTS - mCurrentPosition;
+                        if(audioOffset > 50000) {
+                            // If audio is ahead too far, pause it to let video frames catch up
+                            if(mAudioPlayback.isPlaying()) {
+                                mAudioPlayback.pause(false);
+                            }
+                        } else {
+                            // If audio is not too far ahead, we say it is locked to the video and
+                            // start playback if paused from above
+                            if(!mAudioPlayback.isPlaying()) {
+                                mAudioPlayback.play();
+                            }
+                            mAVLocked = true;
+                            Log.d(TAG, "AV locked");
+                        }
+                    }
                 }
             }
 
@@ -1012,6 +1034,7 @@ public class MediaPlayer {
                 // (the final seek position may be off the initial target seek position)
                 mCurrentPosition = mDecoders.getCurrentDecodingPTS();
                 mSeeking = false;
+                mAVLocked = false;
 
                 mEventHandler.sendEmptyMessage(MEDIA_SEEK_COMPLETE);
 
