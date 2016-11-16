@@ -30,6 +30,7 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.1.3: hotfix for fatal crash when surface is destroyed during prepareAsync()
 * v4.1.2: fix slowmotion audio playback on devices where mono audio is decoded to stereo audio
 * v4.1.1: bugfixes in MediaPlayer and demo app
   * Support surround audio tracks
@@ -158,8 +159,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.2'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.2'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.3'
     }
 
 #### Local Maven repository ####
@@ -174,8 +175,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.2-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.2-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.3-SNAPSHOT'
     }
 
 
