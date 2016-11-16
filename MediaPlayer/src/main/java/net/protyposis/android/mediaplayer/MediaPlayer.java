@@ -374,9 +374,13 @@ public class MediaPlayer {
                     // This event is only triggered after a successful async prepare (not after the sync prepare!)
                     mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
                 } catch (IOException e) {
-                    Log.e(TAG, "prepareAsync error", e);
+                    Log.e(TAG, "prepareAsync() failed: cannot decode stream(s)", e);
                     mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
                             MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
+                } catch (IllegalStateException e) {
+                    Log.e(TAG, "prepareAsync() failed: surface might be gone", e);
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                            MEDIA_ERROR_UNKNOWN, 0));
                 }
             }
         }).start();
