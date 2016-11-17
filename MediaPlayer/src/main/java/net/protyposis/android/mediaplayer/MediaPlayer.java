@@ -733,8 +733,8 @@ public class MediaPlayer {
                 mPaused = true;
 
                 // Remove other events waiting in line to make the destroy happen faster
-                mEventHandler.removeMessages(PLAYBACK_SEEK);
-                mEventHandler.removeMessages(PLAYBACK_LOOP);
+                mHandler.removeMessages(PLAYBACK_SEEK);
+                mHandler.removeMessages(PLAYBACK_LOOP);
 
                 mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
 
@@ -1053,10 +1053,10 @@ public class MediaPlayer {
             mPaused = true;
 
             // make sure no other events run afterwards
-            mEventHandler.removeMessages(PLAYBACK_SEEK);
-            mEventHandler.removeMessages(PLAYBACK_LOOP);
-            mEventHandler.removeMessages(PLAYBACK_PAUSE);
-            mEventHandler.removeMessages(PLAYBACK_PAUSE_AUDIO);
+            mHandler.removeMessages(PLAYBACK_SEEK);
+            mHandler.removeMessages(PLAYBACK_LOOP);
+            mHandler.removeMessages(PLAYBACK_PAUSE);
+            mHandler.removeMessages(PLAYBACK_PAUSE_AUDIO);
 
             if(mDecoders != null) {
                 if(mVideoFrameInfo != null) {
