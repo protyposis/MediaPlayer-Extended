@@ -413,7 +413,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
     }
 
     private boolean isInPlaybackState() {
-        return mPlayer != null && mCurrentState >= STATE_PREPARING;
+        return mPlayer != null && mCurrentState >= STATE_PREPARED;
     }
 
     @Override
