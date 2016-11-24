@@ -894,7 +894,7 @@ public class MediaPlayer {
                     mHandler.sendEmptyMessageDelayed(PLAYBACK_PAUSE_AUDIO,
                             (mAudioPlayback.getQueueBufferTimeUs() + mAudioPlayback.getPlaybackBufferTimeUs()) / 1000 + 1);
                 } else {
-                    mAudioPlayback.pause();
+                    mAudioPlayback.pause(false);
                 }
             }
         }
