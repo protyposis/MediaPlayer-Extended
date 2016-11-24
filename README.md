@@ -30,6 +30,7 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.1.5: hotfix for playback stuttering after pause issue (#36)
 * v4.1.4: hotfixes for MediaPlayer (release during prepare) and VideoView
   * pulled from Maven due to playback bug (#36)
 * v4.1.3: hotfix for fatal crash when surface is destroyed during prepareAsync()
