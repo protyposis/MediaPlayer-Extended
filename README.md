@@ -31,7 +31,9 @@ Changelog
 ---------
 
 * v4.1.4: hotfixes for MediaPlayer (release during prepare) and VideoView
+  * pulled from Maven due to playback bug (#36)
 * v4.1.3: hotfix for fatal crash when surface is destroyed during prepareAsync()
+  * pulled from Maven due to playback bug (#36)
 * v4.1.2: fix slowmotion audio playback on devices where mono audio is decoded to stereo audio
 * v4.1.1: bugfixes in MediaPlayer and demo app
   * Support surround audio tracks
