@@ -548,6 +548,7 @@ public class MediaPlayer {
     }
 
     public void stop() {
+        mCurrentPosition = 0;
         if(mPlaybackThread != null) {
             mPlaybackThread.release();
             mPlaybackThread = null;
