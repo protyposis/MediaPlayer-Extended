@@ -391,7 +391,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
     @Override
     public int getCurrentPosition() {
-        return mPlayer != null ? mPlayer.getCurrentPosition() : 0;
+        if (isInPlaybackState()) {
+            return mPlayer.getCurrentPosition();
+        }
+        return 0;
     }
 
     @Override
