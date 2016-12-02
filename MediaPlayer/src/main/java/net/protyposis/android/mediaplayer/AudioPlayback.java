@@ -50,6 +50,7 @@ class AudioPlayback {
     private AudioThread mAudioThread;
     private long mLastPresentationTimeUs;
     private int mAudioSessionId;
+    private int mAudioStreamType;
     private float mVolumeLeft = 1, mVolumeRight = 1;
 
     /**
@@ -68,6 +69,8 @@ class AudioPlayback {
     public AudioPlayback() {
         mFrameChunkSize = 4096 * 2; // arbitrary default chunk size
         mBufferQueue = new BufferQueue();
+        mAudioSessionId = 0; // AudioSystem.AUDIO_SESSION_ALLOCATE;
+        mAudioStreamType = AudioManager.STREAM_MUSIC;
     }
 
     /**
@@ -125,13 +128,14 @@ class AudioPlayback {
         mPlaybackBufferSize = mFrameChunkSize * channelCount;
 
         mAudioTrack = new AudioTrack(
-                AudioManager.STREAM_MUSIC,
+                mAudioStreamType,
                 mSampleRate,
                 channelConfig,
                 AudioFormat.ENCODING_PCM_16BIT,
                 mPlaybackBufferSize, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM, mAudioSessionId);
         mAudioSessionId = mAudioTrack.getAudioSessionId();
+        mAudioStreamType = mAudioTrack.getStreamType();
         setStereoVolume(mVolumeLeft, mVolumeRight);
         mPresentationTimeOffsetUs = PTS_NOT_SET;
 
@@ -158,6 +162,14 @@ class AudioPlayback {
 
     public int getAudioSessionId() {
         return mAudioSessionId;
+    }
+
+    public void setAudioStreamType(int streamType) {
+        mAudioStreamType = streamType;
+    }
+
+    public int getAudioStreamType() {
+        return mAudioStreamType;
     }
 
     public boolean isInitialized() {

@@ -17,6 +17,7 @@
 package net.protyposis.android.mediaplayer;
 
 import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.net.Uri;
@@ -155,6 +156,7 @@ public class MediaPlayer {
     private MediaFormat mAudioFormat;
     private long mAudioMinPTS;
     private int mAudioSessionId;
+    private int mAudioStreamType;
     private float mVolumeLeft = 1, mVolumeRight = 1;
 
     private PlaybackThread mPlaybackThread;
@@ -194,6 +196,8 @@ public class MediaPlayer {
         mTimeBase = new TimeBase();
         mVideoRenderTimingMode = VideoRenderTimingMode.AUTO;
         mCurrentState = State.IDLE;
+        mAudioSessionId = 0; // AudioSystem.AUDIO_SESSION_ALLOCATE;
+        mAudioStreamType = AudioManager.STREAM_MUSIC;
     }
 
     public void setDataSource(MediaSource source) throws IOException, IllegalStateException {
@@ -326,6 +330,7 @@ public class MediaPlayer {
 
         if (mAudioPlayback != null) {
             mAudioSessionId = mAudioPlayback.getAudioSessionId();
+            mAudioStreamType = mAudioPlayback.getAudioStreamType();
         }
 
         // After the decoder is initialized, we know the video size
@@ -733,6 +738,26 @@ public class MediaPlayer {
     }
 
     /**
+     * @see android.media.MediaPlayer#getAudioSessionId()
+     */
+    public int getAudioSessionId() {
+        return mAudioSessionId;
+    }
+
+    public void setAudioStreamType(int streamType) {
+        // Can be set any time, no IllegalStateException is thrown, but value will be ignored if audio is already initialized
+        mAudioStreamType = streamType;
+    }
+
+    /**
+     * Gets the stream type of the audio playback session.
+     * @return the stream type
+     */
+    public int getAudioStreamType() {
+        return mAudioStreamType;
+    }
+
+    /**
      * Sets the timing mode for video frame rendering.
      * This only works before the calling {@link #prepare()} or {@link #prepareAsync()}.
      *
@@ -757,13 +782,6 @@ public class MediaPlayer {
         }
         Log.d(TAG, "setVideoRenderTimingMode " + mode);
         mVideoRenderTimingMode = mode;
-    }
-
-    /**
-     * @see android.media.MediaPlayer#getAudioSessionId()
-     */
-    public int getAudioSessionId() {
-        return mAudioSessionId;
     }
 
     private class PlaybackThread extends HandlerThread implements Handler.Callback {
