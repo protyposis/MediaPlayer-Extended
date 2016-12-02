@@ -285,8 +285,9 @@ public class DashMediaExtractor extends MediaExtractor {
          * either if the last segment is in the future cache,
          * or of the last segment is currently played back.
          */
-        return mFutureCache.containsKey(mRepresentation.getLastSegment())
-                || mCurrentSegment == (mRepresentation.segments.size() - 1);
+        int lastSegmentNumber = mRepresentation.segments.size() - 1;
+        return mFutureCache.containsKey(lastSegmentNumber)
+                || mCurrentSegment >= lastSegmentNumber;
     }
 
     @Override
