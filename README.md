@@ -30,6 +30,11 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* __v4.2.0__: Playback until very end, setAudioStreamType, state checking
+  * Playback video until the very last frame (previously, playback stopped when the audio stream stopped, which is sometimes shorter than the video)
+  * Implement `setAudioStreamType` in MediaPlayer
+  * Check states in MediaPlayer and throw IllegalStateException when methods are called in illegal states (similar to API MediaPlayer)
+  * DASH fix: cache EOS detection in DashMediaExtractor
 * v4.1.5: hotfix for playback stuttering after pause issue (#36)
 * v4.1.4: hotfixes for MediaPlayer (release during prepare) and VideoView
   * pulled from Maven due to playback bug (#36)
@@ -163,8 +168,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.4'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.4'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.0'
     }
 
 #### Local Maven repository ####
@@ -179,8 +184,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.1.4-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.1.4-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.0-SNAPSHOT'
     }
 
 
