@@ -132,6 +132,7 @@ public class MediaPlayer {
 
     private enum State {
         IDLE,
+        INITIALIZED,
         PREPARING,
         PREPARED,
         STOPPED,
@@ -195,7 +196,11 @@ public class MediaPlayer {
         mCurrentState = State.IDLE;
     }
 
-    public void setDataSource(MediaSource source) throws IOException {
+    public void setDataSource(MediaSource source) throws IOException, IllegalStateException {
+        if(mCurrentState != State.IDLE) {
+            throw new IllegalStateException();
+        }
+
         mVideoExtractor = source.getVideoExtractor();
         mAudioExtractor = source.getAudioExtractor();
 
@@ -244,6 +249,8 @@ public class MediaPlayer {
         if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE && mPlaybackThread == null && mSurface == null) {
             Log.i(TAG, "no video output surface specified");
         }
+
+        mCurrentState = State.INITIALIZED;
     }
 
     /**
@@ -264,12 +271,7 @@ public class MediaPlayer {
         setDataSource(context, uri, null);
     }
 
-    /**
-     * @see android.media.MediaPlayer#prepare()
-     */
-    public void prepare() throws IOException, IllegalStateException {
-        mCurrentState = State.PREPARING;
-
+    private void prepareInternal() throws IOException, IllegalStateException {
         if (mAudioFormat != null) {
             mAudioPlayback = new AudioPlayback();
             // Initialize settings in case they have already been set before the preparation
@@ -379,9 +381,25 @@ public class MediaPlayer {
     }
 
     /**
+     * @see android.media.MediaPlayer#prepare()
+     */
+    public void prepare() throws IOException, IllegalStateException {
+        if(mCurrentState != State.INITIALIZED && mCurrentState != State.STOPPED) {
+            throw new IllegalStateException();
+        }
+
+        mCurrentState = State.PREPARING;
+        prepareInternal();
+    }
+
+    /**
      * @see android.media.MediaPlayer#prepareAsync()
      */
     public void prepareAsync() throws IllegalStateException {
+        if(mCurrentState != State.INITIALIZED && mCurrentState != State.STOPPED) {
+            throw new IllegalStateException();
+        }
+
         mCurrentState = State.PREPARING;
 
         /* Running prepare() in an AsyncTask leads to severe performance degradations, unless the
@@ -397,7 +415,7 @@ public class MediaPlayer {
             @Override
             public void run() {
                 try {
-                    prepare();
+                    prepareInternal();
 
                     if(mCurrentState == State.PREPARED) {
                         // This event is only triggered after a successful async prepare (not after the sync prepare!)
@@ -462,11 +480,21 @@ public class MediaPlayer {
     }
 
     public void start() {
+        if(mCurrentState != State.PREPARED) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         mPlaybackThread.play();
         stayAwake(true);
     }
 
     public void pause() {
+        if(mCurrentState != State.PREPARED) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         mPlaybackThread.pause();
         stayAwake(false);
     }
@@ -480,6 +508,11 @@ public class MediaPlayer {
     }
 
     public void seekTo(long usec) {
+        if(mCurrentState.ordinal() < State.PREPARED.ordinal() && mCurrentState.ordinal() >= State.RELEASING.ordinal()) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         /* A seek needs to be performed in the decoding thread to execute commands in the correct
          * order. Otherwise it can happen that, after a seek in the media decoder, seeking procedure
          * starts, then a frame is decoded, and then the codec is flushed; the PTS of the decoded frame
@@ -530,6 +563,11 @@ public class MediaPlayer {
     }
 
     public boolean isPlaying() {
+        if(mCurrentState.ordinal() >= State.RELEASING.ordinal()) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         return mPlaybackThread != null && !mPlaybackThread.isPaused();
     }
 
@@ -553,16 +591,18 @@ public class MediaPlayer {
             mPlaybackThread = null;
         }
         stayAwake(false);
+        mCurrentState = State.STOPPED;
     }
 
     public void release() {
         mCurrentState = State.RELEASING;
         stop();
-        mCurrentState = MediaPlayer.State.RELEASED;
+        mCurrentState = State.RELEASED;
     }
 
     public void reset() {
         stop();
+        mCurrentState = State.IDLE;
     }
 
     /**
@@ -618,11 +658,20 @@ public class MediaPlayer {
     }
 
     public int getDuration() {
+        if(mCurrentState.ordinal() <= State.PREPARING.ordinal() && mCurrentState.ordinal() >= State.RELEASING.ordinal()) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         return mVideoFormat != null ? (int)(mVideoFormat.getLong(MediaFormat.KEY_DURATION)/1000) :
                 mAudioFormat != null && mAudioFormat.containsKey(MediaFormat.KEY_DURATION) ? (int)(mAudioFormat.getLong(MediaFormat.KEY_DURATION)/1000) : 0;
     }
 
     public int getCurrentPosition() {
+        if(mCurrentState.ordinal() >= State.RELEASING.ordinal()) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
         /* During a seek, return the temporary seek target time; otherwise a seek bar doesn't
          * update to the selected seek position until the seek is finished (which can take a
          * while in exact mode). */
@@ -634,11 +683,21 @@ public class MediaPlayer {
     }
 
     public int getVideoWidth() {
+        if(mCurrentState.ordinal() >= State.RELEASING.ordinal()) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         return mVideoFormat != null ? (int)(mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT)
                 * mVideoFormat.getFloat(MediaExtractor.MEDIA_FORMAT_EXTENSION_KEY_DAR)) : 0;
     }
 
     public int getVideoHeight() {
+        if(mCurrentState.ordinal() >= State.RELEASING.ordinal()) {
+            mCurrentState = State.ERROR;
+            throw new IllegalStateException();
+        }
+
         return mVideoFormat != null ? mVideoFormat.getInteger(MediaFormat.KEY_HEIGHT) : 0;
     }
 
@@ -667,6 +726,9 @@ public class MediaPlayer {
      * @see android.media.MediaPlayer#setAudioSessionId(int)
      */
     public void setAudioSessionId(int sessionId) {
+        if(mCurrentState != State.IDLE) {
+            throw new IllegalStateException();
+        }
         mAudioSessionId = sessionId;
     }
 
