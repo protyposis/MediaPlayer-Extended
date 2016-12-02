@@ -154,12 +154,13 @@ class Decoders {
 
     public boolean isEOS() {
         //return getCurrentDecodingPTS() == MediaCodecDecoder.PTS_EOS;
+        int eosCount = 0;
         for (MediaCodecDecoder decoder : mDecoders) {
             if(decoder.isOutputEos()) {
-                return true;
+                eosCount++;
             }
         }
-        return false;
+        return eosCount == mDecoders.size();
     }
 
     public long getCachedDuration() {

@@ -937,7 +937,7 @@ public class MediaPlayer {
                 // This method needs a video frame to operate on. If there is no frame, we need
                 // to decode one first.
                 mVideoFrameInfo = mDecoders.decodeFrame(false);
-                if(mVideoFrameInfo == null) {
+                if(mVideoFrameInfo == null && !mDecoders.isEOS()) {
                     // If the decoder didn't return a frame, we need to give it some processing time
                     // and come back later...
                     mHandler.sendEmptyMessageDelayed(PLAYBACK_LOOP, 10);
@@ -971,7 +971,7 @@ public class MediaPlayer {
             // Update the current position of the player
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
 
-            if(mDecoders.getVideoDecoder() != null) {
+            if(mDecoders.getVideoDecoder() != null && mVideoFrameInfo != null) {
                 renderVideoFrame(mVideoFrameInfo);
                 mVideoFrameInfo = null;
 
