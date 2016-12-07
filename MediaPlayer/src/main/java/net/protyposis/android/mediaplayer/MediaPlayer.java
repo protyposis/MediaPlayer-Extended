@@ -1084,6 +1084,10 @@ public class MediaPlayer {
 
                 // If looping is on, seek back to the start...
                 if(mLooping) {
+                    if(mAudioPlayback != null) {
+                        // Flush audio buffer to reset audio PTS
+                        mAudioPlayback.flush();
+                    }
                     mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
                     mDecoders.renderFrames();
                 }
