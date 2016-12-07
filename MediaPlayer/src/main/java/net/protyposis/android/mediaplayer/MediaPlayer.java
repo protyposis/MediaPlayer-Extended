@@ -912,9 +912,8 @@ public class MediaPlayer {
                         releaseInternal();
                         return true;
                     case DECODER_SET_SURFACE:
-                        if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
-                            mDecoders.getVideoDecoder().updateSurface((Surface) msg.obj);
-                        }
+                        setVideoSurface((Surface) msg.obj);
+                        return true;
                     default:
                         Log.d(TAG, "unknown/invalid message");
                         return false;
@@ -1233,6 +1232,12 @@ public class MediaPlayer {
             }
             // Release the current frame and render it to the surface
             mDecoders.getVideoDecoder().renderFrame(videoFrameInfo, waitingTime);
+        }
+
+        private void setVideoSurface(Surface surface) {
+            if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
+                mDecoders.getVideoDecoder().updateSurface(surface);
+            }
         }
     }
 
