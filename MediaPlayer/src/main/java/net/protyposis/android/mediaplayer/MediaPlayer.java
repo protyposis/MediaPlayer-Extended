@@ -1236,6 +1236,15 @@ public class MediaPlayer {
 
         private void setVideoSurface(Surface surface) {
             if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
+                if(mVideoFrameInfo != null) {
+                    // Dismiss queued video frame
+                    // After updating the surface, which re-initializes the codec,
+                    // the frame buffer will not be valid any more and trying to decode
+                    // it would result in an error; so we throw it away.
+                    mDecoders.getVideoDecoder().dismissFrame(mVideoFrameInfo);
+                    mVideoFrameInfo = null;
+                }
+
                 mDecoders.getVideoDecoder().updateSurface(surface);
             }
         }
