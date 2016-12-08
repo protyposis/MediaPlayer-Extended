@@ -30,6 +30,7 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.2.1: Fix `setSurface` and playback loop audio sync
 * __v4.2.0__: Playback until very end, setAudioStreamType, state checking
   * Playback video until the very last frame (previously, playback stopped when the audio stream stopped, which is sometimes shorter than the video)
   * Implement `setAudioStreamType` in MediaPlayer
@@ -168,8 +169,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.1'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.1'
     }
 
 #### Local Maven repository ####
@@ -184,8 +185,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.1-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.1-SNAPSHOT'
     }
 
 
