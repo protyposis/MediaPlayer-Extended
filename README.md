@@ -30,6 +30,8 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.2.2-rc1: Fix Audio/Decoder/PlaybackThread leaks in `release()`
+  * This version fixes a few serious leaks present since v4.0.0
 * v4.2.1: Fix `setSurface` and playback loop audio sync
 * __v4.2.0__: Playback until very end, setAudioStreamType, state checking
   * Playback video until the very last frame (previously, playback stopped when the audio stream stopped, which is sometimes shorter than the video)
@@ -169,8 +171,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.1'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.1'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.2-rc1'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.2-rc1'
     }
 
 #### Local Maven repository ####
