@@ -598,6 +598,8 @@ public class MediaPlayer {
         if(mPlaybackThread != null) {
             mPlaybackThread.release();
             mPlaybackThread = null;
+        } else if(mAudioPlayback != null) {
+            releaseAllResources();
         }
         stayAwake(false);
         mCurrentState = State.STOPPED;
@@ -612,6 +614,17 @@ public class MediaPlayer {
     public void reset() {
         stop();
         mCurrentState = State.IDLE;
+    }
+
+    private void releaseAllResources() {
+        if(mDecoders != null) {
+            mDecoders.release();
+        }
+        if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
+        if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
+            mAudioExtractor.release();
+        }
+        if(mVideoExtractor != null) mVideoExtractor.release();
     }
 
     /**
@@ -1168,29 +1181,22 @@ public class MediaPlayer {
         }
 
         private void releaseInternal() {
-            interrupt(); // post interrupt to avoid all further execution of messages/events in the queue
-            mPaused = true;
+            // post interrupt to avoid all further execution of messages/events in the queue
+            interrupt();
 
-            // make sure no other events run afterwards
-            if(mHandler != null) {
-                mHandler.removeMessages(PLAYBACK_SEEK);
-                mHandler.removeMessages(PLAYBACK_LOOP);
-                mHandler.removeMessages(PLAYBACK_PAUSE);
-                mHandler.removeMessages(PLAYBACK_PAUSE_AUDIO);
-            }
+            // quit message processing and exit thread
+            quit();
+
+            mPaused = true;
 
             if(mDecoders != null) {
                 if(mVideoFrameInfo != null) {
                     mDecoders.getVideoDecoder().releaseFrame(mVideoFrameInfo);
                     mVideoFrameInfo = null;
                 }
-                mDecoders.release();
             }
-            if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
-            if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
-                mAudioExtractor.release();
-            }
-            if(mVideoExtractor != null) mVideoExtractor.release();
+            releaseAllResources();
+
             Log.d(TAG, "PlaybackThread destroyed");
 
             synchronized (PT_SYNC) {
