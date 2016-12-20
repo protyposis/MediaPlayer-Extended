@@ -431,6 +431,10 @@ public class MediaPlayer {
                     mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
                             MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
                 } catch (IllegalStateException e) {
+                    Log.e(TAG, "prepareAsync() failed: something is in a wrong state", e);
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                            MEDIA_ERROR_UNKNOWN, 0));
+                } catch (IllegalArgumentException e) {
                     Log.e(TAG, "prepareAsync() failed: surface might be gone", e);
                     mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
                             MEDIA_ERROR_UNKNOWN, 0));
