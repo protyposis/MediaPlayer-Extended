@@ -814,6 +814,7 @@ public class MediaPlayer {
 
         private Handler mHandler;
         private boolean mPaused;
+        private boolean mReleasing;
         private MediaCodecDecoder.FrameInfo mVideoFrameInfo;
         private boolean mRenderModeApi21; // Usage of timed outputBufferRelease on API 21+
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
@@ -826,6 +827,7 @@ public class MediaPlayer {
 
             // Init fields
             mPaused = true;
+            mReleasing = false;
             mRenderModeApi21 = mVideoRenderTimingMode.isRenderModeApi21();
             mRenderingStarted = true;
             mAVLocked = false;
@@ -873,15 +875,14 @@ public class MediaPlayer {
             }
 
             synchronized (PT_SYNC) {
-                // Set this flag so the loop does not schedule next loop iteration
-                mPaused = true;
+                mPaused = true; // Set this flag so the loop does not schedule next loop iteration
+                mReleasing = true;
 
                 if(mHandler != null) {
-                    // Remove other events waiting in line to make the destroy happen faster
-                    mHandler.removeMessages(PLAYBACK_SEEK);
-                    mHandler.removeMessages(PLAYBACK_LOOP);
-
                     // Call actual release method
+                    // Actually it does not matter what we schedule here, we just need to schedule
+                    // something so {@link #handleMessage} gets called on the handler thread which
+                    // will then call {@link #releaseInternal}.
                     mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
 
                     // wait for #releaseInternal to finish and notify
@@ -902,9 +903,9 @@ public class MediaPlayer {
 
         @Override
         public boolean handleMessage(Message msg) {
-            if(isInterrupted()) {
-                // Do not process the message if an interrupt has been posted from releaseInternal().
-                // Resources are already released and executing any method results in an exception.
+            if(mReleasing) {
+                // When the releasing flag is set, just release without processing any more messages
+                releaseInternal();
                 return true;
             }
 
@@ -949,8 +950,8 @@ public class MediaPlayer {
                         MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
             }
 
+            // Release after an exception
             releaseInternal();
-
             return true;
         }
 
