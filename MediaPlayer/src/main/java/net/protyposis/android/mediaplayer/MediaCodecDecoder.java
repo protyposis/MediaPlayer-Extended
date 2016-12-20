@@ -154,27 +154,37 @@ abstract class MediaCodecDecoder {
      * Starts or restarts the codec with a new format, e.g. after a representation change.
      */
     protected final void reinitCodec() {
-        long t1 = SystemClock.elapsedRealtime();
+        try {
+            long t1 = SystemClock.elapsedRealtime();
 
-        // Get new format and restart codec with this format
-        mFormat = mExtractor.getTrackFormat(mTrackIndex);
+            // Get new format and restart codec with this format
+            mFormat = mExtractor.getTrackFormat(mTrackIndex);
 
-        mCodec.stop();
-        configureCodec(mCodec, mFormat);
-        mCodec.start(); // TODO speedup, but how? this takes a long time and introduces lags when switching DASH representations (AVC codec)
-        mCodecInputBuffers = mCodec.getInputBuffers();
-        mCodecOutputBuffers = mCodec.getOutputBuffers();
-        mBufferInfo = new MediaCodec.BufferInfo();
-        mInputEos = false;
-        mOutputEos = false;
+            mCodec.stop();
+            configureCodec(mCodec, mFormat);
+            mCodec.start(); // TODO speedup, but how? this takes a long time and introduces lags when switching DASH representations (AVC codec)
+            mCodecInputBuffers = mCodec.getInputBuffers();
+            mCodecOutputBuffers = mCodec.getOutputBuffers();
+            mBufferInfo = new MediaCodec.BufferInfo();
+            mInputEos = false;
+            mOutputEos = false;
 
-        // Create FrameInfo objects for later reuse
-        mEmptyFrameInfos = new ArrayList<>();
-        for(int i = 0; i < mCodecOutputBuffers.length; i++) {
-            mEmptyFrameInfos.add(new FrameInfo());
+            // Create FrameInfo objects for later reuse
+            mEmptyFrameInfos = new ArrayList<>();
+            for (int i = 0; i < mCodecOutputBuffers.length; i++) {
+                mEmptyFrameInfos.add(new FrameInfo());
+            }
+
+            Log.d(TAG, "reinitCodec " + (SystemClock.elapsedRealtime() - t1) + "ms");
+        } catch (IllegalArgumentException e) {
+            mCodec.release(); // Release failed codec to not leak a codec thread (MediaCodec_looper)
+            Log.e(TAG, "reinitCodec: invalid surface or format");
+            throw e;
+        } catch (IllegalStateException e) {
+            mCodec.release(); // Release failed codec to not leak a codec thread (MediaCodec_looper)
+            Log.e(TAG, "reinitCodec: illegal state");
+            throw e;
         }
-
-        Log.d(TAG, "reinitCodec " + (SystemClock.elapsedRealtime() - t1) + "ms");
     }
 
     /**
