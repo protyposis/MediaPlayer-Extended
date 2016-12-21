@@ -195,7 +195,6 @@ public class MediaPlayer {
      * prepareAsync() is finished before it does the actual releasing.
      * A CountDownLatch is used because a normal Lock cannot be locked and unlocked from different
      * threads (prepareAsync caller thread vs. prepareAsync async execution thread).
-     * TODO do the same for stop()/reset()
      */
     private CountDownLatch mPrepareAsyncReleaseSyncLock;
 
@@ -614,13 +613,7 @@ public class MediaPlayer {
     }
 
     public void stop() {
-        if(mPlaybackThread != null) {
-            mPlaybackThread.release();
-            mPlaybackThread = null;
-        } else {
-            releaseAllResources();
-        }
-        stayAwake(false);
+        release();
         mCurrentState = State.STOPPED;
     }
 
@@ -639,9 +632,15 @@ public class MediaPlayer {
             }
         }
 
-        stop();
+        if(mPlaybackThread != null) {
+            mPlaybackThread.release();
+            mPlaybackThread = null;
+        } else {
+            releaseAllResources();
+        }
+        stayAwake(false);
+
         mCurrentState = State.RELEASED;
-        Log.d(TAG, "released");
     }
 
     public void reset() {
