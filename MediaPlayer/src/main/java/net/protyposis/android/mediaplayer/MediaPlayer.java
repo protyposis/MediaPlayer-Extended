@@ -29,6 +29,7 @@ import android.view.SurfaceHolder;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by maguggen on 04.06.2014.
@@ -189,6 +190,14 @@ public class MediaPlayer {
     private State mCurrentState;
 
     private final Object PT_SYNC = new Object();
+    /**
+     * A lock to make sure that a release(), called during prepareAsync(), always waits until
+     * prepareAsync() is finished before it does the actual releasing.
+     * A CountDownLatch is used because a normal Lock cannot be locked and unlocked from different
+     * threads (prepareAsync caller thread vs. prepareAsync async execution thread).
+     * TODO do the same for stop()/reset()
+     */
+    private CountDownLatch mPrepareAsyncReleaseSyncLock;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -300,6 +309,11 @@ public class MediaPlayer {
             }
         };
 
+        if(mCurrentState == State.RELEASING) {
+            // release() has already been called, drop out of prepareAsync() (can only happen with async prepare)
+            return;
+        }
+
         mDecoders = new Decoders();
 
         if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
@@ -349,8 +363,8 @@ public class MediaPlayer {
             mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_SET_VIDEO_SIZE, width, height));
         }
 
-        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
-            // Cancel preparation if release was called in between
+        if(mCurrentState == State.RELEASING) {
+            // release() has already been called, drop out of prepareAsync()
             return;
         }
 
@@ -372,8 +386,8 @@ public class MediaPlayer {
         }
 
         synchronized(PT_SYNC) {
-            if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
-                // Cancel preparation if release was called in between
+            if(mCurrentState == State.RELEASING) {
+                // release() has already been called, drop out of prepareAsync()
                 return;
             }
 
@@ -404,6 +418,10 @@ public class MediaPlayer {
         if(mCurrentState != State.INITIALIZED && mCurrentState != State.STOPPED) {
             throw new IllegalStateException();
         }
+
+        // Create a new lock for release() to wait until prepareAsync is finished
+        // A new instance needs to be created each time because it can only be used once
+        mPrepareAsyncReleaseSyncLock = new CountDownLatch(1);
 
         mCurrentState = State.PREPARING;
 
@@ -438,6 +456,9 @@ public class MediaPlayer {
                     Log.e(TAG, "prepareAsync() failed: surface might be gone", e);
                     mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
                             MEDIA_ERROR_UNKNOWN, 0));
+                } finally {
+                    // Free the lock to let release() continue (if called while preparing)
+                    mPrepareAsyncReleaseSyncLock.countDown();
                 }
             }
         }).start();
@@ -607,8 +628,22 @@ public class MediaPlayer {
 
     public void release() {
         mCurrentState = State.RELEASING;
+
+        if(mPrepareAsyncReleaseSyncLock != null) {
+            // This lock does only exist if prepareAsync() has been called before
+            try {
+                // Wait for prepareAsync() to finish before actually releasing stuff
+                mPrepareAsyncReleaseSyncLock.await();
+            } catch (InterruptedException e) {
+                // nothing to do here
+            } finally {
+                mPrepareAsyncReleaseSyncLock = null;
+            }
+        }
+
         stop();
         mCurrentState = State.RELEASED;
+        Log.d(TAG, "released");
     }
 
     public void reset() {
@@ -898,7 +933,7 @@ public class MediaPlayer {
                 }
             }
 
-            Log.d(TAG, "released");
+            Log.d(TAG, "PlaybackThread released");
         }
 
         @Override
