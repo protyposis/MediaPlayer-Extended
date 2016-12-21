@@ -189,7 +189,7 @@ public class MediaPlayer {
 
     private State mCurrentState;
 
-    private final Object PT_SYNC = new Object();
+    private final Object mReleaseSyncLockObject = new Object();
     /**
      * A lock to make sure that a release(), called during prepareAsync(), always waits until
      * prepareAsync() is finished before it does the actual releasing.
@@ -385,16 +385,14 @@ public class MediaPlayer {
             mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
         }
 
-        synchronized(PT_SYNC) {
-            if(mCurrentState == State.RELEASING) {
-                // release() has already been called, drop out of prepareAsync()
-                return;
-            }
-
-            // Create the playback loop handler thread
-            mPlaybackThread = new PlaybackThread();
-            mPlaybackThread.start();
+        if(mCurrentState == State.RELEASING) {
+            // release() has already been called, drop out of prepareAsync()
+            return;
         }
+
+        // Create the playback loop handler thread
+        mPlaybackThread = new PlaybackThread();
+        mPlaybackThread.start();
 
         mCurrentState = State.PREPARED;
     }
@@ -619,7 +617,7 @@ public class MediaPlayer {
         if(mPlaybackThread != null) {
             mPlaybackThread.release();
             mPlaybackThread = null;
-        } else if(mAudioPlayback != null) {
+        } else {
             releaseAllResources();
         }
         stayAwake(false);
@@ -909,27 +907,22 @@ public class MediaPlayer {
                 return;
             }
 
-            synchronized (PT_SYNC) {
-                mPaused = true; // Set this flag so the loop does not schedule next loop iteration
+            mPaused = true; // Set this flag so the loop does not schedule next loop iteration
+
+            synchronized (mReleaseSyncLockObject) {
                 mReleasing = true;
 
-                if(mHandler != null) {
-                    // Call actual release method
-                    // Actually it does not matter what we schedule here, we just need to schedule
-                    // something so {@link #handleMessage} gets called on the handler thread which
-                    // will then call {@link #releaseInternal}.
-                    mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
+                // Call actual release method
+                // Actually it does not matter what we schedule here, we just need to schedule
+                // something so {@link #handleMessage} gets called on the handler thread which
+                // will then call {@link #releaseInternal}.
+                mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
 
-                    // wait for #releaseInternal to finish and notify
-                    try {
-                        PT_SYNC.wait();
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, "interrupted", e);
-                    }
-                } else {
-                    // If we release while preparing and there is no handler yet, we call release
-                    // directly instead of through then not-yet-existing message queue handler.
-                    releaseInternal();
+                // wait for #releaseInternal to finish and notify
+                try {
+                    mReleaseSyncLockObject.wait();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "wait lock interrupted", e);
                 }
             }
 
@@ -1235,8 +1228,9 @@ public class MediaPlayer {
 
             Log.d(TAG, "PlaybackThread destroyed");
 
-            synchronized (PT_SYNC) {
-                PT_SYNC.notify();
+            // Notify #release() that it can now continue because #releaseInternal is finished
+            synchronized (mReleaseSyncLockObject) {
+                mReleaseSyncLockObject.notify();
             }
         }
 
