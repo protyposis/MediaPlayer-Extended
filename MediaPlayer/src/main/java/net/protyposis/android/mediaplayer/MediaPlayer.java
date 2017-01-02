@@ -608,6 +608,25 @@ public class MediaPlayer {
         mCurrentState = State.RELEASED;
     }
 
+    public void releaseAsync() {
+        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
+            return;
+        }
+
+        mCurrentState = State.RELEASING;
+
+        if(mPlaybackThread != null) {
+            // If there is a playback thread, schedule release...
+            mPlaybackThread.release();
+            mPlaybackThread = null;
+        } else {
+            // Else, just set the state to released.
+            mCurrentState = State.RELEASED;
+        }
+
+        stayAwake(false);
+    }
+
     public void reset() {
         stop();
         mCurrentState = State.IDLE;
