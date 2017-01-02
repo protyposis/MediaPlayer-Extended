@@ -878,13 +878,13 @@ public class MediaPlayer {
 
         @Override
         public boolean handleMessage(Message msg) {
-            if(mReleasing) {
-                // When the releasing flag is set, just release without processing any more messages
-                releaseInternal();
-                return true;
-            }
-
             try {
+                if(mReleasing) {
+                    // When the releasing flag is set, just release without processing any more messages
+                    releaseInternal();
+                    return true;
+                }
+
                 switch (msg.what) {
                     case PLAYBACK_PREPARE:
                         prepareInternal();
