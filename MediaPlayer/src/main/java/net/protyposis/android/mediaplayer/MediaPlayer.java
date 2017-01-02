@@ -282,13 +282,6 @@ public class MediaPlayer {
     }
 
     private void prepareInternal() throws IOException, IllegalStateException {
-        if (mAudioFormat != null) {
-            mAudioPlayback = new AudioPlayback();
-            // Initialize settings in case they have already been set before the preparation
-            mAudioPlayback.setAudioSessionId(mAudioSessionId);
-            setVolume(mVolumeLeft, mVolumeRight); // sets the volume on mAudioPlayback
-        }
-
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
             public void onBuffering(MediaCodecDecoder decoder) {
@@ -324,6 +317,11 @@ public class MediaPlayer {
         }
 
         if(mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE) {
+            mAudioPlayback = new AudioPlayback();
+            // Initialize settings in case they have already been set before the preparation
+            mAudioPlayback.setAudioSessionId(mAudioSessionId);
+            setVolume(mVolumeLeft, mVolumeRight); // sets the volume on mAudioPlayback
+
             try {
                 boolean passive = (mAudioExtractor == mVideoExtractor || mAudioExtractor == null);
                 MediaCodecDecoder ad = new MediaCodecAudioDecoder(mAudioExtractor != null ? mAudioExtractor : mVideoExtractor,
@@ -331,6 +329,7 @@ public class MediaPlayer {
                 mDecoders.addDecoder(ad);
             } catch (Exception e) {
                 Log.e(TAG, "cannot create audio decoder: " + e.getMessage());
+                mAudioPlayback = null;
             }
         }
 
