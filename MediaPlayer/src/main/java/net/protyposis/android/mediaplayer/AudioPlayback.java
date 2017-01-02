@@ -136,6 +136,7 @@ class AudioPlayback {
                 AudioTrack.MODE_STREAM, mAudioSessionId);
 
         if(mAudioTrack.getState() != AudioTrack.STATE_INITIALIZED) {
+            stopAndRelease();
             throw new IllegalStateException("audio track init failed");
         }
 
@@ -178,7 +179,7 @@ class AudioPlayback {
     }
 
     public boolean isInitialized() {
-        return mAudioTrack != null;
+        return mAudioTrack != null && mAudioTrack.getState() == AudioTrack.STATE_INITIALIZED;
     }
 
     public void play() {
@@ -277,9 +278,14 @@ class AudioPlayback {
     }
 
     private void stopAndRelease(boolean killThread) {
-        if(isInitialized()) {
-            if(killThread) mAudioThread.interrupt();
-            mAudioTrack.stop();
+        if(killThread && mAudioThread != null) {
+            mAudioThread.interrupt();
+        }
+
+        if(mAudioTrack != null) {
+            if(isInitialized()) {
+                mAudioTrack.stop();
+            }
             mAudioTrack.release();
         }
         mAudioTrack = null;
