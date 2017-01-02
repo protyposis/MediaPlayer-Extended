@@ -118,7 +118,13 @@ class Decoders {
      */
     public void release() {
         for (MediaCodecDecoder decoder : mDecoders) {
-            decoder.release();
+            // Catch decoder.release() exceptions to avoid breaking the release loop on the first
+            // exception and leaking unreleased decoders.
+            try {
+                decoder.release();
+            } catch (Exception e) {
+                Log.e(TAG, "release failed", e);
+            }
         }
         mDecoders.clear();
     }
