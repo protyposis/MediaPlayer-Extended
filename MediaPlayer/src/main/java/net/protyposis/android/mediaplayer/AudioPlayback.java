@@ -134,6 +134,11 @@ class AudioPlayback {
                 AudioFormat.ENCODING_PCM_16BIT,
                 mPlaybackBufferSize, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM, mAudioSessionId);
+
+        if(mAudioTrack.getState() != AudioTrack.STATE_INITIALIZED) {
+            throw new IllegalStateException("audio track init failed");
+        }
+
         mAudioSessionId = mAudioTrack.getAudioSessionId();
         mAudioStreamType = mAudioTrack.getStreamType();
         setStereoVolume(mVolumeLeft, mVolumeRight);
