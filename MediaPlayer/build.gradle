@@ -30,7 +30,7 @@ publish {
     publishVersion = libraryVersionString()
     desc = 'MediaPlayer-Extended core module'
     website = 'https://github.com/protyposis/MediaPlayer-Extended'
-    licences = ['GPL-3.0']
+    licences = ['Apache-2.0']
 }
 
 //apply from: "../gitversioning.gradle"

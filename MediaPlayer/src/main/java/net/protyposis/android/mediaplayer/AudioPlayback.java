@@ -134,6 +134,12 @@ class AudioPlayback {
                 AudioFormat.ENCODING_PCM_16BIT,
                 mPlaybackBufferSize, // at least twice the size to enable double buffering (according to docs)
                 AudioTrack.MODE_STREAM, mAudioSessionId);
+
+        if(mAudioTrack.getState() != AudioTrack.STATE_INITIALIZED) {
+            stopAndRelease();
+            throw new IllegalStateException("audio track init failed");
+        }
+
         mAudioSessionId = mAudioTrack.getAudioSessionId();
         mAudioStreamType = mAudioTrack.getStreamType();
         setStereoVolume(mVolumeLeft, mVolumeRight);
@@ -173,7 +179,7 @@ class AudioPlayback {
     }
 
     public boolean isInitialized() {
-        return mAudioTrack != null;
+        return mAudioTrack != null && mAudioTrack.getState() == AudioTrack.STATE_INITIALIZED;
     }
 
     public void play() {
@@ -272,9 +278,14 @@ class AudioPlayback {
     }
 
     private void stopAndRelease(boolean killThread) {
-        if(isInitialized()) {
-            if(killThread) mAudioThread.interrupt();
-            mAudioTrack.stop();
+        if(killThread && mAudioThread != null) {
+            mAudioThread.interrupt();
+        }
+
+        if(mAudioTrack != null) {
+            if(isInitialized()) {
+                mAudioTrack.stop();
+            }
             mAudioTrack.release();
         }
         mAudioTrack = null;

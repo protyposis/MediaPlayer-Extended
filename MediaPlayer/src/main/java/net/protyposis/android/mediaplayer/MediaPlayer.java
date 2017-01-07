@@ -189,14 +189,12 @@ public class MediaPlayer {
 
     private State mCurrentState;
 
-    private final Object mReleaseSyncLockObject = new Object();
     /**
-     * A lock to make sure that a release(), called during prepareAsync(), always waits until
-     * prepareAsync() is finished before it does the actual releasing.
-     * A CountDownLatch is used because a normal Lock cannot be locked and unlocked from different
-     * threads (prepareAsync caller thread vs. prepareAsync async execution thread).
+     * A lock to sync release() with the actual releasing on the playback thread. This lock makes
+     * sure that release() waits until everything has been released before returning to the caller,
+     * and thus makes the async release look synchronized to an API caller.
      */
-    private CountDownLatch mPrepareAsyncReleaseSyncLock;
+    private Object mReleaseSyncLock;
 
     public MediaPlayer() {
         mPlaybackThread = null;
@@ -284,13 +282,6 @@ public class MediaPlayer {
     }
 
     private void prepareInternal() throws IOException, IllegalStateException {
-        if (mAudioFormat != null) {
-            mAudioPlayback = new AudioPlayback();
-            // Initialize settings in case they have already been set before the preparation
-            mAudioPlayback.setAudioSessionId(mAudioSessionId);
-            setVolume(mVolumeLeft, mVolumeRight); // sets the volume on mAudioPlayback
-        }
-
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
             public void onBuffering(MediaCodecDecoder decoder) {
@@ -326,6 +317,11 @@ public class MediaPlayer {
         }
 
         if(mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE) {
+            mAudioPlayback = new AudioPlayback();
+            // Initialize settings in case they have already been set before the preparation
+            mAudioPlayback.setAudioSessionId(mAudioSessionId);
+            setVolume(mVolumeLeft, mVolumeRight); // sets the volume on mAudioPlayback
+
             try {
                 boolean passive = (mAudioExtractor == mVideoExtractor || mAudioExtractor == null);
                 MediaCodecDecoder ad = new MediaCodecAudioDecoder(mAudioExtractor != null ? mAudioExtractor : mVideoExtractor,
@@ -333,6 +329,7 @@ public class MediaPlayer {
                 mDecoders.addDecoder(ad);
             } catch (Exception e) {
                 Log.e(TAG, "cannot create audio decoder: " + e.getMessage());
+                mAudioPlayback = null;
             }
         }
 
@@ -383,17 +380,6 @@ public class MediaPlayer {
             if (mAudioPlayback != null) mAudioPlayback.pause(true);
             mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
         }
-
-        if(mCurrentState == State.RELEASING) {
-            // release() has already been called, drop out of prepareAsync()
-            return;
-        }
-
-        // Create the playback loop handler thread
-        mPlaybackThread = new PlaybackThread();
-        mPlaybackThread.start();
-
-        mCurrentState = State.PREPARED;
     }
 
     /**
@@ -405,7 +391,15 @@ public class MediaPlayer {
         }
 
         mCurrentState = State.PREPARING;
+
+        // Prepare synchronously on caller thread
         prepareInternal();
+
+        // Create the playback loop handler thread
+        mPlaybackThread = new PlaybackThread();
+        mPlaybackThread.start();
+
+        mCurrentState = State.PREPARED;
     }
 
     /**
@@ -416,49 +410,14 @@ public class MediaPlayer {
             throw new IllegalStateException();
         }
 
-        // Create a new lock for release() to wait until prepareAsync is finished
-        // A new instance needs to be created each time because it can only be used once
-        mPrepareAsyncReleaseSyncLock = new CountDownLatch(1);
-
         mCurrentState = State.PREPARING;
 
-        /* Running prepare() in an AsyncTask leads to severe performance degradations, unless the
-         * priority of the AsyncTask is elevated from background (e.g. to default). Here we are directly
-         * using a thread to avoid the dreaded AsyncTask, because the overhead of creating this thread
-         * vs. reusing a thread from the AsyncTask's pool is negligible (it's a one time operation).
-         * It seems that threads created in a background thread have a way lower priority, no matter
-         * the priority the threads themselves are set to. This leads to a handler with delayed
-         * messages every 10ms to execute only every ~50ms, a 5x performance degradation. This affects
-         * the mediaplayer loop and possibly the audio playback thread and decoder threads too.
-         */
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    prepareInternal();
+        // Create the playback loop handler thread
+        mPlaybackThread = new PlaybackThread();
+        mPlaybackThread.start();
 
-                    if(mCurrentState == State.PREPARED) {
-                        // This event is only triggered after a successful async prepare (not after the sync prepare!)
-                        mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
-                    }
-                } catch (IOException e) {
-                    Log.e(TAG, "prepareAsync() failed: cannot decode stream(s)", e);
-                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
-                            MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
-                } catch (IllegalStateException e) {
-                    Log.e(TAG, "prepareAsync() failed: something is in a wrong state", e);
-                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
-                            MEDIA_ERROR_UNKNOWN, 0));
-                } catch (IllegalArgumentException e) {
-                    Log.e(TAG, "prepareAsync() failed: surface might be gone", e);
-                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
-                            MEDIA_ERROR_UNKNOWN, 0));
-                } finally {
-                    // Free the lock to let release() continue (if called while preparing)
-                    mPrepareAsyncReleaseSyncLock.countDown();
-                }
-            }
-        }).start();
+        // Execute prepare asynchronously on playback thread
+        mPlaybackThread.prepare();
     }
 
     /**
@@ -618,26 +577,32 @@ public class MediaPlayer {
     }
 
     public void release() {
+        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
+            return;
+        }
+
         mCurrentState = State.RELEASING;
 
-        if(mPrepareAsyncReleaseSyncLock != null) {
-            // This lock does only exist if prepareAsync() has been called before
-            try {
-                // Wait for prepareAsync() to finish before actually releasing stuff
-                mPrepareAsyncReleaseSyncLock.await();
-            } catch (InterruptedException e) {
-                // nothing to do here
-            } finally {
-                mPrepareAsyncReleaseSyncLock = null;
+        if(mPlaybackThread != null) {
+            // Create a new lock object for this release cycle
+            mReleaseSyncLock = new Object();
+
+            synchronized (mReleaseSyncLock) {
+                try {
+                    // Schedule release on the playback thread
+                    mPlaybackThread.release();
+                    mPlaybackThread = null;
+
+                    // Wait for the release on the playback thread to finish
+                    mReleaseSyncLock.wait();
+                } catch (InterruptedException e) {
+                    // nothing to do here
+                }
             }
+
+            mReleaseSyncLock = null;
         }
 
-        if(mPlaybackThread != null) {
-            mPlaybackThread.release();
-            mPlaybackThread = null;
-        } else {
-            releaseAllResources();
-        }
         stayAwake(false);
 
         mCurrentState = State.RELEASED;
@@ -646,17 +611,6 @@ public class MediaPlayer {
     public void reset() {
         stop();
         mCurrentState = State.IDLE;
-    }
-
-    private void releaseAllResources() {
-        if(mDecoders != null) {
-            mDecoders.release();
-        }
-        if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
-        if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
-            mAudioExtractor.release();
-        }
-        if(mVideoExtractor != null) mVideoExtractor.release();
     }
 
     /**
@@ -835,12 +789,13 @@ public class MediaPlayer {
 
     private class PlaybackThread extends HandlerThread implements Handler.Callback {
 
-        private static final int PLAYBACK_PLAY = 1;
-        private static final int PLAYBACK_PAUSE = 2;
-        private static final int PLAYBACK_LOOP = 3;
-        private static final int PLAYBACK_SEEK = 4;
-        private static final int PLAYBACK_RELEASE = 5;
-        private static final int PLAYBACK_PAUSE_AUDIO = 6;
+        private static final int PLAYBACK_PREPARE = 1;
+        private static final int PLAYBACK_PLAY = 2;
+        private static final int PLAYBACK_PAUSE = 3;
+        private static final int PLAYBACK_LOOP = 4;
+        private static final int PLAYBACK_SEEK = 5;
+        private static final int PLAYBACK_RELEASE = 6;
+        private static final int PLAYBACK_PAUSE_AUDIO = 7;
 
         static final int DECODER_SET_SURFACE = 100;
 
@@ -875,6 +830,10 @@ public class MediaPlayer {
             Log.d(TAG, "PlaybackThread started");
         }
 
+        public void prepare() {
+            mHandler.sendEmptyMessage(PLAYBACK_PREPARE);
+        }
+
         public void play() {
             mPaused = false;
             mHandler.sendEmptyMessage(PLAYBACK_PLAY);
@@ -907,37 +866,28 @@ public class MediaPlayer {
             }
 
             mPaused = true; // Set this flag so the loop does not schedule next loop iteration
+            mReleasing = true;
 
-            synchronized (mReleaseSyncLockObject) {
-                mReleasing = true;
-
-                // Call actual release method
-                // Actually it does not matter what we schedule here, we just need to schedule
-                // something so {@link #handleMessage} gets called on the handler thread which
-                // will then call {@link #releaseInternal}.
-                mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
-
-                // wait for #releaseInternal to finish and notify
-                try {
-                    mReleaseSyncLockObject.wait();
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "wait lock interrupted", e);
-                }
-            }
-
-            Log.d(TAG, "PlaybackThread released");
+            // Call actual release method
+            // Actually it does not matter what we schedule here, we just need to schedule
+            // something so {@link #handleMessage} gets called on the handler thread, read the
+            // mReleasing flag, and call {@link #releaseInternal}.
+            mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
         }
 
         @Override
         public boolean handleMessage(Message msg) {
-            if(mReleasing) {
-                // When the releasing flag is set, just release without processing any more messages
-                releaseInternal();
-                return true;
-            }
-
             try {
+                if(mReleasing) {
+                    // When the releasing flag is set, just release without processing any more messages
+                    releaseInternal();
+                    return true;
+                }
+
                 switch (msg.what) {
+                    case PLAYBACK_PREPARE:
+                        prepareInternal();
+                        return true;
                     case PLAYBACK_PLAY:
                         playInternal();
                         return true;
@@ -980,6 +930,31 @@ public class MediaPlayer {
             // Release after an exception
             releaseInternal();
             return true;
+        }
+
+        private void prepareInternal() {
+            try {
+                MediaPlayer.this.prepareInternal();
+                mCurrentState = MediaPlayer.State.PREPARED;
+
+                // This event is only triggered after a successful async prepare (not after the sync prepare!)
+                mEventHandler.sendEmptyMessage(MEDIA_PREPARED);
+            } catch (IOException e) {
+                Log.e(TAG, "prepareAsync() failed: cannot decode stream(s)", e);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                        MEDIA_ERROR_UNKNOWN, MEDIA_ERROR_IO));
+                releaseInternal();
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "prepareAsync() failed: something is in a wrong state", e);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                        MEDIA_ERROR_UNKNOWN, 0));
+                releaseInternal();
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "prepareAsync() failed: surface might be gone", e);
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_ERROR,
+                        MEDIA_ERROR_UNKNOWN, 0));
+                releaseInternal();
+            }
         }
 
         private void playInternal() throws IOException, InterruptedException {
@@ -1215,21 +1190,30 @@ public class MediaPlayer {
             // quit message processing and exit thread
             quit();
 
-            mPaused = true;
-
             if(mDecoders != null) {
                 if(mVideoFrameInfo != null) {
                     mDecoders.getVideoDecoder().releaseFrame(mVideoFrameInfo);
                     mVideoFrameInfo = null;
                 }
             }
-            releaseAllResources();
+
+            if(mDecoders != null) {
+                mDecoders.release();
+            }
+            if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
+            if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
+                mAudioExtractor.release();
+            }
+            if(mVideoExtractor != null) mVideoExtractor.release();
 
             Log.d(TAG, "PlaybackThread destroyed");
 
             // Notify #release() that it can now continue because #releaseInternal is finished
-            synchronized (mReleaseSyncLockObject) {
-                mReleaseSyncLockObject.notify();
+            if(mReleaseSyncLock != null) {
+                synchronized(mReleaseSyncLock) {
+                    mReleaseSyncLock.notify();
+                    mReleaseSyncLock = null;
+                }
             }
         }
 
