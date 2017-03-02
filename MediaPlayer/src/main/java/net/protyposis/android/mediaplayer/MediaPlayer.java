@@ -505,14 +505,20 @@ public class MediaPlayer {
          * then interferes the seeking procedure, the seek stops prematurely and a wrong waiting time
          * gets calculated. */
 
-        Log.d(TAG, "seekTo " + usec);
+        Log.d(TAG, "seekTo " + usec + " with video sample offset " + mVideoMinPTS);
 
         if (mOnSeekListener != null) {
             mOnSeekListener.onSeek(MediaPlayer.this);
         }
 
         mSeeking = true;
-        mSeekTargetTime = Math.max(mVideoMinPTS, usec);
+        // The passed in target time is always aligned to a zero start time, while the actual video
+        // can have an offset and must not necessarily start at zero. The offset can e.g. come from
+        // the CTTS box SampleOffset field, and is only reported on Android 5+. In Android 4, the
+        // offset is handled by the framework, not reported, and videos always start at zero.
+        // By adding the offset to the seek target time, we always seek to a zero-reference time in
+        // the stream.
+        mSeekTargetTime = mVideoMinPTS + usec;
         mPlaybackThread.seekTo(mSeekTargetTime);
     }
 
