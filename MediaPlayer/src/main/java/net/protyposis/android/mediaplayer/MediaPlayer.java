@@ -222,9 +222,12 @@ public class MediaPlayer {
             MediaFormat format = mVideoExtractor.getTrackFormat(i);
             Log.d(TAG, format.toString());
             String mime = format.getString(MediaFormat.KEY_MIME);
-            if (mVideoTrackIndex < 0 && mime.startsWith("video/")) {
+            if (mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE
+                    && mime.startsWith("video/")) {
                 mVideoTrackIndex = i;
-            } else if (mAudioExtractor == null && mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
+            } else if (mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE
+                    && mAudioExtractor == null
+                    && mime.startsWith("audio/")) {
                 mAudioTrackIndex = i;
                 mAudioExtractor = mVideoExtractor;
             }
@@ -236,7 +239,7 @@ public class MediaPlayer {
                 MediaFormat format = mAudioExtractor.getTrackFormat(i);
                 Log.d(TAG, format.toString());
                 String mime = format.getString(MediaFormat.KEY_MIME);
-                if (mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
+                if (mime.startsWith("audio/")) {
                     mAudioTrackIndex = i;
                 }
             }
