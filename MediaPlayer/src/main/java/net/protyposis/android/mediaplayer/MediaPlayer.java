@@ -266,6 +266,7 @@ public class MediaPlayer {
             mVideoExtractor.selectTrack(mVideoTrackIndex);
             mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
             mVideoMinPTS = mVideoExtractor.getSampleTime();
+            Log.d(TAG, "selected video track #" + mVideoTrackIndex + " " + mVideoFormat.toString());
         }
 
         // Select audio track
@@ -273,6 +274,7 @@ public class MediaPlayer {
             mAudioExtractor.selectTrack(mAudioTrackIndex);
             mAudioFormat = mAudioExtractor.getTrackFormat(mAudioTrackIndex);
             mAudioMinPTS = mAudioExtractor.getSampleTime();
+            Log.d(TAG, "selected audio track #" + mAudioTrackIndex + " " + mAudioFormat.toString());
         }
 
         if(mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE) {
