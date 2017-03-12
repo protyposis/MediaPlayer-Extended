@@ -217,36 +217,43 @@ public class MediaPlayer {
         mVideoTrackIndex = MediaCodecDecoder.INDEX_NONE;
         mAudioTrackIndex = MediaCodecDecoder.INDEX_NONE;
 
+        // Determine track indices for video and audio
         for (int i = 0; i < mVideoExtractor.getTrackCount(); ++i) {
             MediaFormat format = mVideoExtractor.getTrackFormat(i);
             Log.d(TAG, format.toString());
             String mime = format.getString(MediaFormat.KEY_MIME);
             if (mVideoTrackIndex < 0 && mime.startsWith("video/")) {
-                mVideoExtractor.selectTrack(i);
                 mVideoTrackIndex = i;
-                mVideoFormat = format;
-                mVideoMinPTS = mVideoExtractor.getSampleTime();
             } else if (mAudioExtractor == null && mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
-                mVideoExtractor.selectTrack(i);
                 mAudioTrackIndex = i;
-                mAudioFormat = format;
-                mAudioMinPTS = mVideoExtractor.getSampleTime();
                 mAudioExtractor = mVideoExtractor;
             }
         }
 
+        // Determine audio track index of separate audio source
         if(mAudioExtractor != null && mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE) {
             for (int i = 0; i < mAudioExtractor.getTrackCount(); ++i) {
                 MediaFormat format = mAudioExtractor.getTrackFormat(i);
                 Log.d(TAG, format.toString());
                 String mime = format.getString(MediaFormat.KEY_MIME);
                 if (mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
-                    mAudioExtractor.selectTrack(i);
                     mAudioTrackIndex = i;
-                    mAudioFormat = format;
-                    mAudioMinPTS = mAudioExtractor.getSampleTime();
                 }
             }
+        }
+
+        // Select video track
+        if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
+            mVideoExtractor.selectTrack(mVideoTrackIndex);
+            mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
+            mVideoMinPTS = mVideoExtractor.getSampleTime();
+        }
+
+        // Select audio track
+        if(mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE) {
+            mAudioExtractor.selectTrack(mAudioTrackIndex);
+            mAudioFormat = mAudioExtractor.getTrackFormat(mAudioTrackIndex);
+            mAudioMinPTS = mAudioExtractor.getSampleTime();
         }
 
         if(mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE) {
