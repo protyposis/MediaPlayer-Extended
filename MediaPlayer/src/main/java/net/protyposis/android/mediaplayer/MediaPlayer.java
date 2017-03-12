@@ -221,8 +221,8 @@ public class MediaPlayer {
      * the first fitting track index, or {@link #TRACK_INDEX_NONE} to not select any track.
      *
      * @param source the media source
-     * @param videoTrackIndex a video track index or one of the TACK_INDEX_* constants
-     * @param audioTrackIndex an audio track index or one of the TACK_INDEX_* constants
+     * @param videoTrackIndex a video track index or one of the TRACK_INDEX_* constants
+     * @param audioTrackIndex an audio track index or one of the TRACK_INDEX_* constants
      * @throws IOException
      * @throws IllegalStateException
      */
