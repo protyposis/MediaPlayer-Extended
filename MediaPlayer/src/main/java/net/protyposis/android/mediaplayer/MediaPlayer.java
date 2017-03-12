@@ -231,6 +231,12 @@ public class MediaPlayer {
                 mAudioTrackIndex = i;
                 mAudioExtractor = mVideoExtractor;
             }
+            // Break track selection loop when both video and audio tracks have been selected,
+            // or when a video track has been selected and audio has a separate source.
+            if (mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE
+                    && (mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE || mAudioExtractor != null)) {
+                break;
+            }
         }
 
         // Determine audio track index of separate audio source
@@ -241,6 +247,7 @@ public class MediaPlayer {
                 String mime = format.getString(MediaFormat.KEY_MIME);
                 if (mime.startsWith("audio/")) {
                     mAudioTrackIndex = i;
+                    break;
                 }
             }
         }
