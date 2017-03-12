@@ -214,43 +214,12 @@ public class MediaPlayer {
         mVideoExtractor = source.getVideoExtractor();
         mAudioExtractor = source.getAudioExtractor();
 
-        mVideoTrackIndex = MediaCodecDecoder.INDEX_NONE;
-        mAudioTrackIndex = MediaCodecDecoder.INDEX_NONE;
-
-        // Determine track indices for video and audio
-        for (int i = 0; i < mVideoExtractor.getTrackCount(); ++i) {
-            MediaFormat format = mVideoExtractor.getTrackFormat(i);
-            Log.d(TAG, format.toString());
-            String mime = format.getString(MediaFormat.KEY_MIME);
-            if (mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE
-                    && mime.startsWith("video/")) {
-                mVideoTrackIndex = i;
-            } else if (mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE
-                    && mAudioExtractor == null
-                    && mime.startsWith("audio/")) {
-                mAudioTrackIndex = i;
-                mAudioExtractor = mVideoExtractor;
-            }
-            // Break track selection loop when both video and audio tracks have been selected,
-            // or when a video track has been selected and audio has a separate source.
-            if (mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE
-                    && (mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE || mAudioExtractor != null)) {
-                break;
-            }
+        if(mVideoExtractor != null && mAudioExtractor == null) {
+            mAudioExtractor = mVideoExtractor;
         }
 
-        // Determine audio track index of separate audio source
-        if(mAudioExtractor != null && mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE) {
-            for (int i = 0; i < mAudioExtractor.getTrackCount(); ++i) {
-                MediaFormat format = mAudioExtractor.getTrackFormat(i);
-                Log.d(TAG, format.toString());
-                String mime = format.getString(MediaFormat.KEY_MIME);
-                if (mime.startsWith("audio/")) {
-                    mAudioTrackIndex = i;
-                    break;
-                }
-            }
-        }
+        mVideoTrackIndex = getTrackIndex(mVideoExtractor, "video/");
+        mAudioTrackIndex = getTrackIndex(mAudioExtractor, "audio/");
 
         // Select video track
         if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
@@ -278,6 +247,23 @@ public class MediaPlayer {
         }
 
         mCurrentState = State.INITIALIZED;
+    }
+
+    private int getTrackIndex(MediaExtractor mediaExtractor, String mimeType) {
+        if(mediaExtractor == null) {
+            return MediaCodecDecoder.INDEX_NONE;
+        }
+
+        for (int i = 0; i < mediaExtractor.getTrackCount(); ++i) {
+            MediaFormat format = mediaExtractor.getTrackFormat(i);
+            Log.d(TAG, format.toString());
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (mime.startsWith(mimeType)) {
+                return i;
+            }
+        }
+
+        return MediaCodecDecoder.INDEX_NONE;
     }
 
     /**
