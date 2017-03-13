@@ -30,6 +30,12 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* __v4.3.0__: Improved track index selection and seek accuracy
+  * Added `MediaPlayer#setDataSource(MediaSource source, int videoTrackIndex, int audioTrackIndex)` and `VideoView#setVideoSource(MediaSource source, int videoTrackIndex, int audioTrackIndex)` to explicitly select track indices or pass `MediaPlayer.TRACK_INDEX_AUTO` for automatic selection, or `MediaPlayer.TRACK_INDEX_NONE` for no selection
+  * The new track index selection methods can be used to bypass segmentation faults in some Samsung Android versions that happen with video thumbnail tracks (see issue #56)
+  * Improved seek accuracy by taking the SampleOffset into account
+  * Improved track index selection (stops reading tracks once all desired tracks are found which circumvents crashes on unsupported track types)
+  * Fix crash on unsupported video tracks without width/height fields
 * __v4.2.2__: Multiple leaks in `release()` fixed
   * All users of v4 are recommended to upgrade to this version!
 * v4.2.2-rc2: Fix prepareAsync/release order
@@ -174,8 +180,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.2'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.2'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.0'
     }
 
 #### Local Maven repository ####
@@ -190,8 +196,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.2.2-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.2.2-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.0-SNAPSHOT'
     }
 
 
@@ -289,5 +295,5 @@ These URLs have been tested and definitely work in the demo app:
 License
 -------
 
-Copyright (C) 2014, 2015, 2016 Mario Guggenberger <mg@protyposis.net>.
+Copyright (C) 2014, 2015, 2016, 2017 Mario Guggenberger <mg@protyposis.net>.
 Released under the Apache 2.0 license. See `LICENSE` for details.
