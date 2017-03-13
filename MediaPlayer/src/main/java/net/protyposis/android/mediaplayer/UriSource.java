@@ -93,8 +93,16 @@ public class UriSource implements MediaSource {
         return mUri;
     }
 
+    public Uri getAudioUri() {
+        return mAudioUri;
+    }
+
     public Map<String, String> getHeaders() {
         return mHeaders;
+    }
+
+    public Map<String, String> getAudioHeaders() {
+        return mAudioHeaders;
     }
 
     @Override

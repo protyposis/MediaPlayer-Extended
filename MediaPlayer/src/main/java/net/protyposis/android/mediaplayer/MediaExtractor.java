@@ -178,12 +178,25 @@ public class MediaExtractor {
      */
     public MediaFormat getTrackFormat(int index) {
         MediaFormat mediaFormat = mApiExtractor.getTrackFormat(index);
-        // set the default DAR
-        if(mediaFormat.getString(MediaFormat.KEY_MIME).startsWith("video/")) {
+        String mime = mediaFormat.getString(MediaFormat.KEY_MIME);
+
+        // Set the default DAR
+        //
+        // We need to check the existence of the width/height fields because some platforms
+        // return unsupported tracks as "video/unknown" mime type without the required fields to
+        // calculate the DAR.
+        //
+        // Example:
+        // Samsung Galaxy S5 Android 6.0.1 with thumbnail tracks (jpeg image)
+        // MediaFormat{error-type=-1002, mime=video/unknown, isDMCMMExtractor=1, durationUs=323323000}
+        if(mime.startsWith("video/")
+                && mediaFormat.containsKey(MediaFormat.KEY_WIDTH)
+                && mediaFormat.containsKey(MediaFormat.KEY_HEIGHT)) {
             mediaFormat.setFloat(MEDIA_FORMAT_EXTENSION_KEY_DAR,
                     (float)mediaFormat.getInteger(MediaFormat.KEY_WIDTH)
                             / mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
         }
+
         return mediaFormat;
     }
 

@@ -40,6 +40,15 @@ public class MediaPlayer {
 
     private static final long BUFFER_LOW_WATER_MARK_US = 2000000; // 2 seconds; NOTE: make sure this is below DashMediaExtractor's mMinBufferTimeUs
 
+    /**
+     * Pass as track index to tell the player that no track should be selected.
+     */
+    public static final int TRACK_INDEX_NONE = -1;
+    /**
+     * Pass as track index to tell the player to automatically select the first fitting track.
+     */
+    public static final int TRACK_INDEX_AUTO = -2;
+
     public enum SeekMode {
         /**
          * Seeks to the previous sync point.
@@ -206,7 +215,19 @@ public class MediaPlayer {
         mAudioStreamType = AudioManager.STREAM_MUSIC;
     }
 
-    public void setDataSource(MediaSource source) throws IOException, IllegalStateException {
+    /**
+     * Sets the media source and track indices. The track indices can either be actual track indices
+     * that have been determined externally, {@link #TRACK_INDEX_AUTO} to automatically select
+     * the first fitting track index, or {@link #TRACK_INDEX_NONE} to not select any track.
+     *
+     * @param source the media source
+     * @param videoTrackIndex a video track index or one of the TRACK_INDEX_* constants
+     * @param audioTrackIndex an audio track index or one of the TRACK_INDEX_* constants
+     * @throws IOException
+     * @throws IllegalStateException
+     */
+    public void setDataSource(MediaSource source, int videoTrackIndex, int audioTrackIndex)
+            throws IOException, IllegalStateException {
         if(mCurrentState != State.IDLE) {
             throw new IllegalStateException();
         }
@@ -214,39 +235,46 @@ public class MediaPlayer {
         mVideoExtractor = source.getVideoExtractor();
         mAudioExtractor = source.getAudioExtractor();
 
-        mVideoTrackIndex = MediaCodecDecoder.INDEX_NONE;
-        mAudioTrackIndex = MediaCodecDecoder.INDEX_NONE;
-
-        for (int i = 0; i < mVideoExtractor.getTrackCount(); ++i) {
-            MediaFormat format = mVideoExtractor.getTrackFormat(i);
-            Log.d(TAG, format.toString());
-            String mime = format.getString(MediaFormat.KEY_MIME);
-            if (mVideoTrackIndex < 0 && mime.startsWith("video/")) {
-                mVideoExtractor.selectTrack(i);
-                mVideoTrackIndex = i;
-                mVideoFormat = format;
-                mVideoMinPTS = mVideoExtractor.getSampleTime();
-            } else if (mAudioExtractor == null && mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
-                mVideoExtractor.selectTrack(i);
-                mAudioTrackIndex = i;
-                mAudioFormat = format;
-                mAudioMinPTS = mVideoExtractor.getSampleTime();
-                mAudioExtractor = mVideoExtractor;
-            }
+        if(mVideoExtractor != null && mAudioExtractor == null) {
+            mAudioExtractor = mVideoExtractor;
         }
 
-        if(mAudioExtractor != null && mAudioTrackIndex == MediaCodecDecoder.INDEX_NONE) {
-            for (int i = 0; i < mAudioExtractor.getTrackCount(); ++i) {
-                MediaFormat format = mAudioExtractor.getTrackFormat(i);
-                Log.d(TAG, format.toString());
-                String mime = format.getString(MediaFormat.KEY_MIME);
-                if (mAudioTrackIndex < 0 && mime.startsWith("audio/")) {
-                    mAudioExtractor.selectTrack(i);
-                    mAudioTrackIndex = i;
-                    mAudioFormat = format;
-                    mAudioMinPTS = mAudioExtractor.getSampleTime();
-                }
-            }
+        switch (videoTrackIndex) {
+            case TRACK_INDEX_AUTO:
+                mVideoTrackIndex = getTrackIndex(mVideoExtractor, "video/");
+                break;
+            case TRACK_INDEX_NONE:
+                mVideoTrackIndex = MediaCodecDecoder.INDEX_NONE;
+                break;
+            default:
+                mVideoTrackIndex = videoTrackIndex;
+        }
+
+        switch (audioTrackIndex) {
+            case TRACK_INDEX_AUTO:
+                mAudioTrackIndex = getTrackIndex(mAudioExtractor, "audio/");
+                break;
+            case TRACK_INDEX_NONE:
+                mAudioTrackIndex = MediaCodecDecoder.INDEX_NONE;
+                break;
+            default:
+                mAudioTrackIndex = audioTrackIndex;
+        }
+
+        // Select video track
+        if(mVideoTrackIndex != MediaCodecDecoder.INDEX_NONE) {
+            mVideoExtractor.selectTrack(mVideoTrackIndex);
+            mVideoFormat = mVideoExtractor.getTrackFormat(mVideoTrackIndex);
+            mVideoMinPTS = mVideoExtractor.getSampleTime();
+            Log.d(TAG, "selected video track #" + mVideoTrackIndex + " " + mVideoFormat.toString());
+        }
+
+        // Select audio track
+        if(mAudioTrackIndex != MediaCodecDecoder.INDEX_NONE) {
+            mAudioExtractor.selectTrack(mAudioTrackIndex);
+            mAudioFormat = mAudioExtractor.getTrackFormat(mAudioTrackIndex);
+            mAudioMinPTS = mAudioExtractor.getSampleTime();
+            Log.d(TAG, "selected audio track #" + mAudioTrackIndex + " " + mAudioFormat.toString());
         }
 
         if(mVideoTrackIndex == MediaCodecDecoder.INDEX_NONE) {
@@ -261,6 +289,34 @@ public class MediaPlayer {
         }
 
         mCurrentState = State.INITIALIZED;
+    }
+
+    /**
+     * Sets the media source and automatically selects fitting tracks.
+     *
+     * @param source the media source
+     * @throws IOException
+     * @throws IllegalStateException
+     */
+    public void setDataSource(MediaSource source) throws IOException, IllegalStateException {
+        setDataSource(source, TRACK_INDEX_AUTO, TRACK_INDEX_AUTO);
+    }
+
+    private int getTrackIndex(MediaExtractor mediaExtractor, String mimeType) {
+        if(mediaExtractor == null) {
+            return MediaCodecDecoder.INDEX_NONE;
+        }
+
+        for (int i = 0; i < mediaExtractor.getTrackCount(); ++i) {
+            MediaFormat format = mediaExtractor.getTrackFormat(i);
+            Log.d(TAG, format.toString());
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            if (mime.startsWith(mimeType)) {
+                return i;
+            }
+        }
+
+        return MediaCodecDecoder.INDEX_NONE;
     }
 
     /**

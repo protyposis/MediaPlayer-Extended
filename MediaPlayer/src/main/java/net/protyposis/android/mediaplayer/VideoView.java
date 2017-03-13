@@ -50,6 +50,8 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
     private int mTargetState  = STATE_IDLE;
 
     private MediaSource mSource;
+    private int mVideoTrackIndex;
+    private int mAudioTrackIndex;
     private MediaPlayer mPlayer;
     private SurfaceHolder mSurfaceHolder;
     private int mVideoWidth;
@@ -84,15 +86,33 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
         getHolder().addCallback(this);
     }
 
-    public void setVideoSource(MediaSource source) {
+    /**
+     * Sets a media source and track indices. See {@link MediaPlayer#setDataSource(MediaSource, int, int)}
+     * for a detailed explanation of the parameters.
+     *
+     * @param source the media source
+     * @param videoTrackIndex a video track index or one of the MediaPlayer#TRACK_INDEX_* constants
+     * @param audioTrackIndex an video audio index or one of the MediaPlayer#TRACK_INDEX_* constants
+     */
+    public void setVideoSource(MediaSource source, int videoTrackIndex, int audioTrackIndex) {
         mCurrentState = STATE_IDLE;
         mTargetState = STATE_IDLE;
         mSource = source;
+        mVideoTrackIndex = videoTrackIndex;
+        mAudioTrackIndex = audioTrackIndex;
         mSeekWhenPrepared = 0;
         mPlaybackSpeedWhenPrepared = 1;
         openVideo();
         requestLayout();
         invalidate();
+    }
+
+    /**
+     * Sets a media source.
+     * @param source the media source
+     */
+    public void setVideoSource(MediaSource source) {
+        setVideoSource(source, MediaPlayer.TRACK_INDEX_AUTO, MediaPlayer.TRACK_INDEX_AUTO);
     }
 
     /**
@@ -176,7 +196,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
                 try {
                     mCurrentState = STATE_PREPARING;
 
-                    mPlayer.setDataSource(mSource);
+                    mPlayer.setDataSource(mSource, mVideoTrackIndex, mAudioTrackIndex);
 
                     if(mPlayer == null) {
                         // player has been release while the data source was set

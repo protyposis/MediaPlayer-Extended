@@ -46,6 +46,14 @@ public class FileSource implements MediaSource {
         mAudioFile = audioFile;
     }
 
+    public File getFile() {
+        return mFile;
+    }
+
+    public File getAudioFile() {
+        return mAudioFile;
+    }
+
     @Override
     public MediaExtractor getVideoExtractor() throws IOException {
         MediaExtractor mediaExtractor = new MediaExtractor();
