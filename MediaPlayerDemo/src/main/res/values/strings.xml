@@ -41,6 +41,8 @@
     <string name="feature_sidebyside_description">A side by side comparison of both implementations. Not available for DASH content.</string>
     <string name="copyright_notice">Copyright © 2014–2016 Mario Guggenberger. Released under the Apache 2.0 license. http://www.apache.org/licenses/LICENSE-2.0</string>
     <string name="open_source_licenses">Open Source Licenses</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="privacy_policy_url">https://protyposis.net/android-privacy-policy/</string>
     <string name="action_halfspeed">0.5x Speed</string>
     <string name="action_doublespeed">2.0x Speed</string>
     <string name="action_quadspeed">4.0x Speed</string>
