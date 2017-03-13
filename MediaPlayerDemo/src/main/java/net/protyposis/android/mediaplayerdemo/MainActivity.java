@@ -139,6 +139,19 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
                         .show();
             }
         });
+        ((Button) findViewById(R.id.privacy)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                WebView licensesWebView = new WebView(MainActivity.this);
+                licensesWebView.loadUrl(getString(R.string.privacy_policy_url));
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(getString(R.string.privacy_policy))
+                        .setView(licensesWebView)
+                        .create()
+                        .show();
+            }
+        });
 
         Uri uri = null;
 

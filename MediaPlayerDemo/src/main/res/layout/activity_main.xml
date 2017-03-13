@@ -139,5 +139,13 @@
             android:textSize="14sp"
             style="?android:attr/borderlessButtonStyle"/>
 
+        <Button
+            android:id="@+id/privacy"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/privacy_policy"
+            android:textSize="14sp"
+            style="?android:attr/borderlessButtonStyle"/>
+
     </LinearLayout>
 </ScrollView>
