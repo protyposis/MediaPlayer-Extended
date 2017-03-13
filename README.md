@@ -120,6 +120,15 @@ Requirements
  * Android API 16+ (Android 4.1 Jelly Bean)
 
 
+Users
+-----
+
+ * [MadLipz](http://madlipz.com/)
+ * [react-native-android-video-player](https://github.com/scerelli/react-native-android-video-player) (library)
+
+There are many apps and libraries using this project. If you want to have your project listed here, open an issue, submit a pull request, or drop an email.
+
+
 Usage
 -----
 
