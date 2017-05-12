@@ -584,7 +584,9 @@ public class MediaPlayer {
 
     /**
      * Sets the playback speed. Can be used for fast forward and slow motion.
-     * The speed must not be negative.
+     * The speed must not be negative but can otherwise be set to any value. The player will not
+     * skip frames though and only playback at the maximum speed that the device can decode and
+     * process (setting 10x speed thus will not lead to an actual 10x speedup).
      *
      * speed 0.5 = half speed / slow motion
      * speed 2.0 = double speed / fast forward
