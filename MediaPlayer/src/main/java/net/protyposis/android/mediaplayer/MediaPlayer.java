@@ -667,6 +667,15 @@ public class MediaPlayer {
     }
 
     /**
+     * Resets the player to its initial state, similar to a freshly created instance. To reuse the
+     * player instance, set a data source and call {@link #prepare()} or {@link #prepareAsync()}.
+     */
+    public void reset() {
+        stop();
+        mCurrentState = State.IDLE;
+    }
+
+    /**
      * Stops the player and releases all resources (e.g. memory, codecs, event listeners). Once
      * the player instance is released, it cannot be used any longer.
      * Call this method as soon as you're finished using the player instance, and latest when
@@ -692,15 +701,6 @@ public class MediaPlayer {
         mOnSeekCompleteListener = null;
         mOnSeekListener = null;
         mOnVideoSizeChangedListener = null;
-    }
-
-    /**
-     * Resets the player to its initial state, similar to a freshly created instance. To reuse the
-     * player instance, set a data source and call {@link #prepare()} or {@link #prepareAsync()}.
-     */
-    public void reset() {
-        stop();
-        mCurrentState = State.IDLE;
     }
 
     /**
