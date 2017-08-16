@@ -669,6 +669,17 @@ public class MediaPlayer {
         mCurrentState = State.RELEASING;
         stop();
         mCurrentState = State.RELEASED;
+
+        // Listeners must not be invoked after the player is released so we clear them here
+        // https://github.com/protyposis/MediaPlayer-Extended/issues/66
+        mOnBufferingUpdateListener = null;
+        mOnCompletionListener = null;
+        mOnErrorListener = null;
+        mOnInfoListener = null;
+        mOnPreparedListener = null;
+        mOnSeekCompleteListener = null;
+        mOnSeekListener = null;
+        mOnVideoSizeChangedListener = null;
     }
 
     public void reset() {
