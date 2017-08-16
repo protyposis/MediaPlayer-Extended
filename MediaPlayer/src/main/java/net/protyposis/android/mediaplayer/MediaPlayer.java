@@ -636,17 +636,6 @@ public class MediaPlayer {
     }
 
     public void stop() {
-        release();
-        mCurrentState = State.STOPPED;
-    }
-
-    public void release() {
-        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
-            return;
-        }
-
-        mCurrentState = State.RELEASING;
-
         if(mPlaybackThread != null) {
             // Create a new lock object for this release cycle
             mReleaseSyncLock = new Object();
@@ -669,6 +658,16 @@ public class MediaPlayer {
 
         stayAwake(false);
 
+        mCurrentState = State.STOPPED;
+    }
+
+    public void release() {
+        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
+            return;
+        }
+
+        mCurrentState = State.RELEASING;
+        stop();
         mCurrentState = State.RELEASED;
     }
 
