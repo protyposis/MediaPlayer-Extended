@@ -635,6 +635,11 @@ public class MediaPlayer {
         return mLooping;
     }
 
+    /**
+     * Stops the player and releases the playback thread. The player will consume minimal resources
+     * after calling this method. To continue playback, the player must first be prepared with
+     * {@link #prepare()} or {@link #prepareAsync()}.
+     */
     public void stop() {
         if(mPlaybackThread != null) {
             // Create a new lock object for this release cycle
@@ -661,6 +666,13 @@ public class MediaPlayer {
         mCurrentState = State.STOPPED;
     }
 
+    /**
+     * Stops the player and releases all resources (e.g. memory, codecs, event listeners). Once
+     * the player instance is released, it cannot be used any longer.
+     * Call this method as soon as you're finished using the player instance, and latest when
+     * destroying the activity or fragment that contains this player. Not releasing the player can
+     * lead to memory leaks.
+     */
     public void release() {
         if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
             return;
@@ -682,6 +694,10 @@ public class MediaPlayer {
         mOnVideoSizeChangedListener = null;
     }
 
+    /**
+     * Resets the player to its initial state, similar to a freshly created instance. To reuse the
+     * player instance, set a data source and call {@link #prepare()} or {@link #prepareAsync()}.
+     */
     public void reset() {
         stop();
         mCurrentState = State.IDLE;
