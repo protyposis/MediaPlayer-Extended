@@ -1321,7 +1321,7 @@ public class MediaPlayer {
             mDecoders.getVideoDecoder().renderFrame(videoFrameInfo, waitingTime);
         }
 
-        private void setVideoSurface(Surface surface) {
+        private void setVideoSurface(Surface surface) throws IOException {
             if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
                 if(mVideoFrameInfo != null) {
                     // Dismiss queued video frame
