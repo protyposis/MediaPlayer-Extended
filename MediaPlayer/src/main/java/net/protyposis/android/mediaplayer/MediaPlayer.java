@@ -584,7 +584,9 @@ public class MediaPlayer {
 
     /**
      * Sets the playback speed. Can be used for fast forward and slow motion.
-     * The speed must not be negative.
+     * The speed must not be negative but can otherwise be set to any value. The player will not
+     * skip frames though and only playback at the maximum speed that the device can decode and
+     * process (setting 10x speed thus will not lead to an actual 10x speedup).
      *
      * speed 0.5 = half speed / slow motion
      * speed 2.0 = double speed / fast forward
@@ -633,18 +635,12 @@ public class MediaPlayer {
         return mLooping;
     }
 
+    /**
+     * Stops the player and releases the playback thread. The player will consume minimal resources
+     * after calling this method. To continue playback, the player must first be prepared with
+     * {@link #prepare()} or {@link #prepareAsync()}.
+     */
     public void stop() {
-        release();
-        mCurrentState = State.STOPPED;
-    }
-
-    public void release() {
-        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
-            return;
-        }
-
-        mCurrentState = State.RELEASING;
-
         if(mPlaybackThread != null) {
             // Create a new lock object for this release cycle
             mReleaseSyncLock = new Object();
@@ -667,12 +663,44 @@ public class MediaPlayer {
 
         stayAwake(false);
 
-        mCurrentState = State.RELEASED;
+        mCurrentState = State.STOPPED;
     }
 
+    /**
+     * Resets the player to its initial state, similar to a freshly created instance. To reuse the
+     * player instance, set a data source and call {@link #prepare()} or {@link #prepareAsync()}.
+     */
     public void reset() {
         stop();
         mCurrentState = State.IDLE;
+    }
+
+    /**
+     * Stops the player and releases all resources (e.g. memory, codecs, event listeners). Once
+     * the player instance is released, it cannot be used any longer.
+     * Call this method as soon as you're finished using the player instance, and latest when
+     * destroying the activity or fragment that contains this player. Not releasing the player can
+     * lead to memory leaks.
+     */
+    public void release() {
+        if(mCurrentState == State.RELEASING || mCurrentState == State.RELEASED) {
+            return;
+        }
+
+        mCurrentState = State.RELEASING;
+        stop();
+        mCurrentState = State.RELEASED;
+
+        // Listeners must not be invoked after the player is released so we clear them here
+        // https://github.com/protyposis/MediaPlayer-Extended/issues/66
+        mOnBufferingUpdateListener = null;
+        mOnCompletionListener = null;
+        mOnErrorListener = null;
+        mOnInfoListener = null;
+        mOnPreparedListener = null;
+        mOnSeekCompleteListener = null;
+        mOnSeekListener = null;
+        mOnVideoSizeChangedListener = null;
     }
 
     /**
@@ -869,6 +897,7 @@ public class MediaPlayer {
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
         private double mPlaybackSpeed;
         private boolean mAVLocked;
+        private long mLastBufferingUpdateTime;
 
         public PlaybackThread() {
             // Give this thread a high priority for more precise event timing
@@ -880,6 +909,7 @@ public class MediaPlayer {
             mRenderModeApi21 = mVideoRenderTimingMode.isRenderModeApi21();
             mRenderingStarted = true;
             mAVLocked = false;
+            mLastBufferingUpdateTime = 0;
         }
 
         @Override
@@ -1080,8 +1110,7 @@ public class MediaPlayer {
                 // the prefetched data.
                 // This comes before the buffering pause to update the clients buffering info
                 // also during a buffering playback pause.
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
-                        (int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)), 0));
+                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)));
             }
 
             // If we are in buffering mode, check if the buffer has been filled until the low water
@@ -1319,7 +1348,7 @@ public class MediaPlayer {
             mDecoders.getVideoDecoder().renderFrame(videoFrameInfo, waitingTime);
         }
 
-        private void setVideoSurface(Surface surface) {
+        private void setVideoSurface(Surface surface) throws IOException {
             if(mDecoders != null && mDecoders.getVideoDecoder() != null) {
                 if(mVideoFrameInfo != null) {
                     // Dismiss queued video frame
@@ -1332,6 +1361,22 @@ public class MediaPlayer {
 
                 mDecoders.getVideoDecoder().updateSurface(surface);
             }
+        }
+
+        private void updateBufferPercentage(int percent) {
+            long currentTime = SystemClock.elapsedRealtime();
+
+            // Throttle the MEDIA_BUFFERING_UPDATE frequency to at most once per second
+            // and only issue updates when the percentage actually changes.
+            if (currentTime - mLastBufferingUpdateTime > 1000 && percent != mBufferPercentage) {
+                mLastBufferingUpdateTime = currentTime;
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE, percent, 0));
+            }
+
+            // Update the buffer percentage at every call so a user of the library can decide
+            // to update the buffer fill state more often than the buffering update handler is
+            // called by calling getBufferPercentage at his desired frequency.
+            mBufferPercentage = percent;
         }
     }
 
@@ -1663,7 +1708,6 @@ public class MediaPlayer {
                     //Log.d(TAG, "onBufferingUpdate");
                     if (mOnBufferingUpdateListener != null)
                         mOnBufferingUpdateListener.onBufferingUpdate(MediaPlayer.this, msg.arg1);
-                    mBufferPercentage = msg.arg1;
                     return;
 
                 default:

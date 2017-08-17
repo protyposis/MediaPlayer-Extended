@@ -30,6 +30,10 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.3.1-rc1: Fix DASH playback freeze, memory leaks and limit buffer update frequency
+  * Fix DASH playback freeze on representation switch
+  * Fix memory leaks from registered event listeners
+  * Limit `OnBufferUpdateListener` call frequency to at most 1 Hz and only call it on percentage changes
 * __v4.3.0__: Improved track index selection and seek accuracy
   * Added `MediaPlayer#setDataSource(MediaSource source, int videoTrackIndex, int audioTrackIndex)` and `VideoView#setVideoSource(MediaSource source, int videoTrackIndex, int audioTrackIndex)` to explicitly select track indices or pass `MediaPlayer.TRACK_INDEX_AUTO` for automatic selection, or `MediaPlayer.TRACK_INDEX_NONE` for no selection
   * The new track index selection methods can be used to bypass segmentation faults in some Samsung Android versions that happen with video thumbnail tracks (see issue #56)
