@@ -1371,6 +1371,11 @@ public class MediaPlayer {
                 mLastBufferingUpdateTime = currentTime;
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE, percent, 0));
             }
+
+            // Update the buffer percentage at every call so a user of the library can decide
+            // to update the buffer fill state more often than the buffering update handler is
+            // called by calling getBufferPercentage at his desired frequency.
+            mBufferPercentage = percent;
         }
     }
 
@@ -1702,7 +1707,6 @@ public class MediaPlayer {
                     //Log.d(TAG, "onBufferingUpdate");
                     if (mOnBufferingUpdateListener != null)
                         mOnBufferingUpdateListener.onBufferingUpdate(MediaPlayer.this, msg.arg1);
-                    mBufferPercentage = msg.arg1;
                     return;
 
                 default:
