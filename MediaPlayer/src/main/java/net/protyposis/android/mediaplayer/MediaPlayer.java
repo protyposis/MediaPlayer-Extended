@@ -1366,8 +1366,9 @@ public class MediaPlayer {
         private void updateBufferPercentage(int percent) {
             long currentTime = SystemClock.elapsedRealtime();
 
-            // Throttle the MEDIA_BUFFERING_UPDATE frequency to once per second
-            if (currentTime - mLastBufferingUpdateTime > 1000) {
+            // Throttle the MEDIA_BUFFERING_UPDATE frequency to at most once per second
+            // and only issue updates when the percentage actually changes.
+            if (currentTime - mLastBufferingUpdateTime > 1000 && percent != mBufferPercentage) {
                 mLastBufferingUpdateTime = currentTime;
                 mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE, percent, 0));
             }
