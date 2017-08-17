@@ -897,6 +897,7 @@ public class MediaPlayer {
         private boolean mRenderingStarted; // Flag to know if decoding the first frame
         private double mPlaybackSpeed;
         private boolean mAVLocked;
+        private long mLastBufferingUpdateTime;
 
         public PlaybackThread() {
             // Give this thread a high priority for more precise event timing
@@ -908,6 +909,7 @@ public class MediaPlayer {
             mRenderModeApi21 = mVideoRenderTimingMode.isRenderModeApi21();
             mRenderingStarted = true;
             mAVLocked = false;
+            mLastBufferingUpdateTime = 0;
         }
 
         @Override
@@ -1108,8 +1110,7 @@ public class MediaPlayer {
                 // the prefetched data.
                 // This comes before the buffering pause to update the clients buffering info
                 // also during a buffering playback pause.
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
-                        (int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)), 0));
+                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)));
             }
 
             // If we are in buffering mode, check if the buffer has been filled until the low water
@@ -1359,6 +1360,16 @@ public class MediaPlayer {
                 }
 
                 mDecoders.getVideoDecoder().updateSurface(surface);
+            }
+        }
+
+        private void updateBufferPercentage(int percent) {
+            long currentTime = SystemClock.elapsedRealtime();
+
+            // Throttle the MEDIA_BUFFERING_UPDATE frequency to once per second
+            if (currentTime - mLastBufferingUpdateTime > 1000) {
+                mLastBufferingUpdateTime = currentTime;
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE, percent, 0));
             }
         }
     }
