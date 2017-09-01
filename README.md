@@ -30,7 +30,7 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
-* v4.3.1-rc1: Fix DASH playback freeze, memory leaks and limit buffer update frequency
+* v4.3.1: Fix DASH playback freeze, memory leaks and limit buffer update frequency
   * Fix DASH playback freeze on representation switch
   * Fix memory leaks from registered event listeners
   * Limit `OnBufferUpdateListener` call frequency to at most 1 Hz and only call it on percentage changes
@@ -193,8 +193,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.0'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.0'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.1'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.1'
     }
 
 #### Local Maven repository ####
@@ -209,8 +209,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.0-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.0-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.1-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.1-SNAPSHOT'
     }
 
 
