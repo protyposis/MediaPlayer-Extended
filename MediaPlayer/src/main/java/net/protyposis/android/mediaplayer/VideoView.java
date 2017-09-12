@@ -183,7 +183,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             }
         });
 
-        // Set the data source asynchronously as this might take a while, e.g. is data has to be
+        // Set the data source asynchronously as this might take a while, e.g. if data has to be
         // requested from the network/internet.
         // IMPORTANT:
         // We use a Thread instead of an AsyncTask for performance reasons, because threads started
@@ -199,7 +199,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
                     mPlayer.setDataSource(mSource, mVideoTrackIndex, mAudioTrackIndex);
 
                     if(mPlayer == null) {
-                        // player has been release while the data source was set
+                        // player has been released while the data source was set
                         return;
                     }
 
