@@ -17,6 +17,7 @@
 package net.protyposis.android.mediaplayer.dash;
 
 import android.os.SystemClock;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,6 +39,8 @@ import okhttp3.Response;
  */
 
 public class SegmentDownloader {
+
+    private static final String TAG = SegmentDownloader.class.getSimpleName();
 
     static final int INITSEGMENT = -1;
 
@@ -222,7 +225,9 @@ public class SegmentDownloader {
         public void onResponse(Call call, Response response) throws IOException {
             mDownloadRequests.remove(getKey(mCachedSegment.adaptationSet, mCachedSegment.number));
 
-            if (response.isSuccessful()) {
+            if (call.isCanceled()) {
+                Log.d(TAG, "skipping processing of canceled download");
+            } else if (response.isSuccessful()) {
                 try {
                     long startTime = SystemClock.elapsedRealtime();
                     byte[] segmentData = response.body().bytes();
