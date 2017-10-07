@@ -347,6 +347,12 @@ public class DashMediaExtractor extends MediaExtractor {
     }
 
     private void initOnWorkerThread(int segmentNr) throws IOException {
+        if (!mSegmentSwitchingThread.isAlive()) {
+            // This can (should) only happen when releasing the extractor
+            Log.d(TAG, "dropping init, thread is gone");
+            return;
+        }
+
         // Send the init command to the handler thread...
         mSegmentSwitchingHandler.sendMessage(mSegmentSwitchingHandler.obtainMessage(MESSAGE_SEGMENT_INIT, segmentNr, 0));
         // ... and block until it's done
@@ -622,6 +628,12 @@ public class DashMediaExtractor extends MediaExtractor {
 
         @Override
         public void onSuccess(SegmentDownloader.DownloadFinishedArgs args) throws IOException {
+            if (!mSegmentProcessingThread.isAlive()) {
+                // This can (should) only happen when releasing the extractor
+                Log.d(TAG, "dropping downloaded segment, thread is gone");
+                return;
+            }
+
             mSegmentProcessingHandler.sendMessage(mSegmentProcessingHandler.obtainMessage(
                     MESSAGE_SEGMENT_DOWNLOADED, args));
         }
