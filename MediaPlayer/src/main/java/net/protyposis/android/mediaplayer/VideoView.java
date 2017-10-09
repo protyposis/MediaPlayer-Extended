@@ -183,6 +183,10 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
             }
         });
 
+        // Copy the player reference for use in the thread which allows us to later compare
+        // references and detect player changes (release, reload).
+        final MediaPlayer currentPlayer = mPlayer;
+
         // Set the data source asynchronously as this might take a while, e.g. if data has to be
         // requested from the network/internet.
         // IMPORTANT:
@@ -196,10 +200,19 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
                 try {
                     mCurrentState = STATE_PREPARING;
 
-                    mPlayer.setDataSource(mSource, mVideoTrackIndex, mAudioTrackIndex);
+                    currentPlayer.setDataSource(mSource, mVideoTrackIndex, mAudioTrackIndex);
 
-                    if(mPlayer == null) {
-                        // player has been released while the data source was set
+                    if (mPlayer != currentPlayer) {
+                        // Player has been released or recreated while the data source was set,
+                        // so we can ditch the instance and do not need to prepare it.
+                        // This is a special case that can only happen because we execute
+                        // setDataSource asynchronously, so the player could be released or a new
+                        // source loaded and thus a new player created in the meantime.
+                        // In Android's VideoView, setDataSource is executed synchronously and
+                        // this case therefore cannot happen there.
+                        // Just to be sure, we release the player again from within here, e.g. for
+                        // the case that extractors have been created after the outer release call.
+                        currentPlayer.release();
                         return;
                     }
 
@@ -207,7 +220,7 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
                     // necessary; we call this method anyway because of the events it triggers
                     // when it fails, and to stay in sync which the Android VideoView that does
                     // the same.
-                    mPlayer.prepareAsync();
+                    currentPlayer.prepareAsync();
 
                     Log.d(TAG, "video opened");
                 } catch (IOException e) {
@@ -215,9 +228,12 @@ public class VideoView extends SurfaceView implements SurfaceHolder.Callback,
 
                     // Send message to the handler that an error occurred
                     // (we don't need a message id as the handler only handles this single message)
-                    exceptionHandler.sendEmptyMessage(0);
-                } catch (NullPointerException e) {
-                    Log.e(TAG, "player released while preparing", e);
+                    // We only do that for the current player, not for previous instances
+                    if (mPlayer == currentPlayer) {
+                        exceptionHandler.sendEmptyMessage(0);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "something went wrong", e);
                 }
             }
         }).start();
