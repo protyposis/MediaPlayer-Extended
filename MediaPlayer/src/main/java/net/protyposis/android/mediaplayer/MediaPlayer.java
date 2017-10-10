@@ -232,6 +232,8 @@ public class MediaPlayer {
             throw new IllegalStateException();
         }
 
+        releaseMediaExtractors();
+
         mVideoExtractor = source.getVideoExtractor();
         mAudioExtractor = source.getAudioExtractor();
 
@@ -289,6 +291,20 @@ public class MediaPlayer {
         }
 
         mCurrentState = State.INITIALIZED;
+    }
+
+    private void releaseMediaExtractors() {
+        // Audio and video extractors could be the same object,
+        // but calling release twice does not hurt.
+        if (mAudioExtractor != null) {
+            mAudioExtractor.release();
+            mAudioExtractor = null;
+        }
+
+        if (mVideoExtractor != null) {
+            mVideoExtractor.release();
+            mVideoExtractor = null;
+        }
     }
 
     /**
@@ -689,6 +705,7 @@ public class MediaPlayer {
 
         mCurrentState = State.RELEASING;
         stop();
+        releaseMediaExtractors();
         mCurrentState = State.RELEASED;
 
         // Listeners must not be invoked after the player is released so we clear them here
@@ -1292,10 +1309,8 @@ public class MediaPlayer {
                 mDecoders.release();
             }
             if(mAudioPlayback != null) mAudioPlayback.stopAndRelease();
-            if(mAudioExtractor != null & mAudioExtractor != mVideoExtractor) {
-                mAudioExtractor.release();
-            }
-            if(mVideoExtractor != null) mVideoExtractor.release();
+
+            MediaPlayer.this.releaseMediaExtractors();
 
             Log.d(TAG, "PlaybackThread destroyed");
 

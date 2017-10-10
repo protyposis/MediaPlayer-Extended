@@ -30,6 +30,10 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.3.2: Stability improvements
+  * Always release `MediaExtractor` instances
+  * Drop finished segment downloads during release of `DashMediaExtractor` (https://github.com/protyposis/MediaPlayer-Extended/issues/71)
+  * Avoid invalid `MediaPlayer` method call sequence in `VideoView` (https://github.com/protyposis/MediaPlayer-Extended/issues/70)
 * v4.3.1: Fix DASH playback freeze, memory leaks and limit buffer update frequency
   * Fix DASH playback freeze on representation switch
   * Fix memory leaks from registered event listeners
@@ -193,8 +197,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.1'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.1'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.2'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.2'
     }
 
 #### Local Maven repository ####
@@ -209,8 +213,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.1-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.1-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.2-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.2-SNAPSHOT'
     }
 
 
