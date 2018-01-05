@@ -158,6 +158,17 @@ class Decoders {
         return minPTS;
     }
 
+    public long getInputSamplePTS() {
+        long maxPTS = MediaCodecDecoder.PTS_UNKNOWN;
+        for (MediaCodecDecoder decoder : mDecoders) {
+            long pts = decoder.getInputSamplePTS();
+            if(pts > maxPTS) {
+                maxPTS = pts;
+            }
+        }
+        return maxPTS;
+    }
+
     public boolean isEOS() {
         //return getCurrentDecodingPTS() == MediaCodecDecoder.PTS_EOS;
         int eosCount = 0;

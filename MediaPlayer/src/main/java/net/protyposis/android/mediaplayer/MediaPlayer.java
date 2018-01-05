@@ -1127,7 +1127,7 @@ public class MediaPlayer {
                 // the prefetched data.
                 // This comes before the buffering pause to update the clients buffering info
                 // also during a buffering playback pause.
-                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)));
+                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mDecoders.getInputSamplePTS() + cachedDuration)));
             }
 
             // If we are in buffering mode, check if the buffer has been filled until the low water
