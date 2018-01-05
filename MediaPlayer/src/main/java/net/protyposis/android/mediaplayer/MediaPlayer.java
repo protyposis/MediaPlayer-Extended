@@ -664,11 +664,13 @@ public class MediaPlayer {
             synchronized (mReleaseSyncLock) {
                 try {
                     // Schedule release on the playback thread
-                    mPlaybackThread.release();
+                    boolean awaitingRelease = mPlaybackThread.release();
                     mPlaybackThread = null;
 
                     // Wait for the release on the playback thread to finish
-                    mReleaseSyncLock.wait();
+                    if (awaitingRelease) {
+                        mReleaseSyncLock.wait();
+                    }
                 } catch (InterruptedException e) {
                     // nothing to do here
                 }
@@ -969,9 +971,9 @@ public class MediaPlayer {
             mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
         }
 
-        private void release() {
+        private boolean release() {
             if(!isAlive()) {
-                return;
+                return false;
             }
 
             mPaused = true; // Set this flag so the loop does not schedule next loop iteration
@@ -982,6 +984,8 @@ public class MediaPlayer {
             // something so {@link #handleMessage} gets called on the handler thread, read the
             // mReleasing flag, and call {@link #releaseInternal}.
             mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
+
+            return true;
         }
 
         @Override
