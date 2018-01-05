@@ -30,6 +30,9 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.3.3: Stability improvements
+  * Fix deadlock when calling `stop` or `release` on a dead player instance (https://github.com/protyposis/MediaPlayer-Extended/issues/81)
+  * Improve buffer level reporting (https://github.com/protyposis/MediaPlayer-Extended/issues/80)
 * v4.3.2: Stability improvements
   * Always release `MediaExtractor` instances
   * Drop finished segment downloads during release of `DashMediaExtractor` (https://github.com/protyposis/MediaPlayer-Extended/issues/71)
@@ -188,8 +191,8 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.2'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.2'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.3'
     }
 
 #### Local Maven repository ####
@@ -204,8 +207,8 @@ local Maven repository and add one or more of the following dependencies:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.2-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.2-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.3-SNAPSHOT'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.3-SNAPSHOT'
     }
 
 
