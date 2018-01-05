@@ -71,6 +71,7 @@ abstract class MediaCodecDecoder {
 
     public static final long PTS_NONE = Long.MIN_VALUE;
     public static final long PTS_EOS = Long.MAX_VALUE;
+    public static final long PTS_UNKNOWN = -1;
 
     private static final long TIMEOUT_US = 0;
     public static final int INDEX_NONE = -1;
@@ -103,6 +104,7 @@ abstract class MediaCodecDecoder {
      */
     private boolean mPassive;
 
+    private long mInputSamplePTS;
     private long mDecodingPTS;
 
     private FrameInfo mCurrentFrameInfo;
@@ -319,6 +321,8 @@ abstract class MediaCodecDecoder {
                         presentationTimeUs,
                         mInputEos ? MediaCodec.BUFFER_FLAG_END_OF_STREAM : 0);
 
+                mInputSamplePTS = presentationTimeUs;
+
                 //Log.d(TAG, "queued PTS " + presentationTimeUs);
 
                 if (!mInputEos) {
@@ -402,10 +406,19 @@ abstract class MediaCodecDecoder {
 
     /**
      * Returns the PTS of the current, that is, the most recently decoded frame.
-     * @return the PTS of the most recent frame
+     * @return the PTS of the most recent decoded frame
      */
     public long getCurrentDecodingPTS() {
         return mDecodingPTS;
+    }
+
+    /**
+     * Returns the PTS of the current frame enqueued for decoding. This is always ahead of
+     * {@link #getCurrentDecodingPTS()}.
+     * @return the PTS of the most recent frame enqueued for decoding
+     */
+    public long getInputSamplePTS() {
+        return mInputSamplePTS;
     }
 
     /**
@@ -538,6 +551,7 @@ abstract class MediaCodecDecoder {
      */
     public final void seekTo(MediaPlayer.SeekMode seekMode, long seekTargetTimeUs) throws IOException {
         mDecodingPTS = PTS_NONE;
+        mInputSamplePTS = PTS_UNKNOWN;
         mCurrentFrameInfo = seekTo(seekMode, seekTargetTimeUs, mExtractor, mCodec);
     }
 

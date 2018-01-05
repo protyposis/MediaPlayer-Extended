@@ -664,11 +664,13 @@ public class MediaPlayer {
             synchronized (mReleaseSyncLock) {
                 try {
                     // Schedule release on the playback thread
-                    mPlaybackThread.release();
+                    boolean awaitingRelease = mPlaybackThread.release();
                     mPlaybackThread = null;
 
                     // Wait for the release on the playback thread to finish
-                    mReleaseSyncLock.wait();
+                    if (awaitingRelease) {
+                        mReleaseSyncLock.wait();
+                    }
                 } catch (InterruptedException e) {
                     // nothing to do here
                 }
@@ -969,9 +971,9 @@ public class MediaPlayer {
             mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
         }
 
-        private void release() {
+        private boolean release() {
             if(!isAlive()) {
-                return;
+                return false;
             }
 
             mPaused = true; // Set this flag so the loop does not schedule next loop iteration
@@ -982,6 +984,8 @@ public class MediaPlayer {
             // something so {@link #handleMessage} gets called on the handler thread, read the
             // mReleasing flag, and call {@link #releaseInternal}.
             mHandler.sendEmptyMessage(PLAYBACK_RELEASE);
+
+            return true;
         }
 
         @Override
@@ -1127,7 +1131,7 @@ public class MediaPlayer {
                 // the prefetched data.
                 // This comes before the buffering pause to update the clients buffering info
                 // also during a buffering playback pause.
-                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)));
+                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mDecoders.getInputSamplePTS() + cachedDuration)));
             }
 
             // If we are in buffering mode, check if the buffer has been filled until the low water
@@ -1385,7 +1389,10 @@ public class MediaPlayer {
             // and only issue updates when the percentage actually changes.
             if (currentTime - mLastBufferingUpdateTime > 1000 && percent != mBufferPercentage) {
                 mLastBufferingUpdateTime = currentTime;
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE, percent, 0));
+                // Clamp the reported percent to 100% to avoid percentages above 100, which can
+                // happen due to the not exactly precise buffer level calculation
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
+                        Math.min(percent, 100), 0));
             }
 
             // Update the buffer percentage at every call so a user of the library can decide
