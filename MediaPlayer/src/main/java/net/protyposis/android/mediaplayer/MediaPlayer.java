@@ -1127,7 +1127,7 @@ public class MediaPlayer {
                 // the prefetched data.
                 // This comes before the buffering pause to update the clients buffering info
                 // also during a buffering playback pause.
-                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mCurrentPosition + cachedDuration)));
+                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mDecoders.getInputSamplePTS() + cachedDuration)));
             }
 
             // If we are in buffering mode, check if the buffer has been filled until the low water
@@ -1385,7 +1385,10 @@ public class MediaPlayer {
             // and only issue updates when the percentage actually changes.
             if (currentTime - mLastBufferingUpdateTime > 1000 && percent != mBufferPercentage) {
                 mLastBufferingUpdateTime = currentTime;
-                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE, percent, 0));
+                // Clamp the reported percent to 100% to avoid percentages above 100, which can
+                // happen due to the not exactly precise buffer level calculation
+                mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_BUFFERING_UPDATE,
+                        Math.min(percent, 100), 0));
             }
 
             // Update the buffer percentage at every call so a user of the library can decide
