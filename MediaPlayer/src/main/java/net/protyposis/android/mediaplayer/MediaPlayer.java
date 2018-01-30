@@ -1131,7 +1131,17 @@ public class MediaPlayer {
                 // the prefetched data.
                 // This comes before the buffering pause to update the clients buffering info
                 // also during a buffering playback pause.
-                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (mDecoders.getInputSamplePTS() + cachedDuration)));
+                // Use the PTS of the decoder input for a more precise buffer calculation (the
+                // cached duration is the duration from the read position in the media extractor,
+                // which is about the same position as the position from where the last sample
+                // has been read).
+                long currentPosition = mDecoders.getInputSamplePTS();
+                if (currentPosition == MediaCodecDecoder.PTS_UNKNOWN) {
+                    // If this input PTS is not available, e.g. directly after a seek, fall
+                    // back to the current playback position.
+                    currentPosition = mCurrentPosition;
+                }
+                updateBufferPercentage((int) (100d / (getDuration() * 1000) * (currentPosition + cachedDuration)));
             }
 
             // If we are in buffering mode, check if the buffer has been filled until the low water
