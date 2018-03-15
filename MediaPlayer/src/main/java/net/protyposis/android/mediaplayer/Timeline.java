@@ -51,6 +51,7 @@ class Timeline {
             mListPosition++;
         }
 
+        // Create a new iterator to avoid ConcurrentModificationException
         mListIterator = mList.listIterator(mListPosition);
     }
 
@@ -67,11 +68,16 @@ class Timeline {
             mListPosition--;
         }
 
+        // Create a new iterator to avoid ConcurrentModificationException
         mListIterator = mList.listIterator(mListPosition);
 
         return true;
     }
 
+    /**
+     * Sets the playback position to a new position without announcing cues, e.g. when seeking.
+     * @param position the new playback position
+     */
     public void setPlaybackPosition(int position) {
         ListIterator<Cue> iterator = mList.listIterator();
 
@@ -91,6 +97,12 @@ class Timeline {
         mListPosition = iterator.nextIndex();
     }
 
+    /**
+     * Moves the playback position from the current to the requested position, announcing all
+     * passed cues that are positioned in between.
+     * @param position the new playback position
+     * @param listener a listener that receives all cues between the previous and new position
+     */
     public void movePlaybackPosition(int position, OnCueListener listener) {
         if (mListIterator == null) {
             mListIterator = mList.listIterator();
@@ -110,10 +122,17 @@ class Timeline {
         }
     }
 
+    /**
+     * Gets the number of cues.
+     * @return the number of cues
+     */
     public int count() {
         return mList.size();
     }
 
+    /**
+     * Resets the timeline to its initial empty state.
+     */
     public void reset() {
         mList = new LinkedList<>();
         mListIterator = null;
