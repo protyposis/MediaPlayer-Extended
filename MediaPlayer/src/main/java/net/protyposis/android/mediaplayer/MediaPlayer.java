@@ -965,6 +965,7 @@ public class MediaPlayer {
         private double mPlaybackSpeed;
         private boolean mAVLocked;
         private long mLastBufferingUpdateTime;
+        private long mLastCueEventTime;
         private Timeline.OnCueListener mOnTimelineCueListener;
 
         public PlaybackThread() {
@@ -978,6 +979,7 @@ public class MediaPlayer {
             mRenderingStarted = true;
             mAVLocked = false;
             mLastBufferingUpdateTime = 0;
+            mLastCueEventTime = 0;
             mOnTimelineCueListener = new Timeline.OnCueListener() {
                 @Override
                 public void onCue(Cue cue) {
@@ -1251,7 +1253,10 @@ public class MediaPlayer {
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
 
             // fire cue events
-            if (mCueTimeline.count() > 0) {
+            // Only if there are cues to save unnecessary locking
+            // Rate limited to 10 Hz (every 100ms)
+            if (mCueTimeline.count() > 0 && startTime - mLastCueEventTime > 100) {
+                mLastCueEventTime = startTime;
                 synchronized (mCueTimeline) {
                     mCueTimeline.movePlaybackPosition((int) (mCurrentPosition / 1000),
                             mOnTimelineCueListener);
