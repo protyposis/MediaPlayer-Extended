@@ -39,6 +39,12 @@ public class TimelineTest {
     }
 
     @Test
+    public void setPlaybackPositionToStartOnEmptyList() {
+        Timeline t = new Timeline();
+        t.setPlaybackPosition(0);
+    }
+
+    @Test
     public void movePlaybackPositionOnEmptyList() {
         Timeline t = new Timeline();
         t.movePlaybackPosition(1000, new OnCueListener());
