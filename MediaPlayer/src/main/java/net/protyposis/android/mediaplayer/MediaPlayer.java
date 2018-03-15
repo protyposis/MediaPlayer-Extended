@@ -1129,6 +1129,9 @@ public class MediaPlayer {
             if(mDecoders.isEOS()) {
                 mCurrentPosition = 0;
                 mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
+                synchronized (mCueTimeline) {
+                    mCueTimeline.setPlaybackPosition(0);
+                }
             }
 
             // reset time (otherwise playback tries to "catch up" time after a pause)
@@ -1293,6 +1296,9 @@ public class MediaPlayer {
                         mAudioPlayback.flush();
                     }
                     mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
+                    synchronized (mCueTimeline) {
+                        mCueTimeline.setPlaybackPosition(0);
+                    }
                     mDecoders.renderFrames();
                 }
                 // ... else just pause playback and wait for next command
