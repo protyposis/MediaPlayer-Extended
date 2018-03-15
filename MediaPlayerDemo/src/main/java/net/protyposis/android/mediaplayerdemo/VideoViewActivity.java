@@ -28,6 +28,7 @@ import android.widget.MediaController;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import net.protyposis.android.mediaplayer.Cue;
 import net.protyposis.android.mediaplayer.MediaPlayer;
 import net.protyposis.android.mediaplayer.MediaSource;
 import net.protyposis.android.mediaplayer.VideoView;
@@ -97,6 +98,17 @@ public class VideoViewActivity extends Activity {
             public void onPrepared(MediaPlayer vp) {
                 mProgress.setVisibility(View.GONE);
                 mMediaController.setEnabled(true);
+
+                vp.addCue(1000, "test cue @ 1000");
+                vp.addCue(2000, "test cue @ 2000");
+                vp.addCue(3000, "test cue @ 3000");
+                vp.addCue(10000, "test cue @ 10000");
+                vp.setOnCueListener(new MediaPlayer.OnCueListener() {
+                    @Override
+                    public void onCue(MediaPlayer mp, Cue cue) {
+                        Log.d(TAG, "onCue: " + cue.toString() + " (" + mp.getCurrentPosition() + ")");
+                    }
+                });
             }
         });
         mVideoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
