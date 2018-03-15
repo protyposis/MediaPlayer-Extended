@@ -29,7 +29,6 @@ import android.view.SurfaceHolder;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by maguggen on 04.06.2014.
@@ -196,6 +195,7 @@ public class MediaPlayer {
     private Decoders mDecoders;
     private boolean mBuffering;
     private VideoRenderTimingMode mVideoRenderTimingMode;
+    private final Timeline mCueTimeline;
 
     private State mCurrentState;
 
@@ -214,6 +214,7 @@ public class MediaPlayer {
         mCurrentState = State.IDLE;
         mAudioSessionId = 0; // AudioSystem.AUDIO_SESSION_ALLOCATE;
         mAudioStreamType = AudioManager.STREAM_MUSIC;
+        mCueTimeline = new Timeline();
     }
 
     /**
@@ -912,7 +913,9 @@ public class MediaPlayer {
     public Cue addCue(int timeMs, Object data) {
         Cue cue = new Cue(timeMs, data);
 
-        // TODO add cue to timeline
+        synchronized (mCueTimeline) {
+            mCueTimeline.addCue(cue);
+        }
 
         return cue;
     }
@@ -932,8 +935,9 @@ public class MediaPlayer {
      * i.e. it has already been removed before
      */
     public boolean removeCue(Cue cue) {
-        // TODO remove cue from timeline
-        throw new RuntimeException("not implemented yet");
+        synchronized (mCueTimeline) {
+            return mCueTimeline.removeCue(cue);
+        }
     }
 
     private class PlaybackThread extends HandlerThread implements Handler.Callback {
@@ -957,6 +961,7 @@ public class MediaPlayer {
         private double mPlaybackSpeed;
         private boolean mAVLocked;
         private long mLastBufferingUpdateTime;
+        private Timeline.OnCueListener mOnTimelineCueListener;
 
         public PlaybackThread() {
             // Give this thread a high priority for more precise event timing
@@ -969,6 +974,12 @@ public class MediaPlayer {
             mRenderingStarted = true;
             mAVLocked = false;
             mLastBufferingUpdateTime = 0;
+            mOnTimelineCueListener = new Timeline.OnCueListener() {
+                @Override
+                public void onCue(Cue cue) {
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_CUE, cue));
+                }
+            };
         }
 
         @Override
@@ -1008,7 +1019,7 @@ public class MediaPlayer {
         }
 
         public void setSurface(Surface surface) {
-            mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
+            mEventHandler.sendMessage(mEventHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
         }
 
         private boolean release() {
@@ -1232,7 +1243,13 @@ public class MediaPlayer {
             // Update the current position of the player
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
 
-            // TODO fire cue events
+            // fire cue events
+            if (mCueTimeline.count() > 0) {
+                synchronized (mCueTimeline) {
+                    mCueTimeline.movePlaybackPosition((int) (mCurrentPosition / 1000),
+                            mOnTimelineCueListener);
+                }
+            }
 
             if(mDecoders.getVideoDecoder() != null && mVideoFrameInfo != null) {
                 renderVideoFrame(mVideoFrameInfo);
@@ -1343,6 +1360,10 @@ public class MediaPlayer {
 
                 if(!mPaused) {
                     playInternal();
+                }
+
+                synchronized (mCueTimeline) {
+                    mCueTimeline.setPlaybackPosition((int)(mCurrentPosition / 1000));
                 }
             }
         }
@@ -1752,6 +1773,7 @@ public class MediaPlayer {
     private static final int MEDIA_SET_VIDEO_SIZE = 5;
     private static final int MEDIA_ERROR = 100;
     private static final int MEDIA_INFO = 200;
+    private static final int MEDIA_CUE = 1000;
 
     private class EventHandler extends Handler {
         @Override
@@ -1803,6 +1825,11 @@ public class MediaPlayer {
                     //Log.d(TAG, "onBufferingUpdate");
                     if (mOnBufferingUpdateListener != null)
                         mOnBufferingUpdateListener.onBufferingUpdate(MediaPlayer.this, msg.arg1);
+                    return;
+
+                case MEDIA_CUE:
+                    if (mOnCueListener != null)
+                        mOnCueListener.onCue(MediaPlayer.this, (Cue)msg.obj);
                     return;
 
                 default:
