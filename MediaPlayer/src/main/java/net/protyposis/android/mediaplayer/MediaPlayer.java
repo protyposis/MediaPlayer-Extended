@@ -185,6 +185,7 @@ public class MediaPlayer {
     private OnInfoListener mOnInfoListener;
     private OnVideoSizeChangedListener mOnVideoSizeChangedListener;
     private OnBufferingUpdateListener mOnBufferingUpdateListener;
+    private OnCueListener mOnCueListener;
 
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
@@ -896,6 +897,45 @@ public class MediaPlayer {
         mVideoRenderTimingMode = mode;
     }
 
+    /**
+     * Adds a cue point to the media playback timeline. When the cue point is passed, a cue event
+     * with this data will be issued to a registered cue listener with
+     * {@link #setOnCueListener(OnCueListener)}. The cue point can carry arbitrary data as an
+     * attachment.
+     *
+     * @param timeMs the time in milliseconds on the playback timeline at which this cue will be fired
+     * @param data   optional data that will be exposed through the cue event
+     * @return A cue object that can be used to remove the cue from the playback timeline through
+     * {@link #removeCue(Cue)}. This is the same cue object that will be provided to the
+     * {@link OnCueListener} so this can be used as a lookup key for associated data.
+     */
+    public Cue addCue(int timeMs, Object data) {
+        Cue cue = new Cue(timeMs, data);
+
+        // TODO add cue to timeline
+
+        return cue;
+    }
+
+    /**
+     * @see #addCue(int, Object)
+     */
+    public Cue addCue(int timeMs) {
+        return addCue(timeMs, null);
+    }
+
+    /**
+     * Removes a cue added by {@link #addCue(int, Object)} from the playback timeline.
+     *
+     * @param cue the cue to remove
+     * @return true if removal was successful, false if the cue wasn't cued on the timeline,
+     * i.e. it has already been removed before
+     */
+    public boolean removeCue(Cue cue) {
+        // TODO remove cue from timeline
+        throw new RuntimeException("not implemented yet");
+    }
+
     private class PlaybackThread extends HandlerThread implements Handler.Callback {
 
         private static final int PLAYBACK_PREPARE = 1;
@@ -1191,6 +1231,8 @@ public class MediaPlayer {
 
             // Update the current position of the player
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
+
+            // TODO fire cue events
 
             if(mDecoders.getVideoDecoder() != null && mVideoFrameInfo != null) {
                 renderVideoFrame(mVideoFrameInfo);
@@ -1680,6 +1722,27 @@ public class MediaPlayer {
      */
     public void setOnInfoListener(OnInfoListener listener) {
         mOnInfoListener = listener;
+    }
+
+    /**
+     * Interface definition of an event callback to be invoked when playback passes a cue point.
+     */
+    public interface OnCueListener {
+        /**
+         * Called to indicate that a cue point has been reached/passed during playback.
+         * @param mp The MediaPlayer that this event originates from
+         * @param cue the definition of the cue point
+         */
+        void onCue(MediaPlayer mp, Cue cue);
+    }
+
+    /**
+     * Register a callback to be invoked when a cue point cued with {@link #addCue} is
+     * passed during playback.
+     * @param listener the callback that will be called
+     */
+    public void setOnCueListener(OnCueListener listener) {
+        mOnCueListener = listener;
     }
 
     private static final int MEDIA_PREPARED = 1;
