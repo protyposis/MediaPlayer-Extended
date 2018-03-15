@@ -356,6 +356,10 @@ public class MediaPlayer {
     }
 
     private void prepareInternal() throws IOException, IllegalStateException {
+        synchronized (mCueTimeline) {
+            mCueTimeline.reset();
+        }
+
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
             public void onBuffering(MediaCodecDecoder decoder) {
