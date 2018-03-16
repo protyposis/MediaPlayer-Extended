@@ -356,9 +356,7 @@ public class MediaPlayer {
     }
 
     private void prepareInternal() throws IOException, IllegalStateException {
-        synchronized (mCueTimeline) {
-            mCueTimeline.reset();
-        }
+        mCueTimeline.reset();
 
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
@@ -917,9 +915,7 @@ public class MediaPlayer {
     public Cue addCue(int timeMs, Object data) {
         Cue cue = new Cue(timeMs, data);
 
-        synchronized (mCueTimeline) {
-            mCueTimeline.addCue(cue);
-        }
+        mCueTimeline.addCue(cue);
 
         return cue;
     }
@@ -939,9 +935,7 @@ public class MediaPlayer {
      * i.e. it has already been removed before
      */
     public boolean removeCue(Cue cue) {
-        synchronized (mCueTimeline) {
-            return mCueTimeline.removeCue(cue);
-        }
+        return mCueTimeline.removeCue(cue);
     }
 
     private class PlaybackThread extends HandlerThread implements Handler.Callback {
@@ -1131,9 +1125,7 @@ public class MediaPlayer {
             if(mDecoders.isEOS()) {
                 mCurrentPosition = 0;
                 mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
-                synchronized (mCueTimeline) {
-                    mCueTimeline.setPlaybackPosition(0);
-                }
+                mCueTimeline.setPlaybackPosition(0);
             }
 
             // reset time (otherwise playback tries to "catch up" time after a pause)
@@ -1257,10 +1249,8 @@ public class MediaPlayer {
             // Rate limited to 10 Hz (every 100ms)
             if (mCueTimeline.count() > 0 && startTime - mLastCueEventTime > 100) {
                 mLastCueEventTime = startTime;
-                synchronized (mCueTimeline) {
-                    mCueTimeline.movePlaybackPosition((int) (mCurrentPosition / 1000),
-                            mOnTimelineCueListener);
-                }
+                mCueTimeline.movePlaybackPosition((int) (mCurrentPosition / 1000),
+                        mOnTimelineCueListener);
             }
 
             if(mDecoders.getVideoDecoder() != null && mVideoFrameInfo != null) {
@@ -1301,9 +1291,7 @@ public class MediaPlayer {
                         mAudioPlayback.flush();
                     }
                     mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
-                    synchronized (mCueTimeline) {
-                        mCueTimeline.setPlaybackPosition(0);
-                    }
+                    mCueTimeline.setPlaybackPosition(0);
                     mDecoders.renderFrames();
                 }
                 // ... else just pause playback and wait for next command
@@ -1377,9 +1365,7 @@ public class MediaPlayer {
                     playInternal();
                 }
 
-                synchronized (mCueTimeline) {
-                    mCueTimeline.setPlaybackPosition((int)(mCurrentPosition / 1000));
-                }
+                mCueTimeline.setPlaybackPosition((int)(mCurrentPosition / 1000));
             }
         }
 
