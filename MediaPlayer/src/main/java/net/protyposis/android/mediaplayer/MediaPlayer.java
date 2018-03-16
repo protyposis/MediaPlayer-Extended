@@ -29,7 +29,6 @@ import android.view.SurfaceHolder;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by maguggen on 04.06.2014.
@@ -185,6 +184,7 @@ public class MediaPlayer {
     private OnInfoListener mOnInfoListener;
     private OnVideoSizeChangedListener mOnVideoSizeChangedListener;
     private OnBufferingUpdateListener mOnBufferingUpdateListener;
+    private OnCueListener mOnCueListener;
 
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
@@ -195,6 +195,7 @@ public class MediaPlayer {
     private Decoders mDecoders;
     private boolean mBuffering;
     private VideoRenderTimingMode mVideoRenderTimingMode;
+    private final Timeline mCueTimeline;
 
     private State mCurrentState;
 
@@ -213,6 +214,7 @@ public class MediaPlayer {
         mCurrentState = State.IDLE;
         mAudioSessionId = 0; // AudioSystem.AUDIO_SESSION_ALLOCATE;
         mAudioStreamType = AudioManager.STREAM_MUSIC;
+        mCueTimeline = new Timeline();
     }
 
     /**
@@ -354,6 +356,8 @@ public class MediaPlayer {
     }
 
     private void prepareInternal() throws IOException, IllegalStateException {
+        mCueTimeline.reset();
+
         MediaCodecDecoder.OnDecoderEventListener decoderEventListener = new MediaCodecDecoder.OnDecoderEventListener() {
             @Override
             public void onBuffering(MediaCodecDecoder decoder) {
@@ -896,6 +900,44 @@ public class MediaPlayer {
         mVideoRenderTimingMode = mode;
     }
 
+    /**
+     * Adds a cue point to the media playback timeline. When the cue point is passed, a cue event
+     * with this data will be issued to a registered cue listener with
+     * {@link #setOnCueListener(OnCueListener)}. The cue point can carry arbitrary data as an
+     * attachment.
+     *
+     * @param timeMs the time in milliseconds on the playback timeline at which this cue will be fired
+     * @param data   optional data that will be exposed through the cue event
+     * @return A cue object that can be used to remove the cue from the playback timeline through
+     * {@link #removeCue(Cue)}. This is the same cue object that will be provided to the
+     * {@link OnCueListener} so this can be used as a lookup key for associated data.
+     */
+    public Cue addCue(int timeMs, Object data) {
+        Cue cue = new Cue(timeMs, data);
+
+        mCueTimeline.addCue(cue);
+
+        return cue;
+    }
+
+    /**
+     * @see #addCue(int, Object)
+     */
+    public Cue addCue(int timeMs) {
+        return addCue(timeMs, null);
+    }
+
+    /**
+     * Removes a cue added by {@link #addCue(int, Object)} from the playback timeline.
+     *
+     * @param cue the cue to remove
+     * @return true if removal was successful, false if the cue wasn't cued on the timeline,
+     * i.e. it has already been removed before
+     */
+    public boolean removeCue(Cue cue) {
+        return mCueTimeline.removeCue(cue);
+    }
+
     private class PlaybackThread extends HandlerThread implements Handler.Callback {
 
         private static final int PLAYBACK_PREPARE = 1;
@@ -917,6 +959,8 @@ public class MediaPlayer {
         private double mPlaybackSpeed;
         private boolean mAVLocked;
         private long mLastBufferingUpdateTime;
+        private long mLastCueEventTime;
+        private Timeline.OnCueListener mOnTimelineCueListener;
 
         public PlaybackThread() {
             // Give this thread a high priority for more precise event timing
@@ -929,6 +973,13 @@ public class MediaPlayer {
             mRenderingStarted = true;
             mAVLocked = false;
             mLastBufferingUpdateTime = 0;
+            mLastCueEventTime = 0;
+            mOnTimelineCueListener = new Timeline.OnCueListener() {
+                @Override
+                public void onCue(Cue cue) {
+                    mEventHandler.sendMessage(mEventHandler.obtainMessage(MEDIA_CUE, cue));
+                }
+            };
         }
 
         @Override
@@ -968,7 +1019,7 @@ public class MediaPlayer {
         }
 
         public void setSurface(Surface surface) {
-            mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
+            mEventHandler.sendMessage(mEventHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
         }
 
         private boolean release() {
@@ -1074,6 +1125,7 @@ public class MediaPlayer {
             if(mDecoders.isEOS()) {
                 mCurrentPosition = 0;
                 mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
+                mCueTimeline.setPlaybackPosition(0);
             }
 
             // reset time (otherwise playback tries to "catch up" time after a pause)
@@ -1192,6 +1244,15 @@ public class MediaPlayer {
             // Update the current position of the player
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
 
+            // fire cue events
+            // Only if there are cues to save unnecessary locking
+            // Rate limited to 10 Hz (every 100ms)
+            if (mCueTimeline.count() > 0 && startTime - mLastCueEventTime > 100) {
+                mLastCueEventTime = startTime;
+                mCueTimeline.movePlaybackPosition((int) (mCurrentPosition / 1000),
+                        mOnTimelineCueListener);
+            }
+
             if(mDecoders.getVideoDecoder() != null && mVideoFrameInfo != null) {
                 renderVideoFrame(mVideoFrameInfo);
                 mVideoFrameInfo = null;
@@ -1230,6 +1291,7 @@ public class MediaPlayer {
                         mAudioPlayback.flush();
                     }
                     mDecoders.seekTo(SeekMode.FAST_TO_PREVIOUS_SYNC, 0);
+                    mCueTimeline.setPlaybackPosition(0);
                     mDecoders.renderFrames();
                 }
                 // ... else just pause playback and wait for next command
@@ -1302,6 +1364,8 @@ public class MediaPlayer {
                 if(!mPaused) {
                     playInternal();
                 }
+
+                mCueTimeline.setPlaybackPosition((int)(mCurrentPosition / 1000));
             }
         }
 
@@ -1682,6 +1746,27 @@ public class MediaPlayer {
         mOnInfoListener = listener;
     }
 
+    /**
+     * Interface definition of an event callback to be invoked when playback passes a cue point.
+     */
+    public interface OnCueListener {
+        /**
+         * Called to indicate that a cue point has been reached/passed during playback.
+         * @param mp The MediaPlayer that this event originates from
+         * @param cue the definition of the cue point
+         */
+        void onCue(MediaPlayer mp, Cue cue);
+    }
+
+    /**
+     * Register a callback to be invoked when a cue point cued with {@link #addCue} is
+     * passed during playback.
+     * @param listener the callback that will be called
+     */
+    public void setOnCueListener(OnCueListener listener) {
+        mOnCueListener = listener;
+    }
+
     private static final int MEDIA_PREPARED = 1;
     private static final int MEDIA_PLAYBACK_COMPLETE = 2;
     private static final int MEDIA_BUFFERING_UPDATE = 3;
@@ -1689,6 +1774,7 @@ public class MediaPlayer {
     private static final int MEDIA_SET_VIDEO_SIZE = 5;
     private static final int MEDIA_ERROR = 100;
     private static final int MEDIA_INFO = 200;
+    private static final int MEDIA_CUE = 1000;
 
     private class EventHandler extends Handler {
         @Override
@@ -1740,6 +1826,11 @@ public class MediaPlayer {
                     //Log.d(TAG, "onBufferingUpdate");
                     if (mOnBufferingUpdateListener != null)
                         mOnBufferingUpdateListener.onBufferingUpdate(MediaPlayer.this, msg.arg1);
+                    return;
+
+                case MEDIA_CUE:
+                    if (mOnCueListener != null)
+                        mOnCueListener.onCue(MediaPlayer.this, (Cue)msg.obj);
                     return;
 
                 default:

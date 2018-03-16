@@ -152,6 +152,9 @@ This are the important additions to Android's default components:
 | `getSeekMode()`              | X           | X         | Gets the current seek mode. |
 | `setPlaybackSpeed(float)`    | X           | X         | Sets the playback speed factor (e.g. 1.0 is normal speed, 0.5 is half speed, 2.0 is double speed). Audio pitch changes with the speed factor. |
 | `getPlaybackSpeed()`         | X           | X         | Gets the current playback speed factor. |
+| `addCue(int, object?)`       | X           |           | Adds a cue to the playback timeline. Cues can be used to synchronize events to media playback, e.g. for subtitles, slides, lyrics, or ads. |
+| `removeCue(cue)`             | X           |           | Removes a cue from the playback timeline. |
+| `setOnCueListener(listener)` | X           |           | Listens to cues during playback. |
 
 
 ### MediaSource ###
