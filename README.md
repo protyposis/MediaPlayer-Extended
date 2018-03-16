@@ -32,16 +32,20 @@ Changelog
 
 * develop
   * Cue API: `addCue`, `removeCue`, `setOnCueListener` to set cue points on the media timeline and fire events when they are passed during playback
-    https://github.com/protyposis/MediaPlayer-Extended/issues/95
+    ([#95](https://github.com/protyposis/MediaPlayer-Extended/issues/95))
   * Fix buffer level calculation
-    https://github.com/protyposis/MediaPlayer-Extended/issues/88
+    ([#80](https://github.com/protyposis/MediaPlayer-Extended/issues/88))
 * v4.3.3: Stability improvements
-  * Fix deadlock when calling `stop` or `release` on a dead player instance (https://github.com/protyposis/MediaPlayer-Extended/issues/81)
-  * Improve buffer level reporting (https://github.com/protyposis/MediaPlayer-Extended/issues/80)
+  * Fix deadlock when calling `stop` or `release` on a dead player instance
+    ([#81](https://github.com/protyposis/MediaPlayer-Extended/issues/81))
+  * Improve buffer level reporting
+    ([#80](https://github.com/protyposis/MediaPlayer-Extended/issues/80))
 * v4.3.2: Stability improvements
   * Always release `MediaExtractor` instances
-  * Drop finished segment downloads during release of `DashMediaExtractor` (https://github.com/protyposis/MediaPlayer-Extended/issues/71)
-  * Avoid invalid `MediaPlayer` method call sequence in `VideoView` (https://github.com/protyposis/MediaPlayer-Extended/issues/70)
+  * Drop finished segment downloads during release of `DashMediaExtractor`
+    ([#71](https://github.com/protyposis/MediaPlayer-Extended/issues/71))
+  * Avoid invalid `MediaPlayer` method call sequence in `VideoView`
+    ([#70](https://github.com/protyposis/MediaPlayer-Extended/issues/70))
 * v4.3.1: Fix DASH playback freeze, memory leaks and limit buffer update frequency
   * Fix DASH playback freeze on representation switch
   * Fix memory leaks from registered event listeners
