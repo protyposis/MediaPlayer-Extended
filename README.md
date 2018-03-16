@@ -203,26 +203,12 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.3'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:<version>'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:<version>'
     }
-
-#### Local Maven repository ####
 
 Run `gradlew publishMavenPublicationToMavenLocal` to compile and install the modules to your
-local Maven repository and add one or more of the following dependencies:
-
-    repositories {
-        ...
-        mavenLocal()
-    }
-
-    dependencies {
-        ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.3-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.3-SNAPSHOT'
-    }
-
+local Maven repository.
 
 ### Modules ###
 
