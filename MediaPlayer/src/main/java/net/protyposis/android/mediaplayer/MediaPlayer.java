@@ -1245,7 +1245,6 @@ public class MediaPlayer {
             mCurrentPosition = mDecoders.getCurrentDecodingPTS();
 
             // fire cue events
-            // Only if there are cues to save unnecessary locking
             // Rate limited to 10 Hz (every 100ms)
             if (mCueTimeline.count() > 0 && startTime - mLastCueEventTime > 100) {
                 mLastCueEventTime = startTime;
