@@ -30,7 +30,7 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
-* develop
+* __v4.4.0__
   * Cue API: `addCue`, `removeCue`, `setOnCueListener` to set cue points on the media timeline and fire events when they are passed during playback
     ([#95](https://github.com/protyposis/MediaPlayer-Extended/issues/95))
   * Fix buffer level calculation
