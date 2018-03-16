@@ -30,6 +30,11 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* develop
+  * Cue API: `addCue`, `removeCue`, `setOnCueListener` to set cue points on the media timeline and fire events when they are passed during playback
+    https://github.com/protyposis/MediaPlayer-Extended/issues/95
+  * Fix buffer level calculation
+    https://github.com/protyposis/MediaPlayer-Extended/issues/88
 * v4.3.3: Stability improvements
   * Fix deadlock when calling `stop` or `release` on a dead player instance (https://github.com/protyposis/MediaPlayer-Extended/issues/81)
   * Improve buffer level reporting (https://github.com/protyposis/MediaPlayer-Extended/issues/80)
