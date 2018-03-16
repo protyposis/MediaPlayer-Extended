@@ -1019,7 +1019,7 @@ public class MediaPlayer {
         }
 
         public void setSurface(Surface surface) {
-            mEventHandler.sendMessage(mEventHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
+            mHandler.sendMessage(mHandler.obtainMessage(PlaybackThread.DECODER_SET_SURFACE, surface));
         }
 
         private boolean release() {
