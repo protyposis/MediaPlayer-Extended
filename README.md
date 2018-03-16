@@ -30,13 +30,22 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* __v4.4.0__
+  * Cue API: `addCue`, `removeCue`, `setOnCueListener` to set cue points on the media timeline and fire events when they are passed during playback
+    ([#95](https://github.com/protyposis/MediaPlayer-Extended/issues/95))
+  * Fix buffer level calculation
+    ([#80](https://github.com/protyposis/MediaPlayer-Extended/issues/88))
 * v4.3.3: Stability improvements
-  * Fix deadlock when calling `stop` or `release` on a dead player instance (https://github.com/protyposis/MediaPlayer-Extended/issues/81)
-  * Improve buffer level reporting (https://github.com/protyposis/MediaPlayer-Extended/issues/80)
+  * Fix deadlock when calling `stop` or `release` on a dead player instance
+    ([#81](https://github.com/protyposis/MediaPlayer-Extended/issues/81))
+  * Improve buffer level reporting
+    ([#80](https://github.com/protyposis/MediaPlayer-Extended/issues/80))
 * v4.3.2: Stability improvements
   * Always release `MediaExtractor` instances
-  * Drop finished segment downloads during release of `DashMediaExtractor` (https://github.com/protyposis/MediaPlayer-Extended/issues/71)
-  * Avoid invalid `MediaPlayer` method call sequence in `VideoView` (https://github.com/protyposis/MediaPlayer-Extended/issues/70)
+  * Drop finished segment downloads during release of `DashMediaExtractor`
+    ([#71](https://github.com/protyposis/MediaPlayer-Extended/issues/71))
+  * Avoid invalid `MediaPlayer` method call sequence in `VideoView`
+    ([#70](https://github.com/protyposis/MediaPlayer-Extended/issues/70))
 * v4.3.1: Fix DASH playback freeze, memory leaks and limit buffer update frequency
   * Fix DASH playback freeze on representation switch
   * Fix memory leaks from registered event listeners
@@ -161,6 +170,9 @@ This are the important additions to Android's default components:
 | `getSeekMode()`              | X           | X         | Gets the current seek mode. |
 | `setPlaybackSpeed(float)`    | X           | X         | Sets the playback speed factor (e.g. 1.0 is normal speed, 0.5 is half speed, 2.0 is double speed). Audio pitch changes with the speed factor. |
 | `getPlaybackSpeed()`         | X           | X         | Gets the current playback speed factor. |
+| `addCue(int, object?)`       | X           |           | Adds a cue to the playback timeline. Cues can be used to synchronize events to media playback, e.g. for subtitles, slides, lyrics, or ads. |
+| `removeCue(cue)`             | X           |           | Removes a cue from the playback timeline. |
+| `setOnCueListener(listener)` | X           |           | Listens to cues during playback. |
 
 
 ### MediaSource ###
@@ -200,26 +212,12 @@ library, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.3'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.3'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer:<version>'
+        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:<version>'
     }
-
-#### Local Maven repository ####
 
 Run `gradlew publishMavenPublicationToMavenLocal` to compile and install the modules to your
-local Maven repository and add one or more of the following dependencies:
-
-    repositories {
-        ...
-        mavenLocal()
-    }
-
-    dependencies {
-        ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:4.3.3-SNAPSHOT'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:4.3.3-SNAPSHOT'
-    }
-
+local Maven repository.
 
 ### Modules ###
 
@@ -315,5 +313,5 @@ These URLs have been tested and definitely work in the demo app:
 License
 -------
 
-Copyright (C) 2014, 2015, 2016, 2017 Mario Guggenberger <mg@protyposis.net>.
+Copyright (C) 2014, 2015, 2016, 2017, 2018 Mario Guggenberger <mg@protyposis.net>.
 Released under the Apache 2.0 license. See `LICENSE` for details.
