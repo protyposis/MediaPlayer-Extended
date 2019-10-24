@@ -57,7 +57,7 @@ android {
     (project.isLibrary ? libraryVariants : applicationVariants).all { variant ->
         //if(variant.name.equalsIgnoreCase('release')) {
         variant.outputs.each { output ->
-            output.processManifest.doFirst {
+            output.processManifestProvider.get().doFirst {
                 checkForGit()
             }
         }

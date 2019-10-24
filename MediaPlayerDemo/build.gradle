@@ -4,7 +4,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'io.fabric.tools:gradle:1.+'
+        classpath 'io.fabric.tools:gradle:1.31.2'
     }
 }
 
@@ -15,15 +15,14 @@ repositories {
 }
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "22.0.1"
+    compileSdkVersion 28
 
     defaultConfig {
         // Keep old ITEC package name as application Id for Play Store compatibility
         applicationId 'at.aau.itec.android.mediaplayerdemo'
 
         minSdkVersion 16
-        targetSdkVersion 22
+        targetSdkVersion 28
         versionCode 1
         versionName '1.0'
         buildConfigField "boolean", "CRASHLYTICS_CONFIGURED", "${isChrashlyticsConfigured()}"
@@ -49,9 +48,7 @@ android {
     applicationVariants.all { variant ->
         variant.outputs.each { output ->
             if (variant.name == android.buildTypes.release.name) {
-                def file = output.outputFile
-                def fileName = file.name.replace(".apk", "-" + defaultConfig.versionCode + "-" + defaultConfig.versionName + ".apk")
-                output.outputFile = new File(file.parent, fileName)
+                output.outputFileName = output.outputFileName.replace(".apk", "-" + defaultConfig.versionCode + "-" + defaultConfig.versionName + ".apk")
             }
         }
     }
@@ -63,11 +60,11 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':MediaPlayer')
-    compile project(':MediaPlayer-DASH')
-    compile('com.crashlytics.sdk.android:crashlytics:2.5.6@aar') {
-        transitive = true;
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation project(':MediaPlayer')
+    implementation project(':MediaPlayer-DASH')
+    implementation('com.crashlytics.sdk.android:crashlytics:2.5.6@aar') {
+        transitive = true
     }
 }
 
