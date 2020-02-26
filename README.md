@@ -30,6 +30,7 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* v4.4.1: Fix loading of video without audio track ([#114](https://github.com/protyposis/MediaPlayer-Extended/issues/114))
 * __v4.4.0__
   * Cue API: `addCue`, `removeCue`, `setOnCueListener` to set cue points on the media timeline and fire events when they are passed during playback
     ([#95](https://github.com/protyposis/MediaPlayer-Extended/issues/95))
@@ -313,5 +314,5 @@ These URLs have been tested and definitely work in the demo app:
 License
 -------
 
-Copyright (C) 2014, 2015, 2016, 2017, 2018 Mario Guggenberger <mg@protyposis.net>.
+Copyright (C) 2014, 2015, 2016, 2017, 2018, 2020 Mario Guggenberger <mg@protyposis.net>.
 Released under the Apache 2.0 license. See `LICENSE` for details.

@@ -25,8 +25,8 @@ ext {
     packageBase = 'net.protyposis.android'
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
-    libraryVersionCode = 34
-    libraryVersionName = '4.4.0'
+    libraryVersionCode = 35
+    libraryVersionName = '4.4.1'
     librarySnaphotEnabled = true
 
     libraryVersionString = {
