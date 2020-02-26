@@ -685,6 +685,8 @@ public class MediaPlayer {
 
         stayAwake(false);
 
+        mAudioPlayback = null;
+
         mCurrentState = State.STOPPED;
     }
 
