@@ -1,5 +1,4 @@
 apply plugin: 'com.android.library'
-apply plugin: 'com.novoda.bintray-release'
 
 android {
     compileSdkVersion 28
@@ -30,14 +29,14 @@ dependencies {
     implementation "com.googlecode.mp4parser:isoparser:1.0.5.4"
 }
 
-publish {
-    userOrg = 'protyposis'
-    groupId = playerModuleBase
-    artifactId = 'mediaplayer-dash'
-    publishVersion = libraryVersionString()
-    desc = 'MediaPlayer-Extended DASH extension module'
-    website = 'https://github.com/protyposis/MediaPlayer-Extended'
-    licences = ['Apache-2.0']
-}
+//publish {
+//    userOrg = 'protyposis'
+//    groupId = playerModuleBase
+//    artifactId = 'mediaplayer-dash'
+//    publishVersion = libraryVersionString()
+//    desc = 'MediaPlayer-Extended DASH extension module'
+//    website = 'https://github.com/protyposis/MediaPlayer-Extended'
+//    licences = ['Apache-2.0']
+//}
 
 //apply from: "../gitversioning.gradle"

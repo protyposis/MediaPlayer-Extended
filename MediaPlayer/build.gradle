@@ -1,5 +1,4 @@
 apply plugin: 'com.android.library'
-apply plugin: 'com.novoda.bintray-release'
 
 android {
     compileSdkVersion 28
@@ -23,14 +22,14 @@ dependencies {
     testImplementation 'junit:junit:4.12'
 }
 
-publish {
-    userOrg = 'protyposis'
-    groupId = playerModuleBase
-    artifactId = 'mediaplayer'
-    publishVersion = libraryVersionString()
-    desc = 'MediaPlayer-Extended core module'
-    website = 'https://github.com/protyposis/MediaPlayer-Extended'
-    licences = ['Apache-2.0']
-}
+//publish {
+//    userOrg = 'protyposis'
+//    groupId = playerModuleBase
+//    artifactId = 'mediaplayer'
+//    publishVersion = libraryVersionString()
+//    desc = 'MediaPlayer-Extended core module'
+//    website = 'https://github.com/protyposis/MediaPlayer-Extended'
+//    licences = ['Apache-2.0']
+//}
 
 //apply from: "../gitversioning.gradle"
