@@ -33,8 +33,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.crashlytics.android.Crashlytics;
-import io.fabric.sdk.android.Fabric;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -61,12 +59,6 @@ public class MainActivity extends Activity implements VideoURIInputDialogFragmen
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        if(BuildConfig.CRASHLYTICS_CONFIGURED) {
-            Fabric.with(this, new Crashlytics());
-        } else {
-            Log.w(TAG, "Crashlytics not configured!");
-        }
 
         setContentView(R.layout.activity_main);
 

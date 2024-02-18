@@ -1,18 +1,4 @@
-buildscript {
-    repositories {
-        maven { url 'https://maven.fabric.io/public' }
-    }
-
-    dependencies {
-        classpath 'io.fabric.tools:gradle:1.31.2'
-    }
-}
-
 apply plugin: 'com.android.application'
-
-repositories {
-    maven { url 'https://maven.fabric.io/public' }
-}
 
 android {
     compileSdkVersion 28
@@ -25,7 +11,6 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName '1.0'
-        buildConfigField "boolean", "CRASHLYTICS_CONFIGURED", "${isChrashlyticsConfigured()}"
     }
 
     signingConfigs {
@@ -63,19 +48,8 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':MediaPlayer')
     implementation project(':MediaPlayer-DASH')
-    implementation('com.crashlytics.sdk.android:crashlytics:2.5.6@aar') {
-        transitive = true
-    }
 }
 
 ext.isLibrary = false
 apply from: "../gitversioning.gradle"
 apply from: "signingconfig.gradle"
-
-if(isChrashlyticsConfigured()) {
-    apply plugin: 'io.fabric'
-}
-
-def isChrashlyticsConfigured() {
-    return file("fabric.properties").exists()
-}
