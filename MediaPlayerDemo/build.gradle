@@ -55,8 +55,18 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':MediaPlayer')
     implementation project(':MediaPlayer-DASH')
+    implementation platform('com.google.firebase:firebase-bom:32.7.2')
+    implementation 'com.google.firebase:firebase-crashlytics'
 }
 
 ext.isLibrary = false
 apply from: "../gitversioning.gradle"
 apply from: "signingconfig.gradle"
+
+def firebaseConfigFile = file("google-services.json");
+if (!firebaseConfigFile.exists()) {
+    project.logger.error("Firebase config file for Crashlytics not found at ${firebaseConfigFile.absolutePath}. Please download the file from the Firebase Console and put it there.")
+}
+
+apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.crashlytics'
