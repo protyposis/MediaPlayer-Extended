@@ -3,6 +3,10 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 28
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         // Keep old ITEC package name as application Id for Play Store compatibility
         applicationId 'at.aau.itec.android.mediaplayerdemo'
@@ -30,6 +34,13 @@ android {
         }
     }
 
+    namespace 'net.protyposis.android.mediaplayerdemo'
+
+    lint {
+        // Lint fix for Okio: https://github.com/square/okio/issues/58
+        warning 'InvalidPackage'
+    }
+
     applicationVariants.all { variant ->
         variant.outputs.each { output ->
             if (variant.name == android.buildTypes.release.name) {
@@ -38,10 +49,6 @@ android {
         }
     }
 
-    lintOptions {
-        // Lint fix for Okio: https://github.com/square/okio/issues/58
-        warning 'InvalidPackage'
-    }
 }
 
 dependencies {
