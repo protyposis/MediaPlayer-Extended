@@ -1,15 +1,15 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 28
+    compileSdk 33
 
     buildFeatures {
         buildConfig = true
     }
 
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 28
+        minSdk 16
+        targetSdk 33
         buildConfigField "String", "VERSION_NAME", "\"${libraryVersionString()}\""
     }
 
