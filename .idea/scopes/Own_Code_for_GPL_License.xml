@@ -1,3 +1,0 @@
-<component name="DependencyValidationManager">
-  <scope name="Own Code for GPL License" pattern="file[MediaPlayer]:src/main/java/*||file[MediaPlayer-DASH]:src/main/java/*||file[MediaPlayer-GLES]:src/main/assets/shaders/*||file[MediaPlayer-GLES]:src/main/java//*||file[MediaPlayer-GLES-FlowAbs]:src/main/java//*||file[MediaPlayer-GLES-QrMarker]:src/main/java//*||file[MediaPlayerDemo]:src/main/assets/shaders/*||file[MediaPlayerDemo]:src/main/java//*||file[MediaPlayerDemo]:src/main/res//*||file[MediaPlayer-DASH]:src/main/java//*||file[MediaPlayer]:src/main/java//*" />
-</component>
