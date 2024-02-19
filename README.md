@@ -30,6 +30,10 @@ was part of this library until v3.x, please check [Spectaculum](https://github.c
 Changelog
 ---------
 
+* __v4.5.0__
+  * compile and target SDK updated to 33
+  * published to Maven Central repository
+  * upgraded Crashlytics in demo app for improved privacy
 * v4.4.1: Fix loading of video without audio track ([#114](https://github.com/protyposis/MediaPlayer-Extended/issues/114))
 * __v4.4.0__
   * Cue API: `addCue`, `removeCue`, `setOnCueListener` to set cue points on the media timeline and fire events when they are passed during playback
@@ -198,17 +202,17 @@ provide and sync multiple separate media sources to the same media player.
 ### Gradle ###
 
 To use this library in your own project, you can either (1) fetch the modules from the
-JCenter central Maven repository, or checkout the Git repository and (2) install the modules to
+Maven Central repository, or checkout the Git repository and (2) install the modules to
 your local Maven repository or (3) include the required gradle modules directly.
 
-#### JCenter repository ####
+#### Maven ####
 
-The [JCenter](https://bintray.com/bintray/jcenter) Maven repository contains release builds of the
+The [Maven Central](https://central.sonatype.com/) Maven repository contains release builds of the
 library, usage is similar to any other Maven dependency:
 
     repositories {
         ...
-        jcenter()
+        mavenCentral()
     }
 
     dependencies {
