@@ -25,6 +25,13 @@ allprojects {
 
     model {
         publishing {
+            repositories {
+                maven {
+                    name = "localBuild"
+                    url = uri("file://${rootProject.buildDir}/publications/maven")
+                }
+            }
+
             publications.configureEach { publication -> {
                 groupId = playerModuleBase
                 version = libraryVersionString()
