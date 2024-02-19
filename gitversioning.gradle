@@ -64,3 +64,5 @@ android {
         //}
     }
 }
+
+ext.gitVersionName = getVersionName()
