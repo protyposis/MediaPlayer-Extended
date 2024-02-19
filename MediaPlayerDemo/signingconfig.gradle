@@ -14,7 +14,7 @@ android {
         def configPropsFile = file("signingconfig.properties")
         if (configPropsFile.exists()) {
             def props = new Properties()
-            props.load(new FileInputStream(configPropsFile))
+            configPropsFile.withInputStream { props.load(it) }
 
             debug {
                 if(props.debug_store?.trim()) {

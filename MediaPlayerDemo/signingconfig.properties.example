@@ -1,6 +1,6 @@
 # This is an example signingconfig.properties file.
-debug.store=/path/to/your/debug.keystore // optional, leave empty for default debug keystore
-release.store=/path/to/your/release.keystore
-release.storePass=your_keystore_password // optional, leave empty for prompt
-release.alias=your_alias
-release.pass=your_password // optional, leave empty for prompt
+debug_store=/path/to/your/debug.keystore // optional, leave empty for default debug keystore
+release_store=/path/to/your/release.keystore
+release_storePass=your_keystore_password // optional, leave empty for prompt
+release_alias=your_alias
+release_pass=your_password // optional, leave empty for prompt
