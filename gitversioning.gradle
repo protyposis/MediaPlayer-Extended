@@ -44,6 +44,49 @@ def getVersionName = { ->
     }
 }
 
+def getTagOnly = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--abbrev=0'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }
+    catch (ignored) {
+        return null;
+    }
+}
+
+def getDirtyTag = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--dirty'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }
+    catch (ignored) {
+        return null;
+    }
+}
+
+def getMavenVersionName = { ->
+    def version = getTagOnly()
+    def isTaggedAndClean = version == getDirtyTag()
+
+    if (version.startsWith("v")) {
+        version = version.substring(1)
+    }
+
+    if (!isTaggedAndClean) {
+        version = version + '-SNAPSHOT'
+    }
+
+    return version
+}
+
 android {
 
     defaultConfig {
@@ -66,3 +109,4 @@ android {
 }
 
 ext.gitVersionName = getVersionName()
+ext.gitMavenVersionName = getMavenVersionName()

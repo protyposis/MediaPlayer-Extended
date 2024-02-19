@@ -50,6 +50,7 @@ publishing {
     publications {
         release(MavenPublication) {
             artifactId = 'mediaplayer-dash'
+            version = gitMavenVersionName
             pom {
                 description = 'MediaPlayer-Extended DASH extension module'
             }

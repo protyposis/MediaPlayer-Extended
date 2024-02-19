@@ -40,6 +40,7 @@ publishing {
     publications {
         release(MavenPublication) {
             artifactId = 'mediaplayer'
+            version = gitMavenVersionName
             pom {
                 description = 'MediaPlayer-Extended core module'
             }

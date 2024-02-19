@@ -34,7 +34,6 @@ allprojects {
 
             publications.configureEach { publication -> {
                 groupId = playerModuleBase
-                version = libraryVersionString()
                 pom {
                     url = 'https://github.com/protyposis/MediaPlayer-Extended'
                     licenses {
@@ -63,10 +62,4 @@ ext {
     packageBase = 'net.protyposis.android'
     playerModuleBase = packageBase + '.mediaplayer'
     isLibrary = true
-    libraryVersionName = '4.4.1'
-    librarySnaphotEnabled = true
-
-    libraryVersionString = {
-        return libraryVersionName + (librarySnaphotEnabled ? '-SNAPSHOT' : '')
-    }
 }
