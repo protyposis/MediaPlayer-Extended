@@ -217,7 +217,7 @@ library, usage is similar to any other Maven dependency:
         compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:<version>'
     }
 
-Run `gradlew publishMavenPublicationToMavenLocal` to compile and install the modules to your
+Run `gradlew publishToMavenLocal` to compile and install the modules to your
 local Maven repository.
 
 ### Modules ###

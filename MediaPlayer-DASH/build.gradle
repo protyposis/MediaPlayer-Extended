@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
 
 android {
     compileSdk 33
@@ -26,6 +27,13 @@ android {
         // Lint fix for Okio: https://github.com/square/okio/issues/58
         warning 'InvalidPackage'
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
 }
 
 dependencies {
@@ -36,14 +44,16 @@ dependencies {
     implementation "com.googlecode.mp4parser:isoparser:1.0.5.4"
 }
 
-//publish {
-//    userOrg = 'protyposis'
-//    groupId = playerModuleBase
-//    artifactId = 'mediaplayer-dash'
-//    publishVersion = libraryVersionString()
-//    desc = 'MediaPlayer-Extended DASH extension module'
-//    website = 'https://github.com/protyposis/MediaPlayer-Extended'
-//    licences = ['Apache-2.0']
-//}
-
-//apply from: "../gitversioning.gradle"
+publishing {
+    publications {
+        release(MavenPublication) {
+            artifactId = 'mediaplayer-dash'
+            pom {
+                description = 'MediaPlayer-Extended DASH extension module'
+            }
+            afterEvaluate {
+                from components.release
+            }
+        }
+    }
+}

@@ -1,5 +1,4 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
-
 buildscript {
     repositories {
         mavenCentral()
@@ -16,10 +15,40 @@ buildscript {
 }
 
 allprojects {
+    apply plugin: 'maven-publish'
+
     repositories {
         mavenCentral()
         mavenLocal()
         google()
+    }
+
+    model {
+        publishing {
+            publications.configureEach { publication -> {
+                groupId = playerModuleBase
+                version = libraryVersionString()
+                pom {
+                    url = 'https://github.com/protyposis/MediaPlayer-Extended'
+                    licenses {
+                        license {
+                            name = "The Apache License, Version 2.0"
+                            url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = "mg"
+                            name = "Mario Guggenberger"
+                            email = "mg@protyposis.net"
+                        }
+                    }
+                    scm {
+                        url = 'https://github.com/protyposis/MediaPlayer-Extended'
+                    }
+                }
+            }}
+        }
     }
 }
 
