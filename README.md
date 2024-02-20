@@ -329,5 +329,5 @@ These URLs have been tested and definitely work in the demo app:
 License
 -------
 
-Copyright (C) 2014, 2015, 2016, 2017, 2018, 2020 Mario Guggenberger <mg@protyposis.net>.
+Copyright (C) 2014, 2015, 2016, 2017, 2018, 2020, 2024 Mario Guggenberger <mg@protyposis.net>.
 Released under the Apache 2.0 license. See `LICENSE` for details.
