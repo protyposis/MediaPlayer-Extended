@@ -208,7 +208,7 @@ your local Maven repository or (3) include the required gradle modules directly.
 #### Maven ####
 
 The [Maven Central](https://central.sonatype.com/) Maven repository contains release builds of the
-library, usage is similar to any other Maven dependency:
+library since v4.5.0, usage is similar to any other Maven dependency:
 
     repositories {
         ...
@@ -221,6 +221,7 @@ library, usage is similar to any other Maven dependency:
         compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:<version>'
     }
 
+Older version can be found in the legacy `jcenter()` repository.
 Run `gradlew publishToMavenLocal` to compile and install the modules to your
 local Maven repository.
 
