@@ -217,8 +217,8 @@ library since v4.5.0, usage is similar to any other Maven dependency:
 
     dependencies {
         ...
-        compile 'net.protyposis.android.mediaplayer:mediaplayer:<version>'
-        compile 'net.protyposis.android.mediaplayer:mediaplayer-dash:<version>'
+        implementation 'net.protyposis.android.mediaplayer:mediaplayer:<version>'
+        implementation 'net.protyposis.android.mediaplayer:mediaplayer-dash:<version>'
     }
 
 Older version can be found in the legacy `jcenter()` repository.
